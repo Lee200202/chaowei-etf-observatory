@@ -3,6 +3,9 @@
 let chartRange='1',historyMeta=null,historyGeneration=0,lwc=null,liveQuote=null,quoteDisabled=false;
 settings.overlays=Object.assign({ma5:false,ma20:false,ma60:false,boll:false},settings.overlays||{});
 settings.osc=['none','macd','rsi','kd'].includes(settings.osc)?settings.osc:'none';
+settings.anchorMode=['wick','close','average'].includes(settings.anchorMode)?settings.anchorMode:'wick';
+settings.anchorCount=Math.max(1,Math.min(20,Math.round(Number(settings.anchorCount)||5)));
+settings.showLevels=settings.showLevels!==false;
 const RISE='#e5484d',FALL='#12a06b',COLORS={ma5:'#3b82f6',ma20:'#e6a23c',ma60:'#8b5cf6',boll:'#14b8a6',dif:'#e6a23c',dea:'#8b5cf6',rsi:'#0ea5b7',k:'#e6a23c',d:'#3b82f6'};
 const POPULAR=['0050','0056','00878','006208','00919','009816','00981A','00631L'];
 settings.watchlist=Array.isArray(settings.watchlist)?[...new Set(settings.watchlist.filter(x=>typeof x==='string'&&/^[0-9A-Z]{4,6}$/.test(x)))].slice(0,50):POPULAR.slice();
@@ -91,6 +94,8 @@ renderPosition=function(){
   const last=bars.at(-1),adj=historyMeta?.adjustments||[];
   $('etfMeta').textContent=`${selected} · 證交所上市${historyMeta?.first?` · 資料起於 ${historyMeta.first}`:''}`;
   $('source').textContent=adj.length?`證交所 · 已還原分割（${adj.map(a=>`${a.date} ×${a.factor>=1?a.factor:'1/'+Math.round(1/a.factor)}`).join('、')}）`:'來源：證交所';
+  const anchorName={wick:'最高／最低價',close:'收盤極值',average:`高低價各 ${settings.anchorCount} 筆平均`}[settings.anchorMode];
+  $('anchorSummary').textContent=position?`${position.count} 日 · ${anchorName} · ${settings.method==='fib'?'黃金分割':'等距刻度'}`:`基準：${anchorName}`;
   $('barPrice').textContent=last?fmt(last.close,2):'—';
   $('barGrade').textContent=position?position.grade+' / 5':'—';
   $('barDate').textContent=last?last.date.slice(5):'—';
@@ -114,18 +119,41 @@ renderPosition=function(){
   }
 };
 
-const originalComputePosition=computePosition;
+function anchorRange(prior){
+  if(!prior.length)return null;
+  const count=settings.anchorCount;
+  let low,high;
+  if(settings.anchorMode==='average'){
+    const n=Math.min(count,prior.length);
+    low=prior.map(b=>b.low).sort((a,b)=>a-b).slice(0,n).reduce((a,b)=>a+b,0)/n;
+    high=prior.map(b=>b.high).sort((a,b)=>b-a).slice(0,n).reduce((a,b)=>a+b,0)/n;
+  }else{
+    const key=settings.anchorMode==='close'?'close':null;
+    low=Math.min(...prior.map(b=>key?b[key]:b.low));
+    high=Math.max(...prior.map(b=>key?b[key]:b.high));
+  }
+  return Number.isFinite(low)&&Number.isFinite(high)&&high>low?{low,high}:null;
+}
+function scalarRange(values){
+  if(values.length<2)return null;
+  const ordered=[...values].sort((a,b)=>a-b);
+  const n=settings.anchorMode==='average'?Math.min(settings.anchorCount,ordered.length):1;
+  const low=ordered.slice(0,n).reduce((a,b)=>a+b,0)/n;
+  const high=ordered.slice(-n).reduce((a,b)=>a+b,0)/n;
+  return Number.isFinite(low)&&Number.isFinite(high)&&high>low?{low,high}:null;
+}
 computePosition=function(){
-  originalComputePosition();
   const last=bars.at(-1);
-  if(!liveQuote?.available||!last||liveQuote.date<=last.date)return;
-  const n=settings.window==='all'?bars.length:Number(settings.window),prior=bars.slice(-n);
-  if(prior.length<20||settings.window!=='all'&&prior.length<n)return;
-  const low=Math.min(...prior.map(x=>x.low)),high=Math.max(...prior.map(x=>x.high));
-  if(high<=low)return;
-  const r=(liveQuote.price-low)/(high-low);
-  position={...scoreFor(r,settings.method),r,low,high,count:prior.length,
-    last:{...last,date:liveQuote.date,close:liveQuote.price},intraday:true};
+  const provisional=liveQuote?.available&&last&&liveQuote.date>last.date;
+  const n=settings.window==='all'?bars.length-(provisional?0:1):Number(settings.window);
+  const prior=provisional?bars.slice(-n):bars.slice(-1-n,-1);
+  if(!last||prior.length<20||settings.window!=='all'&&prior.length<n){position=null;return}
+  const range=anchorRange(prior);
+  if(!range){position=null;return}
+  const price=provisional?liveQuote.price:last.close;
+  const r=(price-range.low)/(range.high-range.low);
+  position={...scoreFor(r,settings.method),r,...range,count:prior.length,
+    last:provisional?{...last,date:liveQuote.date,close:price}:last,intraday:!!provisional};
 };
 
 async function loadQuote(){
@@ -145,7 +173,7 @@ setInterval(()=>{if(!document.hidden)loadQuote()},300000);
 /* ---------- Data loading ---------- */
 function autoWindow(code){
   if(shareView||settings.window==='all'||bars.length-1>=Number(settings.window))return '';
-  const old=settings.window,next=[2400,1200,600,400,200,120,60].find(n=>n<=bars.length-1);
+  const old=settings.window,next=[2400,1200,600,400,240,200,120,60].find(n=>n<=bars.length-1);
   settings.window=next?String(next):'all';$('window').value=settings.window;save();
   return `${code} 上市後只有 ${bars.length} 個交易日；觀察窗已由 ${old} 日改為 ${next?next+' 日':'已取得全部'}。`;
 }
@@ -252,6 +280,13 @@ drawChart=function(keepView=false){
   if(o==='rsi'){guide(s.rsi,70,'70');guide(s.rsi,30,'30')}
   if(o==='kd'){guide(s.k,80,'80');guide(s.k,20,'20')}
   if(o==='macd')guide(s.dif,0,'');
+  if(settings.showLevels&&position){
+    const fractions=settings.method==='fib'?[0,.236,.382,.618,.786,1]:[0,.2,.4,.6,.8,1];
+    for(const f of fractions){
+      const price=position.low+(position.high-position.low)*f;
+      lwc.guides.push({series:s.candle,line:s.candle.createPriceLine({price,color:f===0||f===1?'#438d98':'#9abfc0',lineWidth:f===0||f===1?2:1,lineStyle:2,axisLabelVisible:true,title:`${Number((f*100).toFixed(1))}%`})});
+    }
+  }
   if(old)main.timeScale().setVisibleLogicalRange(old);else setVisible(chartRange);
   if(o!=='none')requestAnimationFrame(()=>{const r=main.timeScale().getVisibleLogicalRange();if(r)osc.timeScale().setVisibleLogicalRange(r)});
   $('chartCaption').textContent=`${ivName()} K · ${all.length.toLocaleString()} 根${provisional?' · 末根暫值':''} · 紅漲綠跌 · 量：張 · 滾輪縮放、拖曳平移 · 未含息`;
@@ -318,6 +353,22 @@ function drawSvgFallback(all){
 
 /* ---------- Controls ---------- */
 $('rangeSeg').addEventListener('click',e=>{const b=e.target.closest('button[data-range]');if(b)setRange(b.dataset.range)});
+$('anchorMode').addEventListener('change',function(){settings.anchorMode=this.value;updateAnchorControls();refreshAnchors()});
+$('anchorCount').addEventListener('change',function(){settings.anchorCount=Math.max(1,Math.min(20,Math.round(Number(this.value)||5)));this.value=settings.anchorCount;refreshAnchors()});
+$('showLevels').addEventListener('click',function(){settings.showLevels=!settings.showLevels;updateAnchorControls();drawChart(true);save()});
+function updateAnchorControls(){
+  settings.anchorMode=['wick','close','average'].includes(settings.anchorMode)?settings.anchorMode:'wick';
+  settings.anchorCount=Math.max(1,Math.min(20,Math.round(Number(settings.anchorCount)||5)));
+  settings.showLevels=settings.showLevels!==false;
+  $('anchorMode').value=settings.anchorMode;$('anchorCount').value=settings.anchorCount;
+  $('anchorCountWrap').classList.toggle('hidden',settings.anchorMode!=='average');
+  $('showLevels').setAttribute('aria-pressed',String(settings.showLevels));
+  for(const id of ['anchorMode','anchorCount','showLevels'])$(id).disabled=shareView;
+}
+function refreshAnchors(){computePosition();renderPosition();computeMarket();computeBrent();computeFx();updateWeights();drawChart(true);save()}
+updateAnchorControls();
+$('window').addEventListener('change',()=>drawChart(true));
+$('method').addEventListener('change',()=>drawChart(true));
 $('intervalSeg').addEventListener('click',()=>setTimeout(()=>setRange(chartRange),0));
 function zoom(f){if(!lwc)return;const ts=lwc.main.timeScale(),r=ts.getVisibleLogicalRange();if(!r)return;const n=lwc.data.length,span=Math.max(15,Math.min(n+5,(r.to-r.from)*f)),to=Math.min(n+3,r.to);ts.setVisibleLogicalRange({from:to-span,to})}
 function pan(dir){if(!lwc)return;const ts=lwc.main.timeScale(),r=ts.getVisibleLogicalRange();if(!r)return;const step=(r.to-r.from)*.3*dir;ts.setVisibleLogicalRange({from:r.from+step,to:r.to+step})}

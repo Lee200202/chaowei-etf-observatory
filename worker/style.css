@@ -49,6 +49,7 @@ body.account-open{overflow:hidden}.account-overlay{position:fixed;inset:0;z-inde
 .search-sheet .etf-result,.member-benefits>div,.factor,.tech-item,.account-status,.notice{border-radius:25px}
 .meta span{border-radius:999px}
 .factor h4,.factor p{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+.toolbar .controls input[type=number]{width:112px;min-height:44px;border:1px solid var(--line);border-radius:999px;background:var(--paper);color:var(--ink);padding:8px 14px;font-size:13px;font-weight:760}.level-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0 12px}.level-tools .pill[aria-pressed=true]{background:#d1f3eb;border-color:#8acbc5;color:#145b60}.dark .level-tools .pill[aria-pressed=true]{background:#225b5d;color:#e5fffb}#anchorSummary{margin:10px 0 0}
 .tech-item{min-height:94px}.tech-item details{font-size:11px;color:var(--muted)}.tech-item details summary{cursor:pointer;font-weight:800}.tech-item details p{margin:8px 0 0;line-height:1.55}
 .price-up{color:#d63a3f!important}.price-down{color:#0f8a5c!important}
 @media(max-width:920px){.member-intro{grid-template-columns:1fr}.member-benefits{grid-template-columns:repeat(3,1fr)}}
