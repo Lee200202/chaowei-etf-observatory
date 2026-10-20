@@ -128,7 +128,8 @@ function installChaoweiApi(base,serverFallback){
   }
   async function twseMonth(report,code){
     const month=taipei().toISOString().slice(0,7).replace('-','')+'01';
-    const url=`https://www.twse.com.tw/exchangeReport/${report}?response=json&date=${month}${code?`&stockNo=${code}`:''}`;
+    // HtmlService treats // inside a template literal as a comment when sanitizing inline JS.
+    const url='https://www.twse.com.tw/exchangeReport/'+report+'?response=json&date='+month+(code?'&stockNo='+code:'');
     const data=await getJson(url,300000);
     if(data.stat!=='OK'&&!/查無|很抱歉|沒有符合/.test(data.stat||''))throw Error(data.stat||'資料格式異常');
     return Array.isArray(data.data)?data.data:[];

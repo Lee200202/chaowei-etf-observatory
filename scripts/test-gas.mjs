@@ -25,6 +25,8 @@ assert.equal(box.readSnapshot('https://evil.example/x.json').error,'不支援的
 assert.match(box.doGet().title,/潮位 ETF 觀測所/);
 assert.ok(html.includes("installChaoweiApi('https://lee200202.github.io/chaowei-etf-observatory/'"));
 assert.ok(html.includes('lightweight-charts@4.1.3'));
+assert.doesNotMatch(html,/`https:\/\//,'HtmlService truncates URL template literals at //');
+for(const match of html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g))new vm.Script(match[1]);
 assert.equal(box.getQuote('009816').available,false,'public quote must start disabled');
 props.set('FUGLE_PUBLIC_DISPLAY_ENABLED','true');
 const quote=box.getQuote('009816');
