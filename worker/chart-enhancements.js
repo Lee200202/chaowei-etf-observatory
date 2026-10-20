@@ -26,10 +26,21 @@ function openSearch(){lastFocus=document.activeElement;$('searchOverlay').classL
 // After a pick, focus must not jump back to the opener: the same Enter press would "click" it and reopen the sheet.
 function closeSearch(restore=true){if($('searchOverlay').classList.contains('hidden'))return;$('searchOverlay').classList.add('hidden');document.body.classList.remove('searching');if(restore)lastFocus?.focus?.({preventScroll:true});else document.activeElement?.blur?.()}
 function pick(code){selected=code;closeSearch(false);renderList();loadBars();const t=document.querySelector('.toolbar');window.scrollTo({top:t.getBoundingClientRect().top+scrollY-12,behavior:'instant'})}
+/* Risk badge from the catalog name and index: inverse and leveraged first (their index names look like the core ones). */
+function etfRisk(code){
+  const e=catalog.find(x=>x.code===code);if(!e)return null;const t=e.name+' '+(e.note||'');
+  if(/R$/.test(code)&&/反/.test(e.name))return{kind:'inverse',tag:'⚠️ 反向',warn:'反向 ETF 每日重設倍數，盤整與上漲時會持續耗損，只適合短線避險，不適合定期定額或逢低攤平。'};
+  if(/L$/.test(code)&&/正2|正二/.test(e.name))return{kind:'lev',tag:'⚡ 2倍槓桿',warn:'2 倍槓桿波動約為原型的兩倍，盤整時有耗損；逢低攤平又不設停損，回落可能非常深。建議改用再平衡或趨勢策略。'};
+  if(/B$/.test(code)||/債/.test(e.name))return{kind:'bond',tag:'🏦 債券'};
+  if(/高息|高股息|股息|收息|高收益/.test(t))return{kind:'income',tag:'💰 高息'};
+  if(e.type==='passive'&&/臺灣50指數|臺灣加權|發行量加權/.test(t))return{kind:'core',tag:'🌱 市值核心'};
+  return null;
+}
+function riskBadge(code){const r=etfRisk(code);if(!r)return null;const s=document.createElement('span');s.className='risk-tag '+r.kind;s.textContent=r.tag;return s}
 function renderQuick(){
   for(const id of ['quickPicks','quickInline']){
     const box=$(id);box.replaceChildren();
-    for(const code of settings.watchlist){const e=catalog.find(x=>x.code===code);if(!e)continue;const b=document.createElement('button');b.type='button';b.className='pill mini'+(code===selected?' on':'');b.textContent=`${code} ${e.name}`;b.addEventListener('click',()=>pick(code));box.append(b)}
+    for(const code of settings.watchlist){const e=catalog.find(x=>x.code===code);if(!e)continue;const b=document.createElement('button');b.type='button';b.className='pill mini'+(code===selected?' on':'');b.textContent=`${code} ${e.name}`;const rb=riskBadge(code);if(rb)b.append(rb);b.addEventListener('click',()=>pick(code));box.append(b)}
     if(!box.children.length){const p=document.createElement('span');p.className='small';p.textContent='點候選卡片上的☆建立追蹤清單';box.append(p)}
   }
 }
@@ -58,7 +69,7 @@ renderList=function(){
   for(const e of matches.slice(0,limit)){
     const row=document.createElement('div');row.className='etf-result';
     const b=document.createElement('button');b.type='button';b.className='candidate-pick'+(e.code===selected?' selected':'');
-    const strong=document.createElement('strong');strong.textContent=`${e.code} · ${e.name}`;
+    const strong=document.createElement('strong');strong.textContent=`${e.code} · ${e.name}`;const rb=riskBadge(e.code);if(rb)strong.append(rb);
     const small=document.createElement('small');small.textContent=`${e.type==='active'?'主動型':'被動型'} · ${e.listingDate?e.listingDate+' 上市':'上市日期待查'}`;
     b.append(strong,small);
     if(e.note&&e.note!=='主動管理'){const idx=document.createElement('small');idx.className='index';idx.textContent=e.note;b.append(idx)}
@@ -70,6 +81,7 @@ renderList=function(){
   if(!matches.length)$('etfList').textContent='沒有符合的 ETF；請確認名稱或代號';
   else if(matches.length>limit){const p=document.createElement('p');p.className='small more';p.textContent=`顯示前 ${limit} 檔，繼續輸入可縮小範圍。`;$('etfList').append(p)}
   renderQuick();
+  const risk=etfRisk(selected);$('riskTag').textContent=risk?.tag||'';$('riskTag').className='risk-tag'+(risk?' '+risk.kind:' hidden');
 };
 $('search').addEventListener('keydown',e=>{if(e.key==='Enter'){const first=$('etfList').querySelector('.candidate-pick');if(first){e.preventDefault();first.click()}}});
 

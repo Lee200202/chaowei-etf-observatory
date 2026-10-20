@@ -72,13 +72,52 @@ const load=async code=>{const d=await hist(code);return{d,bars:d.rows.map(([date
   const {bars,div}=await load('00631L'),ctx=E.prepare(bars,div);
   for(const p of E.PRESETS){const r=E.run(ctx,cfgOf(p),bars.length-1220);near(r.equity,r.cash+r.shares*bars.at(-1).close,1e-4,p.name+' equity identity');assert.ok(r.cash>-1e-6,p.name+' cash never negative')}
 }
-console.log('Engine checks passed: hand cases, parking, dividends, XIRR, DCA identity, no look-ahead, accounting.');
+/* 8. Auto installments: N = months in the window, every installment C ÷ N, all of C invested by the end. */
+{
+  const {bars,div}=await load('0050'),ctx=E.prepare(bars,div),start=bars.length-1220;
+  const months=bars.slice(start).filter((b,k)=>k===0||b.date.slice(0,7)!==bars[start+k-1].date.slice(0,7)).length;
+  const r=E.run(ctx,cfgOf(E.PRESETS.find(x=>x.id==='dca'),{dcaPeriods:'auto'}),start),buys=r.trades.filter(t=>t.kind==='dca');
+  assert.equal(r.N,months);assert.equal(buys.length,months);for(const t of buys)near(t.amount,1200000/months,1e-6,'auto installment is C ÷ months');
+  assert.ok(r.cash<1200000/months,'nothing left over beyond one installment');
+}
+/* 9. Monthly deposits: C ÷ N arrives each month; buy-and-hold still invests C on day one with its own flows. */
+{
+  const {bars,div}=await load('0050'),ctx=E.prepare(bars,div),start=bars.length-1220;
+  const r=E.run(ctx,cfgOf(E.PRESETS.find(x=>x.id==='dca'),{dcaPeriods:'auto',capitalMode:'monthly'}),start);
+  near(r.contributed,1200000,1e-6,'deposits add up to C');near(r.dca.equity,r.equity,1e-6,'DCA strategy equals the benchmark');
+  near(r.bh.ret,E.run(ctx,cfgOf(E.PRESETS.find(x=>x.id==='dca'),{dcaPeriods:'auto'}),start).bh.ret,1e-9,'buy-and-hold is the same in both modes');
+  near(r.roic,r.xirr,1e-6,'fully invested: deployed-capital return equals XIRR');
+}
+/* 10. Reserve buffer: multiplier strategies never spend more than the released installments plus sales and dividends. */
+{
+  for(const code of ['0050','00631L']){const {bars,div}=await load(code),ctx=E.prepare(bars,div),start=bars.length-1220;
+    for(const id of ['smartDca','va','bias'])for(const N of [12,'auto']){
+      const r=E.run(ctx,cfgOf(E.PRESETS.find(x=>x.id===id),{dcaPeriods:N}),start),released=r.base*r.N;
+      const spent=r.trades.filter(t=>t.kind==='dca').reduce((s,t)=>s+t.amount,0),back=r.trades.filter(t=>t.type==='sell').reduce((s,t)=>s+t.amount,0);
+      assert.ok(spent<=released+back+r.dividends+1e-6,`${code} ${id} N=${N} spends within its pots`);
+      assert.ok(r.state.reserve>=-1e-9,`${code} ${id} reserve never negative`);
+    }}
+}
+/* 11. Buy-and-hold pays the same fee as everyone else: C × fee ÷ (1 + fee) on day one. */
+{
+  const bars=['2025-01-02','2025-01-03'].map(date=>({date,open:100,high:100,low:100,close:100,volume:1}));
+  const r=E.run(E.prepare(bars,[]),cfgOf(E.PRESETS.find(x=>x.id==='dca'),{capital:100000,dcaPeriods:1}),0);
+  near(r.bh.fees,100000*0.001425/1.001425,1e-6,'buy-and-hold fee');near(r.dca.fees,r.bh.fees,1e-6,'same fee for 定期定額');
+}
+/* 12. Deployed-capital return: a strategy in cash most of the time still reports what its trades earned. */
+{
+  const ctx=E.prepare(synth,[]),r=E.run(ctx,cfgOf(E.PRESETS.find(x=>x.id==='drop20'),{capital:400000,parking:0}),0);
+  const buy=r.trades[0],sell=r.trades[1],days=(Date.parse(sell.date)-Date.parse(buy.date))/86400000;
+  near(r.roic,Math.pow(sell.amount/buy.amount,365/days)-1,1e-6,'ROIC is the round trip annualised over its holding days');
+  assert.ok(r.roic>r.xirr,'higher than the whole-pot XIRR');
+}
+console.log('Engine checks passed: hand cases, parking, dividends, XIRR, DCA identity, no look-ahead, accounting, auto N, monthly mode, reserve, fees, ROIC.');
 
-/* Results table (5 years, 10,000 a month, parking 1.5 %, DRIP on). */
+/* Results table (5 years, C = 1.2M, one installment per month, parking 1.5 %, DRIP on). */
 const pct=v=>v==null?'—':(v*100).toFixed(1).padStart(6)+'%';
 for(const code of ['0050','0056','00631L']){
   const {bars,div}=await load(code),ctx=E.prepare(bars,div),start=bars.length-1220;
   console.log(`\n${code} ${bars[start].date}–${bars.at(-1).date}  總報酬 / XIRR / 最大回落 / 資金利用率`);
-  for(const p of E.PRESETS){const r=E.run(ctx,cfgOf(p,{parking:1.5}),start);console.log(`${p.name.padEnd(14,'　')} ${pct(r.ret)} ${pct(r.xirr)} ${pct(-r.mdd)} ${pct(r.utilization)}${r.xirr>r.dca.xirr?'  ★勝過定期定額':''}`)}
-  const r=E.run(ctx,cfgOf(E.PRESETS[0],{parking:1.5}),start);console.log(`定期定額基準　　　　　 ${pct(r.dca.ret)} ${pct(r.dca.xirr)} ${pct(-r.dca.mdd)}`);
+  for(const p of E.PRESETS){const r=E.run(ctx,cfgOf(p,{parking:1.5,dcaPeriods:'auto'}),start);console.log(`${p.name.padEnd(14,'　')} ${pct(r.ret)} ${pct(r.xirr)} ${pct(-r.mdd)} ${pct(r.utilization)}${r.xirr>r.dca.xirr?'  ★勝過定期定額':''}`)}
+  const r=E.run(ctx,cfgOf(E.PRESETS[0],{parking:1.5,dcaPeriods:'auto'}),start);console.log(`定期定額基準　　　　　 ${pct(r.dca.ret)} ${pct(r.dca.xirr)} ${pct(-r.dca.mdd)}`);
 }

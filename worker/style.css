@@ -178,3 +178,32 @@ body.intl-colors .chart-legend .down,body.intl-colors .chart-tip .down,body.intl
 .search-launch{cursor:text}.search-launch input{flex:1;min-width:0;border:0;background:transparent;color:var(--ink);font:inherit;font-size:clamp(16px,1.8vw,20px);font-weight:600;padding:6px 0;outline:none}
 .search-launch input::placeholder{color:var(--muted);opacity:.7;font-weight:500}.search-launch:focus-within{border-color:#19a7aa;box-shadow:0 0 0 3px rgba(25,167,170,.15)}
 .hot-searches{display:grid;gap:6px;margin:12px 0 4px}.hot-searches small{color:var(--muted);font-size:11px}.usage-opt{font-size:12px!important;margin-top:4px}
+/* v7 Phase 2: beginner mode, action card, risk tags, low-exposure badge, weight share bar, back-to-top. */
+body.novice .expert-only{display:none!important}body.novice #btParams>:not(.bt-hint){display:none!important}body.novice .bt-params{min-height:0;grid-row:auto!important}
+body.novice .bt-steps{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.bt-head-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}.bt-mode{display:inline-flex}.bt-mode button{white-space:nowrap}
+.bt-chips{display:flex;gap:6px;flex-wrap:wrap;margin:-2px 0 8px}.bt-chips .pill.on{background:var(--pale);border-color:#19a7aa;color:#0e7490}
+.bt-sync{margin-bottom:6px}select:disabled,input:disabled{opacity:.6;cursor:not-allowed}
+.bt-now{background:linear-gradient(135deg,rgba(25,167,170,.10),rgba(25,167,170,.02));border-color:rgba(25,167,170,.35)}
+.bt-now h4{font-size:15px}.bt-act-meta{margin:0 0 6px;font-size:12px;font-weight:800;color:var(--muted)}.bt-act-main{margin:0 0 8px;font-size:15px;line-height:1.7}
+.bt-act-note{margin:8px 0 0;font-size:11px;color:var(--muted)}
+.bt-kpi-note{margin:0 0 6px;font-size:11px;color:var(--muted)}.bt-tag.shield{background:rgba(14,116,144,.1);color:#0e7490;border-color:rgba(14,116,144,.3)}
+.risk-tag{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;font-size:11px;font-weight:800;line-height:1.6;vertical-align:middle;white-space:nowrap;background:rgba(25,167,170,.12);color:#0e7490}
+.risk-tag.income{background:rgba(16,140,90,.12);color:#0f8a5c}.risk-tag.lev{background:rgba(230,162,60,.18);color:#a15c00}.risk-tag.inverse{background:rgba(214,58,63,.13);color:#b4232a}.risk-tag.bond{background:rgba(97,121,130,.14);color:var(--muted)}
+.meta-line .risk-tag{margin-left:8px}
+.bt-risk-box{display:flex;gap:10px 14px;align-items:center;flex-wrap:wrap;justify-content:space-between;border-radius:14px;padding:10px 14px;margin-bottom:10px;background:#fff6e0;border:1px solid #f0c66b;color:#5c4100}
+.bt-risk-box.inverse{background:#fdecec;border-color:#f0a3a6;color:#6b1a1d}.bt-risk-box p{margin:0;font-size:13px;line-height:1.6;flex:1 1 320px}.bt-risk-box b{margin-right:6px}.bt-risk-box span{display:flex;gap:6px;flex-wrap:wrap}
+.scenarios{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:10px}.scenarios .small{margin-right:2px}.scenarios .pill.on{background:var(--pale);border-color:#19a7aa;color:#0e7490}
+.weight-bar{display:flex;height:22px;border-radius:999px;overflow:hidden;background:var(--line);margin:12px 0 6px}
+.weight-bar span{display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;min-width:0}
+.weight-bar .w0{background:#0e7490}.weight-bar .w1{background:#19a7aa}.weight-bar .w2{background:#6aa9b8}.weight-bar .w3{background:#c98a2b}.weight-bar .w4{background:#7c6bb0}
+.weight-preview{margin:4px 0 8px;font-size:14px}.weight-preview:empty{display:none}
+.to-top{position:fixed;right:18px;bottom:18px;z-index:40;border:1px solid var(--line);border-radius:999px;padding:10px 16px;background:var(--paper);color:var(--ink);font:inherit;font-size:13px;font-weight:800;box-shadow:0 8px 24px rgba(23,50,59,.16);cursor:pointer}
+.to-top:hover{border-color:#19a7aa}body.searching .to-top,body.account-open .to-top{display:none}
+@media(max-width:760px){.bt-head-actions{width:100%;justify-content:space-between}.to-top{right:12px;bottom:12px;padding:9px 13px;font-size:12px}body.novice .bt-steps{grid-template-columns:1fr}}
+/* The content column must not grow to its widest child (phones were 515px wide in a 375px screen). */
+.content{grid-template-columns:minmax(0,1fr)}
+/* Phone top bar: four stats on one row, 換一檔 in the corner, meta line truncates before the risk tag. */
+.meta-line{display:flex;align-items:center;min-width:0}.meta-line #etfMeta{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}.meta-line .risk-tag{flex:none}
+@media(max-width:440px){.toolbar>div:first-child{padding-right:66px}.toolbar-stats{gap:4px 12px;flex-wrap:nowrap}.toolbar-stats b{font-size:15px;white-space:nowrap}.toolbar-stats small{font-size:10px}#backToSearch{position:absolute;top:10px;right:12px;padding:5px 10px;white-space:nowrap}}
+.toolbar>div:first-child{min-width:0;max-width:100%}

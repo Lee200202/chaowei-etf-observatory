@@ -12,7 +12,7 @@ function renderHot(){
   // Shown while the search box is empty: what visitors looked at most in the last 30 days.
   const q=$('search').value.trim(),list=(popular&&popular.length>=3?popular:POPULAR).slice(0,8);
   $('hotSearches').classList.toggle('hidden',!!q);
-  $('hotList').innerHTML=list.map(c=>{const e=catalog.find(x=>x.code===c);return e?`<button class="pill mini" type="button" data-hot="${c}">${c} ${e.name}</button>`:''}).join('');
+  $('hotList').innerHTML=list.map(c=>{const e=catalog.find(x=>x.code===c);const r=etfRisk(c);return e?`<button class="pill mini" type="button" data-hot="${c}">${c} ${e.name}${r?`<span class="risk-tag ${r.kind}">${r.tag}</span>`:''}</button>`:''}).join('');
   $('hotNote').textContent=popular&&popular.length>=3?'近 30 天最多人查看':'常用 ETF（熱門資料累積中）';
 }
 $('hotList').addEventListener('click',e=>{const b=e.target.closest('[data-hot]');if(b){$('search').value='';pick(b.dataset.hot)}});

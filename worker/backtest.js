@@ -1,11 +1,15 @@
 /* ---------- Strategy backtest panel (uses ChaoweiEngine from strategy-engine.js) ---------- */
 const E=ChaoweiEngine;
-const BT_DEFAULT={v:3,family:'dca',preset:'smartDca',strategy:'smart_dca_water',params:{...E.PARAMS.smart_dca_water},
-  ref:{window:'240',anchorMode:'wick',anchorCount:5,method:'equal'},capital:1200000,dcaPeriods:12,period:'5',
+// dcaPeriods 'auto' = one installment per month of the backtest window; sync = use the observation settings above.
+const BT_DEFAULT={v:4,family:'dca',preset:'smartDca',strategy:'smart_dca_water',params:{...E.PARAMS.smart_dca_water},
+  ref:{window:'240',anchorMode:'wick',anchorCount:5,method:'equal'},capital:1200000,dcaPeriods:'auto',capitalMode:'pool',sync:true,period:'5',
   fee:0.1425,discount:100,tax:0.1,parking:1.5,drip:true,wholeShares:false,markers:true};
 // v2 stored the classic builder's fields at the top level; keep the user's swing settings.
+// v3 defaulted to 12 installments, which spent C in the first year of a five-year test; 12 becomes 'auto'.
 function btMigrate(b){
-  if(b&&b.v===3)return{...BT_DEFAULT,...b,ref:{...BT_DEFAULT.ref,...b.ref},params:{...E.PARAMS[b.strategy]||{},...b.params}};
+  if(b&&(b.v===3||b.v===4)){const out={...BT_DEFAULT,...b,v:4,ref:{...BT_DEFAULT.ref,...b.ref},params:{...E.PARAMS[b.strategy]||{},...b.params}};
+    if(b.v===3){if(b.dcaPeriods===12)out.dcaPeriods='auto';out.sync=String(out.ref.window)===String(settings.window)&&out.ref.method===settings.method&&out.ref.anchorMode===settings.anchorMode}
+    return out}
   const out={...BT_DEFAULT,ref:{...BT_DEFAULT.ref,window:settings.window||'240',anchorMode:settings.anchorMode||'wick',anchorCount:settings.anchorCount||5,method:settings.method||'equal'}};
   if(b&&typeof b==='object'&&(b.v===2||b.mode)){
     const keys=['entry','drop','levels','buyGrade','step','adds','exit','rise','sellGrade','fibExt','stop','maxDays'],params={...E.PARAMS.classic};
@@ -70,7 +74,12 @@ function btContext(){
 // Custom dates use the first bar on or after the start and the last bar on or before the end.
 function btEnd(){const b=settings.bt;if(b.period!=='custom'||!b.to)return bars.length-1;let j=-1;for(let i=0;i<bars.length;i++)if(bars[i].date<=b.to)j=i;return Math.max(0,j)}
 function btStart(period){if(period==='all')return 0;if(period==='custom'){const b=settings.bt,i=b.from?bars.findIndex(x=>x.date>=b.from):0;return Math.max(0,Math.min(i<0?0:i,btEnd()-40))}const d=new Date(bars.at(-1).date+'T00:00:00Z');d.setUTCFullYear(d.getUTCFullYear()-Number(period));const i=bars.findIndex(b=>b.date>=d.toISOString().slice(0,10));return i<0?0:i}
-const btCfg=(over={})=>{const b=settings.bt;return{ref:{...b.ref},capital:b.capital,dcaPeriods:b.dcaPeriods,fee:b.fee,discount:b.discount,tax:b.tax,parking:b.parking,drip:b.drip,wholeShares:b.wholeShares,strategy:b.strategy,params:{...b.params},...over}};
+// With sync on, the backtest reads the observation settings above at run time, so the two never disagree.
+const btTopRef=()=>({window:String(settings.window),anchorMode:settings.anchorMode||'wick',anchorCount:Number(settings.anchorCount)||5,method:settings.method==='fib'?'fib':'equal'});
+const btRef=()=>settings.bt.sync?btTopRef():settings.bt.ref;
+function btMonths(){if(!bars.length)return 0;const s=btStart(settings.bt.period),e=btEnd();let n=0;for(let i=s;i<=e;i++)if(i===s||bars[i].date.slice(0,7)!==bars[i-1].date.slice(0,7))n++;return n}
+const btN=()=>settings.bt.dcaPeriods==='auto'?btMonths():settings.bt.dcaPeriods;
+const btCfg=(over={})=>{const b=settings.bt;return{ref:{...btRef()},capital:b.capital,dcaPeriods:b.dcaPeriods,capitalMode:b.capitalMode,fee:b.fee,discount:b.discount,tax:b.tax,parking:b.parking,drip:b.drip,wholeShares:b.wholeShares,strategy:b.strategy,params:{...b.params},...over}};
 
 /* ---------- form ---------- */
 function btFieldHtml([key,label,type,extra,visible],p){
@@ -91,11 +100,16 @@ function btFillForm(){
   $('btFamilies').innerHTML=E.FAMILIES.map(([id,name])=>`<button type="button" role="tab" data-family="${id}" aria-selected="${b.family===id}" class="${b.family===id?'active':''}">${name}</button>`).join('');
   $('btPresets').innerHTML=E.PRESETS.filter(p=>p.family===b.family).map(p=>`<button class="pill mini${b.preset===p.id?' on':''}" type="button" data-preset="${p.id}">${p.name}</button>`).join('');
   const set=(id,v)=>{$(id).value=String(v)};
-  set('btCapital',b.capital);customOption($('btDcaPeriods'),b.dcaPeriods,b.dcaPeriods+' 期（自訂）');set('btDcaPeriods',b.dcaPeriods);set('btPeriod',b.period);
+  set('btCapital',b.capital);set('btCapitalMode',b.capitalMode);
+  const months=btMonths();$('btDcaPeriods').options[0].textContent='自動：每月一期'+(months?'（共 '+months+' 期）':'');
+  if(b.dcaPeriods!=='auto')customOption($('btDcaPeriods'),b.dcaPeriods,b.dcaPeriods+' 期（自訂）');set('btDcaPeriods',b.dcaPeriods);set('btPeriod',b.period);
+  $('btCapChips').querySelectorAll('[data-cap]').forEach(x=>x.classList.toggle('on',Number(x.dataset.cap)===b.capital));
   $('btDates').classList.toggle('hidden',b.period!=='custom');if(b.period==='custom'&&bars.length){$('btFrom').value=b.from||bars[btStart('5')].date;$('btTo').value=b.to||bars.at(-1).date}
-  customOption($('btWindow'),b.ref.window,b.ref.window+' 交易日（自訂）');set('btWindow',b.ref.window);set('btAnchorMode',b.ref.anchorMode);set('btAnchorCount',b.ref.anchorCount);set('btMethod',b.ref.method);
+  const ref=btRef();$('btSync').checked=!!b.sync;
+  customOption($('btWindow'),ref.window,ref.window+' 交易日（自訂）');set('btWindow',ref.window);set('btAnchorMode',ref.anchorMode);set('btAnchorCount',ref.anchorCount);set('btMethod',ref.method);
+  for(const id of ['btWindow','btAnchorMode','btAnchorCount','btMethod'])$(id).disabled=!!b.sync;
   set('btFee',b.fee);set('btDiscount',b.discount);set('btTax',b.tax);set('btParking',b.parking);$('btDrip').checked=!!b.drip;$('btWhole').checked=!!b.wholeShares;
-  const card=$('backtestCard');card.querySelectorAll('.bt-if-average').forEach(e=>e.classList.toggle('hidden',b.ref.anchorMode!=='average'));
+  const card=$('backtestCard');card.querySelectorAll('.bt-if-average').forEach(e=>e.classList.toggle('hidden',ref.anchorMode!=='average'));
   card.querySelectorAll('.bt-if-classic').forEach(e=>e.classList.toggle('hidden',b.strategy!=='classic'));
   btRenderSplit();
   $('btFriction').textContent='買賣一次成本 '+fmt(b.fee*b.discount/100*2+b.tax,4)+'%';
@@ -103,22 +117,26 @@ function btFillForm(){
   btRenderParams();
 }
 function btRenderSplit(){
-  const b=settings.bt,p=b.params,C=b.capital,N=b.dcaPeriods,base=C/N,m=v=>fmt(Math.round(v),0)+' 元';
+  const b=settings.bt,p=b.params,C=b.capital,N=btN(),base=N?C/N:0,m=v=>fmt(Math.round(v),0)+' 元',monthly=b.capitalMode==='monthly';
+  if(!N){$('btSplit').textContent='';return}
   let mine;
-  if(b.strategy==='classic'){const k=p.entry==='fib'?p.levels.length:1+p.adds;mine='本策略分 '+k+' 批：每批 C ÷ '+k+' = '+m(C/k)}
+  if(b.strategy==='classic'){const k=p.entry==='fib'?p.levels.length:1+p.adds;mine=monthly?'本策略分 '+k+' 批：每批＝當時可用現金 ÷ 剩下批數':'本策略分 '+k+' 批：每批 C ÷ '+k+' = '+m(C/k)}
   else if(b.strategy==='dca')mine='本策略就是定期定額';
-  else if(['smart_dca_water','bias_tiered_dca','value_averaging'].includes(b.strategy))mine='本策略每月基準 C ÷ '+N+' = '+m(base)+'，再乘上當月倍數，直到資金用完';
+  else if(['smart_dca_water','bias_tiered_dca','value_averaging'].includes(b.strategy))mine='本策略每月基準 '+m(base)+' × 當月倍數；少扣的錢存入蓄水池，低水位時再動用';
   else if(b.strategy==='tech_bb_rsi_dca')mine='本策略每月底倉 '+m(base*p.baseRatio)+'，超賣時加碼 '+m(base*p.dipMult);
   else if(b.strategy==='core_satellite')mine='核心每月 '+m(base*p.core/100)+' × 倍數；衛星資金 '+m(C*(100-p.core)/100)+' 分 2 批';
   else if(['rebalance_50_50','vol_targeting'].includes(b.strategy))mine='本策略依目標持股比例調整，不分期';
   else mine='本策略符合條件時投入全部可用資金';
-  $('btSplit').innerHTML='定期定額：每月 C ÷ '+N+' = <b>'+m(base)+'</b><br>'+mine+'<br>買進持有：第一天投入 C = '+m(C);
+  $('btSplit').innerHTML=(monthly?'每月入金 C ÷ '+N+' = <b>'+m(base)+'</b>，定期定額當月全數買進':'定期定額：每月 C ÷ '+N+' = <b>'+m(base)+'</b>')+'<br>'+mine+'<br>買進持有：第一天投入 C = '+m(C);
 }
 function btReadForm(){
   const b=settings.bt,num=(id,lo,hi,d)=>clampNum($(id).value,lo,hi,d);
-  b.capital=Math.round(num('btCapital',10000,1e9,1200000));{const n=Math.round(Number($('btDcaPeriods').value));if(Number.isFinite(n)&&n>=1&&n<=240)b.dcaPeriods=n}
+  b.capital=Math.round(num('btCapital',10000,1e9,1200000));b.capitalMode=$('btCapitalMode').value==='monthly'?'monthly':'pool';
+  if($('btDcaPeriods').value==='auto')b.dcaPeriods='auto';else{const n=Math.round(Number($('btDcaPeriods').value));if(Number.isFinite(n)&&n>=1&&n<=240)b.dcaPeriods=n}
   b.period=['1','3','5','10','all','custom'].includes($('btPeriod').value)?$('btPeriod').value:'5';if(b.period==='custom'){b.from=$('btFrom').value||b.from;b.to=$('btTo').value||b.to}
-  b.ref={window:$('btWindow').value,anchorMode:$('btAnchorMode').value,anchorCount:Math.round(num('btAnchorCount',1,20,5)),method:$('btMethod').value==='fib'?'fib':'equal'};
+  // Unticking sync starts from the observation settings, then the step-3 fields are the backtest's own.
+  const wasSync=b.sync;b.sync=$('btSync').checked;
+  if(!b.sync)b.ref=wasSync?btTopRef():{window:$('btWindow').value,anchorMode:$('btAnchorMode').value,anchorCount:Math.round(num('btAnchorCount',1,20,5)),method:$('btMethod').value==='fib'?'fib':'equal'};
   b.fee=num('btFee',0,1,0.1425);b.discount=num('btDiscount',10,100,100);b.tax=num('btTax',0,1,0.1);b.parking=num('btParking',0,10,1.5);b.drip=$('btDrip').checked;b.wholeShares=$('btWhole').checked;
   $('btParams').querySelectorAll('[data-k]').forEach(el=>{const k=el.dataset.k,v=el.type==='checkbox'?el.checked:el.tagName==='SELECT'?el.value:Number(el.value);
     b.params[k]=el.tagName==='SELECT'&&/^-?\d+(\.\d+)?$/.test(v)?Number(v):(typeof v==='number'&&!Number.isFinite(v)?b.params[k]:v)});
@@ -132,7 +150,11 @@ $('btFamilies').addEventListener('click',e=>{const t=e.target.closest('[data-fam
 $('btPresets').addEventListener('click',e=>{const t=e.target.closest('[data-preset]');if(t)btApplyPreset(t.dataset.preset)});
 function btApplyPreset(id,over){const p=E.PRESETS.find(x=>x.id===id);if(!p)return;Object.assign(settings.bt,{family:p.family,preset:p.id,strategy:p.strategy,params:JSON.parse(JSON.stringify({...E.PARAMS[p.strategy],...p.params}))},over||{});save();btFillForm();renderBacktest()}
 $('backtestCard').addEventListener('change',e=>{if(e.target.closest('.bt-steps,.bt-advanced')){btReadForm();btFillForm();btSchedule()}});
-$('btSyncView').addEventListener('click',()=>{settings.bt.ref={window:settings.window,anchorMode:settings.anchorMode,anchorCount:settings.anchorCount,method:settings.method};save();btFillForm();renderBacktest()});
+$('btRisk').addEventListener('click',e=>{const t=e.target.closest('[data-preset]');if(t)btApplyPreset(t.dataset.preset)});
+$('btCapChips').addEventListener('click',e=>{const t=e.target.closest('[data-cap]');if(!t)return;$('btCapital').value=t.dataset.cap;btReadForm();btFillForm();btSchedule()});
+// Observation settings changed above: a synced backtest follows.
+function btFollowTop(){if(settings.bt.sync&&btResult&&JSON.stringify(btResult.cfg.ref)!==JSON.stringify(btRef())){btFillForm();btSchedule()}}
+document.querySelector('.view-card').addEventListener('change',()=>setTimeout(btFollowTop,0));
 $('btMarkers').addEventListener('click',()=>{settings.bt.markers=!settings.bt.markers;save();btFillForm();applyMarkers()});
 $('btTradeFilter').addEventListener('click',e=>{const t=e.target.closest('[data-f]');if(!t)return;btTradeFilter=t.dataset.f;$('btTradeFilter').querySelectorAll('button').forEach(x=>x.classList.toggle('active',x===t));btRenderTrades()});
 
@@ -189,7 +211,7 @@ function btDrawCharts(r){
 function btNow(r){
   const ctx=btCtx,i=ctx.n-1,c=ctx.close[i],p=r.cfg.params,st=r.state,w=E.water(ctx,r.cfg.ref),g=w.grade[i],core=w.core[i],rows=[];
   const at=v=>'<b>'+fmt(v,2)+'</b>（較今日 '+pctText(v/c-1)+'）',hold=r.shares>0?'持有 '+fmt(r.shares,0)+' 股、現金 '+money(r.cash):'空手、現金 '+money(r.cash);
-  rows.push(['目前',hold+'；今日水位 '+(Number.isFinite(core)?fmt(core,1)+' 分':'—')]);
+  rows.push(['目前',hold]);
   const s=r.cfg.strategy;
   if(s==='classic'){
     // Tomorrow's range includes today; use the engine's own reference for the next bar when it exists.
@@ -198,7 +220,7 @@ function btNow(r){
     else{const avg=r.cost/r.shares;rows.push(['平均成本',fmt(avg,2)+'，未實現 '+pctText(c/avg-1)]);
       if(p.exit==='gain')rows.push(['賣出點','收盤漲到 '+at(avg*(1+p.rise/100))]);if(p.exit==='trailing')rows.push(['移動停利',st.armed?'收盤跌到 '+at(st.peak*(1-p.trail/100)):'需先回到進場前高點 '+fmt(st.hi,2)+' 才啟動']);
       if(p.stop)rows.push(['停損點','收盤跌到 '+at(avg*(1-p.stop/100))])}
-  }else if(s==='smart_dca_water'||s==='core_satellite'){const m=p.mult[Math.max(1,Math.min(5,g||3))-1];rows.push(['本月扣款','水位 '+(g||'—')+' 分 → '+m+' 倍']);}
+  }else if(s==='smart_dca_water'||s==='core_satellite'||s==='value_averaging'){if(st.reserve>0)rows.push(['蓄水池',money(st.reserve)])}
   else if(s==='bias_tiered_dca'&&ctx.ma60[i]>0){const b=(c/ctx.ma60[i]-1)*100;rows.push(['MA60 乖離',fmt(b,1)+'%'])}
   else if(s==='tech_bb_rsi_dca'){const pb=(c-ctx.bbLo[i])/(ctx.bbUp[i]-ctx.bbLo[i]);rows.push(['%B／RSI',fmt(pb,2)+'／'+fmt(ctx.rsi[i],0)+'（加碼門檻 %B<'+p.pbLow+' 且 RSI<'+p.rsiLow+'）'])}
   else if(s==='dual_momentum'&&i>=120){const mom=0.5*(c/ctx.close[i-60]-1)+0.5*(c/ctx.close[i-120]-1);rows.push(['動能',pctText(mom)+(c>ctx.ma120[i]?'，在 MA120 之上':'，在 MA120 之下')+(st.on?'（滿倉中）':'（持現金）')])}
@@ -208,6 +230,44 @@ function btNow(r){
   else if(s==='rebalance_50_50'){const v=r.shares*c,eq=v+r.cash;rows.push(['持股比例',fmt(v/eq*100,0)+'%（目標 '+p.weight+'%，±'+p.band+'% 時再平衡）'])}
   return rows;
 }
+/* 🎯 Today's action: the selected rule applied to today's close, in plain words with amounts. */
+const BT_ZONE=['','高水位・偏貴','中段偏高','中段','偏低','低水位・便宜'];
+function btAction(r){
+  const ctx=btCtx,i=ctx.n-1,c=ctx.close[i],cfg=r.cfg,p=cfg.params,s=cfg.strategy,st=r.state,B=r.base,e=catalog.find(x=>x.code===selected);
+  // Tomorrow's range includes today's bar, like the water card above.
+  const ref=E.reference(ctx,cfg.ref.window,cfg.ref.anchorMode,cfg.ref.anchorCount),byClose=cfg.ref.anchorMode==='close';
+  const hi=Math.max(ref.hi[i],byClose?c:ctx.high[i]),lo=Math.min(ref.lo[i],byClose?c:ctx.low[i]),sc=hi>lo?E.score((c-lo)/(hi-lo),cfg.ref.method):null,g=sc?.grade;
+  // Close at or below which the tier is at least k (inverse of the score scale).
+  const priceFor=k=>lo+(cfg.ref.method==='fib'?[0,.236,.382,.618,.786,1][6-k]:1-(k-1)/5)*(hi-lo);
+  const amt=v=>'<b>'+money(v)+'</b>',px=v=>'<b>'+fmt(v,2)+' 元</b>';
+  let main='';
+  if((s==='smart_dca_water'||s==='core_satellite')&&g){
+    const m=p.mult[g-1],k=s==='core_satellite'?p.core/100:1,b=B*k,next=g<4?4:null;
+    main=m<1?`依「${btName()}」：水位 ${g} 分，本期扣款縮減為 <b>${m} 倍</b>＝${amt(b*m)}（基準 ${money(b)}），省下的 ${amt(b*(1-m))} 存入蓄水池。`
+      :m===1?`依「${btName()}」：水位 ${g} 分，維持標準扣款 ${amt(b)}。`
+      :`依「${btName()}」：水位 ${g} 分，低檔加碼 <b>${m} 倍</b>＝${amt(b*m)}，超出基準的部分由蓄水池支付（目前約 ${money(st.reserve||0)}）。`;
+    if(next)main+=`收盤跌到 ${px(priceFor(next))} 以下（水位 ${next} 分，較今日 ${pctText(priceFor(next)/c-1)}）時，加碼到 ${p.mult[next-1]} 倍。`;
+  }else if(s==='bias_tiered_dca'&&ctx.ma60[i]>0){
+    const b=(c/ctx.ma60[i]-1)*100,t=p.tiers,m=b>15?t[0]:b>=-5?t[1]:b>=-10?t[2]:b>=-15?t[3]:t[4];
+    main=`依「${btName()}」：MA60 乖離 ${fmt(b,1)}%，本期扣款 <b>${m} 倍</b>＝${amt(B*m)}${m<1?'，省下的錢存入蓄水池':''}。`;
+  }else if(s==='value_averaging'){
+    const g2=p.growth/100,mm=(st.m||0)+1,k=Math.min(r.N,mm),target=(g2>0?B*((Math.pow(1+g2,k)-1)/g2):B*k)*Math.pow(1+g2,mm-k),cur=r.shares*c,gap=target-cur;
+    main=gap>0?`依「定期定值」：下期目標市值 ${money(target)}，目前持股 ${money(cur)}，應補 ${amt(Math.min(gap,B*p.cap))}${gap>B*p.cap?'（已達單月上限 '+p.cap+' 倍）':''}。`
+      :`依「定期定值」：持股市值已超過目標 ${amt(-gap)}，${p.allowSell?'可賣出超出部分轉入蓄水池':'本期不扣款'}。`;
+  }else if(s==='dca')main=`依「定期定額」：每月照常扣款 ${amt(B)}，不看水位。`;
+  else if(s==='tech_bb_rsi_dca')main=`依「${btName()}」：每月底倉 ${amt(B*p.baseRatio)}；%B 低於 ${p.pbLow} 且 RSI 低於 ${p.rsiLow} 時加碼 ${amt(B*p.dipMult)}。`;
+  else if(s==='classic'){
+    const k=p.entry==='fib'?p.levels.length:1+p.adds;
+    if(!st.buys){const at=p.entry==='drop'?hi*(1-p.drop/100):p.entry==='fib'?hi-p.levels[0]*(hi-lo):g>=p.buyGrade?c:priceFor(p.buyGrade);
+      main=`依「${btName()}」：目前空手。收盤跌到 ${px(at)}（較今日 ${pctText(at/c-1)}）時買進第一批，約 ${amt(r.cash/k)}。`}
+    else main=`依「${btName()}」：持有中，已買 ${st.buys} 批，平均成本 ${fmt(r.cost/r.shares,2)} 元（未實現 ${pctText(c*r.shares/r.cost-1)}）。`;
+  }
+  const rows=btNow(r).filter(x=>!['下一個買點','平均成本'].includes(x[0]));
+  return `<h4>🎯 今日行動</h4><p class="bt-act-meta">${selected} ${e?.name||''}｜收盤 ${fmt(c,2)}｜水位 ${sc?fmt(sc.core,1):'—'} / 5${g?'（'+BT_ZONE[g]+'）':''}</p>`+
+    (main?`<p class="bt-act-main">${main}</p>`:'')+(rows.length?'<dl>'+rows.map(([a,b])=>`<dt>${a}</dt><dd>${b}</dd>`).join('')+'</dl>':'')+
+    '<p class="bt-act-note">依你選的規則與今日收盤推算，僅供參考，不是投資建議。</p>';
+}
+const btName=()=>E.PRESETS.find(x=>x.id===settings.bt.preset)?.name||'自訂組合';
 function btRenderTrades(){
   const r=btResult;if(!r)return;
   const list=r.trades.filter(t=>btTradeFilter==='all'||(btTradeFilter==='dca'?['dca','drip'].includes(t.kind):t.type===btTradeFilter&&!['dca','drip'].includes(t.kind)));
@@ -226,14 +286,21 @@ function renderBacktest(){
   const dx=r.xirr-r.dca.xirr,dm=r.dca.mdd-r.mdd,calS=r.calmar,calD=r.dca.mdd>0?r.dca.cagr/r.dca.mdd:null;
   $('btVerdict').innerHTML=r.cfg.strategy==='dca'?'<span class="bt-tag">這就是定期定額本身，可作為其他策略的比較基準。</span>':
     (dx>0?`<span class="bt-tag win">🏆 年化報酬勝過定期定額 ${fmt(dx*100,1)} 個百分點</span>`:`<span class="bt-tag lose">年化報酬落後定期定額 ${fmt(-dx*100,1)} 個百分點</span>`)+
-    (dm>0.005?`<span class="bt-tag win">最大回落少 ${fmt(dm*100,1)} 個百分點</span>`:'')+(calS!=null&&calD!=null&&calS>calD?`<span class="bt-tag win">風險調整後（Calmar）較佳：${fmt(calS,2)} vs ${fmt(calD,2)}</span>`:'');
-  const k=[['策略年化報酬',r.xirr,v=>pctText(v),'總報酬 '+pctText(r.ret)],['定期定額年化',r.dca.xirr,v=>pctText(v),'C ÷ '+settings.bt.dcaPeriods+' 每月一期'],['買進持有年化',r.bh.xirr,v=>pctText(v),'第一天全部投入'],['最大回落',r.mdd,v=>'−'+fmt(v*100,1)+'%','定期定額 −'+fmt(r.dca.mdd*100,1)+'%']];
-  const small=[['期間',r.start+' 至 '+r.end],['資金基數',money(r.contributed)],['期末資產',money(r.equity)],['Calmar',r.calmar!=null?fmt(r.calmar,2):'—'],['Sharpe',r.sharpe!=null?fmt(r.sharpe,2):'—'],['平均持股比例',fmt(r.utilization*100,0)+'%'],['股利入帳',money(r.dividends)],['停泊利息',money(r.interest)],['手續費與稅',money(r.fees)],['交易',r.buys+' 買／'+r.sells+' 賣'+(r.sells?'（勝率 '+fmt(r.wins/r.sells*100,0)+'%）':'')]];
-  if(!$('btKpis').querySelector('.bt-big'))$('btKpis').innerHTML=`<div class="bt-big">${k.map((_,j)=>`<div><small></small><b data-k="${j}"></b><span></span></div>`).join('')}</div><div class="bt-small"></div>`;
+    (dm>0.005?`<span class="bt-tag win">最大回落少 ${fmt(dm*100,1)} 個百分點</span>`:'')+(calS!=null&&calD!=null&&calS>calD?`<span class="bt-tag win">風險調整後（Calmar）較佳：${fmt(calS,2)} vs ${fmt(calD,2)}</span>`:'')+
+    // Mostly-cash strategies: the pot's return understates what the invested part earned; say both.
+    (r.cfg.strategy!=='dca'&&r.utilization<0.5?`<span class="bt-tag shield">🛡️ 低曝險防禦型：平均只動用 ${fmt(r.utilization*100,0)}% 資金${r.dca.mdd>0&&r.mdd<r.dca.mdd?'，最大回落比定期定額少 '+fmt((1-r.mdd/r.dca.mdd)*100,0)+'%':''}；實動資金年化 ${pctText(r.roic)}</span>`:'');
+  // Same three lines on every benchmark card: annualised (XIRR) big; total return and final value small.
+  const wan=v=>fmt(v/10000,v>=1e7?0:1)+' 萬',sub=x=>'總報酬 '+pctText(x.ret)+' · 期末 '+wan(x.equity);
+  const k=[['策略績效',r.xirr,v=>pctText(v),sub(r)],['定期定額基準',r.dca.xirr,v=>pctText(v),sub(r.dca)],['買進持有基準',r.bh.xirr,v=>pctText(v),sub(r.bh)],['最大回落',r.mdd,v=>'−'+fmt(v*100,1)+'%','定期定額 −'+fmt(r.dca.mdd*100,1)+'%']];
+  const small=[['期間',r.start+' 至 '+r.end],['資金基數',money(r.contributed)+(r.monthly?'（每月入金）':'')],['實動資金年化',pctText(r.roic)],['期末現金',money(r.cash)],['Calmar',r.calmar!=null?fmt(r.calmar,2):'—'],['Sharpe',r.sharpe!=null?fmt(r.sharpe,2):'—'],['平均持股比例',fmt(r.utilization*100,0)+'%'],['股利入帳',money(r.dividends)],['停泊利息',money(r.interest)],['手續費與稅',money(r.fees)],['基準手續費','定額 '+money(r.dca.fees)+'／持有 '+money(r.bh.fees)],['交易',r.buys+' 買／'+r.sells+' 賣'+(r.sells?'（勝率 '+fmt(r.wins/r.sells*100,0)+'%）':'')]];
+  if(!$('btKpis').querySelector('.bt-big'))$('btKpis').innerHTML=`<p class="bt-kpi-note">大字＝年化報酬（XIRR，依實際入金日計算）</p><div class="bt-big">${k.map((_,j)=>`<div><small></small><b data-k="${j}"></b><span></span></div>`).join('')}</div><div class="bt-small"></div>`;
   $('btKpis').querySelectorAll('.bt-big>div').forEach((el,j)=>{const [label,v,f,sub]=k[j];el.querySelector('small').textContent=label;el.querySelector('span').textContent=sub;const b=el.querySelector('b');b.className=j<3?(v>0?'up':v<0?'down':''):'';btAnimate(b,v,f)});
   $('btKpis').querySelector('.bt-small').innerHTML=small.map(([a,b])=>`<span><small>${a}</small>${b}</span>`).join('');
   btDrawCharts(r);
-  $('btNow').innerHTML='<h4>今日狀態</h4><dl>'+btNow(r).map(([a,b])=>`<dt>${a}</dt><dd>${b}</dd>`).join('')+'</dl>';
+  $('btNow').innerHTML=btAction(r);
+  // Leveraged and inverse ETFs decay in sideways markets; averaging down without a stop is the risky combination.
+  const risk=etfRisk(selected),dip=['dca','smart_dca_water','value_averaging','bias_tiered_dca','tech_bb_rsi_dca','core_satellite'].includes(cfg.strategy)||cfg.strategy==='classic'&&!cfg.params.stop;
+  $('btRisk').innerHTML=risk&&(risk.kind==='inverse'||risk.kind==='lev'&&dip)?`<div class="bt-risk-box ${risk.kind}"><p><b>${risk.tag}</b>${risk.warn}</p><span><button class="pill mini" type="button" data-preset="rebalance">改用 50:50 動態再平衡</button><button class="pill mini" type="button" data-preset="momentum">改用雙動能趨勢</button></span></div>`:'';
   btRenderTrades();
   if(cfg.strategy==='classic')btRenderGrid(ctx,cfg,start,end);
   if($('btRollingBox').open)btRenderRolling();else $('btRolling').innerHTML='';
@@ -282,11 +349,11 @@ $('btOptimize').addEventListener('click',()=>{
     }
     const calD=dcaRef.mdd>0?dcaRef.cagr/dcaRef.mdd:0,board=(title,key,dir,fmtv)=>{const seen=new Set(),list=[...rows].filter(x=>x.p.strategy!=='dca').sort((a,b)=>dir*((b.r[key]??-9)-(a.r[key]??-9))).filter(x=>!seen.has(x.p.id)&&seen.add(x.p.id)).slice(0,3);
       return `<section class="bt-board"><h4>${title}</h4>${list.map((x,j)=>`<button class="bt-rank" type="button" data-preset="${x.p.id}" data-window="${x.w}"><b>${j+1}</b><span>${x.p.name}${x.usesWater?'（'+x.w+' 日）':''}</span><em>${fmtv(x.r)}</em></button>`).join('')}</section>`};
-    $('btOptNote').textContent=`${selected}，${settings.bt.period==='custom'?bars[start].date+' 至 '+bars[end].date:settings.bt.period==='all'?'全部資料':'近 '+settings.bt.period+' 年'}，資金 ${fmt(settings.bt.capital/10000,0)} 萬元、定期定額分 ${settings.bt.dcaPeriods} 期；共試算 ${rows.length} 組。定期定額：年化 ${pctText(dcaRef.xirr)}、最大回落 −${fmt(dcaRef.mdd*100,1)}%、Calmar ${fmt(calD,2)}。`;
+    $('btOptNote').textContent=`${selected}，${settings.bt.period==='custom'?bars[start].date+' 至 '+bars[end].date:settings.bt.period==='all'?'全部資料':'近 '+settings.bt.period+' 年'}，資金 ${fmt(settings.bt.capital/10000,0)} 萬元、定期定額分 ${btN()} 期；共試算 ${rows.length} 組。定期定額：年化 ${pctText(dcaRef.xirr)}、最大回落 −${fmt(dcaRef.mdd*100,1)}%、Calmar ${fmt(calD,2)}。`;
     $('btOptBody').innerHTML='<div class="bt-boards">'+board('年化報酬最高','xirr',1,r=>pctText(r.xirr)+(r.xirr>r.dca.xirr?' 🏆':''))+board('風險調整後（Calmar）最高','calmar',1,r=>fmt(r.calmar,2)+(r.calmar>calD?' 🏆':''))+board('最大回落最小','mdd',-1,r=>'−'+fmt(r.mdd*100,1)+'%，年化 '+pctText(r.xirr))+'</div><p class="small">🏆 表示該指標勝過定期定額。歷史最佳參數未必在未來有效，請搭配「滾動期間勝率」一起判斷。點任一列即可套用。</p>';
   },30);
 });
-$('btOptBody').addEventListener('click',e=>{const t=e.target.closest('.bt-rank');if(!t)return;btCloseSheet();const ref={...settings.bt.ref,window:t.dataset.window};btApplyPreset(t.dataset.preset,{ref});$('backtestCard').scrollIntoView({behavior:'smooth',block:'start'})});
+$('btOptBody').addEventListener('click',e=>{const t=e.target.closest('.bt-rank');if(!t)return;btCloseSheet();const cur=btRef(),ref={...cur,window:t.dataset.window};btApplyPreset(t.dataset.preset,ref.window===cur.window?{ref}:{ref,sync:false});$('backtestCard').scrollIntoView({behavior:'smooth',block:'start'})});
 function btCloseSheet(){$('btOptSheet').classList.add('hidden');document.body.classList.remove('searching')}
 $('btOptClose').addEventListener('click',btCloseSheet);$('btOptSheet').addEventListener('click',e=>{if(e.target===$('btOptSheet'))btCloseSheet()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('btOptSheet').classList.contains('hidden'))btCloseSheet()});
@@ -307,7 +374,7 @@ function applyMarkers(){
   lwc.s.candle.setMarkers(markers);
 }
 const btDrawChart=drawChart;
-drawChart=function(keepView){btDrawChart(keepView);if(bars.length&&btBarsRef!==bars){btCtx=null;renderBacktest()}else applyMarkers()};
+drawChart=function(keepView){btDrawChart(keepView);if(bars.length&&btBarsRef!==bars){btCtx=null;btFillForm();renderBacktest()}else{applyMarkers();btFollowTop()}};
 const btPrefs=prefs;
 prefs=function(){btPrefs();if(btCharts){const o={...chartOptions(),handleScroll:false,handleScale:false};btCharts.top.applyOptions({...o,timeScale:{...o.timeScale,visible:false}});btCharts.under.applyOptions(o)}};
 // Brent / FX arrive after the first render; the macro filter needs them.

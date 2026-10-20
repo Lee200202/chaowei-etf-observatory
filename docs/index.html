@@ -186,6 +186,35 @@ body.intl-colors .chart-legend .down,body.intl-colors .chart-tip .down,body.intl
 .search-launch{cursor:text}.search-launch input{flex:1;min-width:0;border:0;background:transparent;color:var(--ink);font:inherit;font-size:clamp(16px,1.8vw,20px);font-weight:600;padding:6px 0;outline:none}
 .search-launch input::placeholder{color:var(--muted);opacity:.7;font-weight:500}.search-launch:focus-within{border-color:#19a7aa;box-shadow:0 0 0 3px rgba(25,167,170,.15)}
 .hot-searches{display:grid;gap:6px;margin:12px 0 4px}.hot-searches small{color:var(--muted);font-size:11px}.usage-opt{font-size:12px!important;margin-top:4px}
+/* v7 Phase 2: beginner mode, action card, risk tags, low-exposure badge, weight share bar, back-to-top. */
+body.novice .expert-only{display:none!important}body.novice #btParams>:not(.bt-hint){display:none!important}body.novice .bt-params{min-height:0;grid-row:auto!important}
+body.novice .bt-steps{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.bt-head-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}.bt-mode{display:inline-flex}.bt-mode button{white-space:nowrap}
+.bt-chips{display:flex;gap:6px;flex-wrap:wrap;margin:-2px 0 8px}.bt-chips .pill.on{background:var(--pale);border-color:#19a7aa;color:#0e7490}
+.bt-sync{margin-bottom:6px}select:disabled,input:disabled{opacity:.6;cursor:not-allowed}
+.bt-now{background:linear-gradient(135deg,rgba(25,167,170,.10),rgba(25,167,170,.02));border-color:rgba(25,167,170,.35)}
+.bt-now h4{font-size:15px}.bt-act-meta{margin:0 0 6px;font-size:12px;font-weight:800;color:var(--muted)}.bt-act-main{margin:0 0 8px;font-size:15px;line-height:1.7}
+.bt-act-note{margin:8px 0 0;font-size:11px;color:var(--muted)}
+.bt-kpi-note{margin:0 0 6px;font-size:11px;color:var(--muted)}.bt-tag.shield{background:rgba(14,116,144,.1);color:#0e7490;border-color:rgba(14,116,144,.3)}
+.risk-tag{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;font-size:11px;font-weight:800;line-height:1.6;vertical-align:middle;white-space:nowrap;background:rgba(25,167,170,.12);color:#0e7490}
+.risk-tag.income{background:rgba(16,140,90,.12);color:#0f8a5c}.risk-tag.lev{background:rgba(230,162,60,.18);color:#a15c00}.risk-tag.inverse{background:rgba(214,58,63,.13);color:#b4232a}.risk-tag.bond{background:rgba(97,121,130,.14);color:var(--muted)}
+.meta-line .risk-tag{margin-left:8px}
+.bt-risk-box{display:flex;gap:10px 14px;align-items:center;flex-wrap:wrap;justify-content:space-between;border-radius:14px;padding:10px 14px;margin-bottom:10px;background:#fff6e0;border:1px solid #f0c66b;color:#5c4100}
+.bt-risk-box.inverse{background:#fdecec;border-color:#f0a3a6;color:#6b1a1d}.bt-risk-box p{margin:0;font-size:13px;line-height:1.6;flex:1 1 320px}.bt-risk-box b{margin-right:6px}.bt-risk-box span{display:flex;gap:6px;flex-wrap:wrap}
+.scenarios{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:10px}.scenarios .small{margin-right:2px}.scenarios .pill.on{background:var(--pale);border-color:#19a7aa;color:#0e7490}
+.weight-bar{display:flex;height:22px;border-radius:999px;overflow:hidden;background:var(--line);margin:12px 0 6px}
+.weight-bar span{display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;min-width:0}
+.weight-bar .w0{background:#0e7490}.weight-bar .w1{background:#19a7aa}.weight-bar .w2{background:#6aa9b8}.weight-bar .w3{background:#c98a2b}.weight-bar .w4{background:#7c6bb0}
+.weight-preview{margin:4px 0 8px;font-size:14px}.weight-preview:empty{display:none}
+.to-top{position:fixed;right:18px;bottom:18px;z-index:40;border:1px solid var(--line);border-radius:999px;padding:10px 16px;background:var(--paper);color:var(--ink);font:inherit;font-size:13px;font-weight:800;box-shadow:0 8px 24px rgba(23,50,59,.16);cursor:pointer}
+.to-top:hover{border-color:#19a7aa}body.searching .to-top,body.account-open .to-top{display:none}
+@media(max-width:760px){.bt-head-actions{width:100%;justify-content:space-between}.to-top{right:12px;bottom:12px;padding:9px 13px;font-size:12px}body.novice .bt-steps{grid-template-columns:1fr}}
+/* The content column must not grow to its widest child (phones were 515px wide in a 375px screen). */
+.content{grid-template-columns:minmax(0,1fr)}
+/* Phone top bar: four stats on one row, 換一檔 in the corner, meta line truncates before the risk tag. */
+.meta-line{display:flex;align-items:center;min-width:0}.meta-line #etfMeta{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}.meta-line .risk-tag{flex:none}
+@media(max-width:440px){.toolbar>div:first-child{padding-right:66px}.toolbar-stats{gap:4px 12px;flex-wrap:nowrap}.toolbar-stats b{font-size:15px;white-space:nowrap}.toolbar-stats small{font-size:10px}#backToSearch{position:absolute;top:10px;right:12px;padding:5px 10px;white-space:nowrap}}
+.toolbar>div:first-child{min-width:0;max-width:100%}
 </style>
 </head>
 <body>
@@ -196,7 +225,7 @@ body.intl-colors .chart-legend .down,body.intl-colors .chart-tip .down,body.intl
     </header>
     <main>
       <section class="hero" aria-labelledby="heroTitle">
-        <div class="hero-copy"><p class="kicker">ETF POSITION OBSERVATORY</p><h1 id="heroTitle">看見價格的<br><em>現在位置。</em></h1><p class="hero-desc">用過去的高低區間，看 ETF 現在落在哪個位置。</p><div class="hero-actions"><a class="action" href="#explore">開始觀測 ↗</a><a class="action secondary" href="#method">了解評分</a></div></div>
+        <div class="hero-copy"><p class="kicker">ETF POSITION OBSERVATORY</p><h1 id="heroTitle">看見價格的<br><em>現在位置。</em></h1><p class="hero-desc">用過去的高低區間，看 ETF 現在落在哪個位置。</p><div class="hero-actions"><a class="action" href="#explore">開始觀測 ↗</a><a class="action secondary" href="#weights">了解評分</a></div></div>
         <div class="hero-art" aria-hidden="true"><div class="orbit"></div><div class="glass"><span>POSITION / 01</span><div class="hero-water"></div></div><div class="hero-caption">低水位 · 高位置分</div></div>
       </section>
       
@@ -207,8 +236,8 @@ body.intl-colors .chart-legend .down,body.intl-colors .chart-tip .down,body.intl
         <div class="search-overlay hidden" id="searchOverlay" role="dialog" aria-modal="true" aria-labelledby="searchTitle"><div class="search-sheet"><div class="search-head"><h2 id="searchTitle">搜尋 ETF</h2><button class="pill" id="closeSearch" type="button" aria-label="關閉搜尋">✕ 關閉</button></div><input id="search" type="search" placeholder="輸入名稱或代號，例如 009816、台灣50、統一…" autocomplete="off" aria-controls="etfList"><div class="quick" id="quickPicks" aria-label="我的候選 ETF"></div><div class="filter" id="typeChips"><button type="button" data-type="all" class="active">全部</button><button type="button" data-type="passive">被動型</button><button type="button" data-type="active">主動型</button><button type="button" data-type="watch">我的追蹤</button></div><div class="hot-searches hidden" id="hotSearches"><span class="radar-title">🔥 熱門搜尋</span><div class="quick" id="hotList"></div><small id="hotNote"></small></div><div class="filter radar-chips" id="radarChips" aria-label="今日潮位雷達"><span class="radar-title">今日潮位雷達</span><button type="button" data-radar="all" class="active">不篩選</button><button type="button" data-radar="low">水位達門檻</button><label class="radar-th">≥<input type="number" id="radarMin" value="4.5" min="0" max="5" step="0.1" aria-label="水位門檻">分</label><button type="button" data-radar="bias">MA60 負乖離 &gt;10%</button><button type="button" data-radar="rsi">RSI 低於 30</button><button type="button" data-radar="squeeze">布林壓縮突破</button></div><p class="small" id="searchCount"></p><div class="etflist" id="etfList" aria-label="ETF 候選清單"></div><p class="sidebar-note">點候選卡片旁的星號加入或移出追蹤。未登入時只保存在目前瀏覽器。收錄證交所上市 ETF；上櫃 ETF 待官方來源接入。按 Enter 選第一筆，Esc 關閉。</p></div></div>
         <div class="workspace">
           <div class="content">
-            <div class="toolbar card"><div><span class="tag hidden" id="kind">被動型 ETF</span><h3 id="etfName">元大台灣50</h3><p class="muted" id="etfMeta">0050 · 證交所上市</p></div><div class="toolbar-stats" aria-live="polite"><span><small>收盤</small><b id="barPrice">—</b></span><span><small>漲跌</small><b id="barChange">—</b></span><span><small>水位</small><b id="barGrade">—</b></span><span><small>資料日</small><b id="barDate">—</b></span><a class="pill mini" href="#explore" id="backToSearch">換一檔</a></div></div>
-            <div class="view-card card" aria-label="觀察條件"><div class="controls"><label>觀察窗<select id="window"><option value="60">60 交易日</option><option value="120">120 交易日</option><option value="200">200 交易日</option><option value="240">240 交易日（約 1 年）</option><option value="400">400 交易日</option><option value="600">600 交易日</option><option value="1200">1200 交易日（約 5 年）</option><option value="2400">2400 交易日（約 10 年）</option><option value="all">已取得全部</option><option value="custom">自訂…</option></select></label><label>刻度方式<select id="method"><option value="equal">等距五段</option><option value="fib">黃金分割</option></select></label><label>高低點算法<select id="anchorMode"><option value="wick">最高／最低價</option><option value="close">收盤極值</option><option value="average">高低價平均</option></select></label><label id="anchorCountWrap" class="hidden">各取幾筆平均<input id="anchorCount" type="number" min="1" max="20" step="1" value="5" inputmode="numeric"></label><label>價格口徑<select id="basis"><option value="price">不含息</option><option value="total" disabled>含息 · 待校驗</option></select></label></div><div class="fav-bar" id="favBar"><span class="fav-title">★ 我的最愛</span><div class="fav-list" id="favList" aria-label="收藏的篩選條件"></div><span class="fav-add member-feature"><input id="favName" type="text" maxlength="20" placeholder="名稱（選填）" aria-label="收藏名稱"><button class="pill mini" id="favAdd" type="button">＋ 收藏目前條件</button></span><button class="pill mini fav-login" type="button" data-open-account>登入後可收藏 10 組常用條件</button></div></div>
+            <div class="toolbar card"><div><span class="tag hidden" id="kind">被動型 ETF</span><h3 id="etfName">元大台灣50</h3><p class="muted meta-line"><span id="etfMeta">0050 · 證交所上市</span><span class="risk-tag hidden" id="riskTag"></span></p></div><div class="toolbar-stats" aria-live="polite"><span><small>收盤</small><b id="barPrice">—</b></span><span><small>漲跌</small><b id="barChange">—</b></span><span><small>水位</small><b id="barGrade">—</b></span><span><small>資料日</small><b id="barDate">—</b></span><a class="pill mini" href="#explore" id="backToSearch">換一檔</a></div></div>
+            <div class="view-card card" aria-label="觀察條件"><div class="scenarios" id="scenarios" role="group" aria-label="快速情境"><span class="small">快速情境</span><button class="pill mini" type="button" data-win="60">⚡ 短線波段 60 日</button><button class="pill mini" type="button" data-win="240">🌊 存股標準 240 日</button><button class="pill mini" type="button" data-win="600">🏔️ 景氣週期 600 日</button></div><div class="controls"><label>觀察窗<select id="window"><option value="60">60 交易日</option><option value="120">120 交易日</option><option value="200">200 交易日</option><option value="240">240 交易日（約 1 年）</option><option value="400">400 交易日</option><option value="600">600 交易日</option><option value="1200">1200 交易日（約 5 年）</option><option value="2400">2400 交易日（約 10 年）</option><option value="all">已取得全部</option><option value="custom">自訂…</option></select></label><label>刻度方式<select id="method"><option value="equal">等距五段</option><option value="fib">黃金分割</option></select></label><label>高低點算法<select id="anchorMode"><option value="wick">最高／最低價</option><option value="close">收盤極值</option><option value="average">高低價平均</option></select></label><label id="anchorCountWrap" class="hidden">各取幾筆平均<input id="anchorCount" type="number" min="1" max="20" step="1" value="5" inputmode="numeric"></label><label>價格口徑<select id="basis"><option value="price">不含息</option><option value="total" disabled>含息 · 待校驗</option></select></label></div><div class="fav-bar" id="favBar"><span class="fav-title">★ 我的最愛</span><div class="fav-list" id="favList" aria-label="收藏的篩選條件"></div><span class="fav-add member-feature"><input id="favName" type="text" maxlength="20" placeholder="名稱（選填）" aria-label="收藏名稱"><button class="pill mini" id="favAdd" type="button">＋ 收藏目前條件</button></span><button class="pill mini fav-login" type="button" data-open-account>登入後可收藏 10 組常用條件</button></div></div>
             <div class="notice" id="status" role="status">正在讀取證交所資料…</div>
             <div class="score-grid">
               <div class="water-card card"><div class="cup" aria-hidden="true"><div class="ticks"><span>1.0</span><span>0.8</span><span>0.6</span><span>0.4</span><span>0.2</span><span>0.0</span></div><div class="cup-water" id="cupWater"><svg class="wave w2" viewBox="0 0 240 20" preserveAspectRatio="none" aria-hidden="true"><path d="M0 10 Q15 2 30 10 T60 10 T90 10 T120 10 T150 10 T180 10 T210 10 T240 10 V20 H0 Z"/></svg><svg class="wave w1" viewBox="0 0 240 20" preserveAspectRatio="none" aria-hidden="true"><path d="M0 10 Q15 2 30 10 T60 10 T90 10 T120 10 T150 10 T180 10 T210 10 T240 10 V20 H0 Z"/></svg></div></div><div class="water-copy"><p class="overline">價格水位</p><div class="grade" id="grade">—<small>/5</small></div><p id="waterText">正在計算位置…</p><p class="small" id="extended">連續分與越界位置將顯示於此</p></div></div>
@@ -223,30 +252,29 @@ body.intl-colors .chart-legend .down,body.intl-colors .chart-tip .down,body.intl
 </div><button class="pill mini" id="indReset" type="button">恢復預設</button></details><div class="chart-legend" id="chartLegend" aria-live="off">—</div><div class="chart-wrap"><div class="chart" id="chart" role="img" aria-label="ETF K 線圖"></div><div class="chart-tip hidden" id="chartTip" aria-hidden="true"></div></div><div class="pane-resizer" data-resize="chart" role="separator" aria-orientation="horizontal" aria-label="拖曳調整價格圖高度" tabindex="0"><span></span></div><div class="vol-wrap"><span class="vol-label">成交量（張）</span><div class="vol-chart" id="volChart" role="img" aria-label="成交量柱狀圖"></div></div><div class="pane-resizer" data-resize="volChart" role="separator" aria-orientation="horizontal" aria-label="拖曳調整成交量圖高度" tabindex="0"><span></span></div><div class="osc-pane hidden" id="paneMacd"><div class="osc-legend" id="legendMacd"></div><div class="osc-chart" id="chartMacd" role="img" aria-label="MACD 副圖"></div><div class="pane-resizer" data-resize="chartMacd" role="separator" aria-orientation="horizontal" aria-label="拖曳調整MACD 副圖高度" tabindex="0"><span></span></div></div><div class="osc-pane hidden" id="paneRsi"><div class="osc-legend" id="legendRsi"></div><div class="osc-chart" id="chartRsi" role="img" aria-label="RSI 副圖"></div><div class="pane-resizer" data-resize="chartRsi" role="separator" aria-orientation="horizontal" aria-label="拖曳調整RSI 副圖高度" tabindex="0"><span></span></div></div><div class="osc-pane hidden" id="paneKd"><div class="osc-legend" id="legendKd"></div><div class="osc-chart" id="chartKd" role="img" aria-label="KD 副圖"></div><div class="pane-resizer" data-resize="chartKd" role="separator" aria-orientation="horizontal" aria-label="拖曳調整KD 副圖高度" tabindex="0"><span></span></div></div><div class="chart-foot"><span class="small" id="chartCaption">滑鼠滾輪或雙指縮放、拖曳平移；游標停在 K 棒上可看當日數值。</span></div><div class="tech-read" id="techRead" aria-live="polite"></div><details class="indicator-help"><summary>技術指標怎麼看？</summary><dl><dt>K 線與成交量</dt><dd>台股慣例紅漲綠跌：收盤高於開盤為紅 K，反之為綠 K。下方柱狀為成交股數；週、月 K 由日 K 聚合。</dd><dt>MA 移動平均</dt><dd>最近 N 根收盤價的平均。MA5 約一週、MA20 約一個月、MA60 約一季。價格在均線上方且均線上彎，代表該期間的平均成本正在墊高；反之則在下降。</dd><dt>布林通道（20, 2）</dt><dd>中線是 MA20，上下軌為中線 ± 2 倍標準差。通道收窄代表波動降低、擴張代表波動加大；%B 表示收盤落在通道中的位置（0 為下軌、1 為上軌）。觸及上下軌本身不是買賣訊號。</dd><dt>MACD（12, 26, 9）</dt><dd>DIF＝EMA12 − EMA26；訊號線 DEA＝DIF 的 9 期 EMA；柱狀體＝(DIF − DEA) × 2。DIF 由下往上穿越 DEA 稱黃金交叉，反之為死亡交叉；柱狀體由負轉正表示短期動能轉強。</dd><dt>RSI（14）</dt><dd>14 期內平均漲幅占平均漲跌幅的比例（Wilder 平滑），介於 0–100。習慣上 70 以上視為偏熱、30 以下視為偏冷；強勢趨勢中可長時間停留在高檔。</dd><dt>KD（9, 3, 3）</dt><dd>RSV＝(收盤 − 9 期最低) ÷ (9 期最高 − 9 期最低) × 100；K＝前 K × 2/3 + RSV × 1/3，D＝前 D × 2/3 + K × 1/3，首日以 50 起算。80 以上為高檔、20 以下為低檔。</dd></dl><p>所有指標依目前選的日、週、月 K 重新計算，只描述價格已發生的狀態，不納入水位分數，也不是買賣建議。</p></details></div>
             <div class="factor-card card"><div class="card-heading"><h3>市場的其他刻度</h3><span class="small" id="factorNote">每 5 分鐘更新 · 分數 0–5，越高越適合加碼</span></div><div class="factor-grid"><div class="factor"><span class="factor-icon">▥</span><h4>台灣加權指數</h4><strong id="indexScore">—</strong><p id="indexMeta">讀取大盤盤後資料中</p></div><div class="factor"><span class="factor-icon">▦</span><h4>大盤成交股數 · 活躍度</h4><strong id="volumeScore">—</strong><p id="volumeMeta">同口徑歷史百分位</p></div><div class="factor"><span class="factor-icon">◉</span><h4>布蘭特原油 · EIA 最新公布</h4><strong id="brentScore">—</strong><p id="brentMeta">讀取 EIA 公布的日資料中</p></div><div class="factor"><span class="factor-icon">↗</span><h4>美元／新台幣 · 央行最新收盤</h4><select id="fxDirection" class="factor-dir" aria-label="匯率計分方向"><option value="high">台幣升值分數低（預設）</option><option value="low">台幣升值分數高</option></select><strong id="fxScore">—</strong><p id="fxMeta">讀取中央銀行日收盤資料中</p></div><div class="factor"><span class="factor-icon">◷</span><h4>最近一次更新</h4><strong id="refreshClock">—</strong><p id="liveMeta">每 5 分鐘自動更新市場刻度</p></div></div></div>
             <div class="backtest-card card member-only" id="backtestCard"><div class="member-lock" role="group" aria-label="策略回測：會員專屬"><div class="member-lock-box"><span class="member-badge">會員專屬</span><h4>策略回測與比較</h4><p>18 種策略、同樣入金，和定期定額比報酬與風險。</p><button class="action" type="button" data-open-account>用 Google 登入解鎖</button><p class="small">免費登入，設定會同步到你的 Google 帳號。</p></div></div>
-<div class="card-heading"><div><h3>策略回測與比較</h3><p class="small">每種策略拿到同樣的入金，和定期定額比報酬與風險</p></div><button class="action bt-opt-btn" id="btOptimize" type="button">✨ 為此 ETF 找最佳策略</button></div>
+<div class="card-heading"><div><h3>策略回測與比較</h3><p class="small">每種策略拿到同樣的入金，和定期定額比報酬與風險</p></div><div class="bt-head-actions"><div class="segment bt-mode" id="btMode" role="group" aria-label="介面模式"><button type="button" data-mode="novice">🌱 新手</button><button type="button" data-mode="expert">🛠️ 專家</button></div><button class="action bt-opt-btn" id="btOptimize" type="button">✨ 為此 ETF 找最佳策略</button></div></div>
 <div class="segment bt-families" id="btFamilies" role="tablist" aria-label="策略類型"></div>
 <div class="bt-presets" id="btPresets" aria-label="策略"></div>
 <div class="bt-steps">
-<section class="bt-step"><h4><b>1</b>資金</h4><label>資金基數 C<span class="bt-num"><input id="btCapital" type="number" min="10000" step="10000" inputmode="numeric"><em>元</em></span></label><label>定期定額分幾期<select id="btDcaPeriods"><option value="6">6 期（半年）</option><option value="12">12 期（1 年）</option><option value="24">24 期（2 年）</option><option value="36">36 期（3 年）</option><option value="60">60 期（5 年）</option><option value="custom">自訂…</option></select></label><label>回測期間<select id="btPeriod"><option value="1">近 1 年</option><option value="3">近 3 年</option><option value="5">近 5 年</option><option value="10">近 10 年</option><option value="all">全部資料</option><option value="custom">自訂日期…</option></select></label><span class="bt-dates hidden" id="btDates"><input type="date" id="btFrom" aria-label="回測起始日"><span>至</span><input type="date" id="btTo" aria-label="回測結束日"></span><p class="bt-split" id="btSplit"></p></section>
+<section class="bt-step"><h4><b>1</b>資金</h4><label>資金基數 C<span class="bt-num"><input id="btCapital" type="number" min="10000" step="10000" inputmode="numeric"><em>元</em></span></label><div class="bt-chips" id="btCapChips" aria-label="常用金額"><button class="pill mini" type="button" data-cap="300000">30 萬</button><button class="pill mini" type="button" data-cap="1000000">100 萬</button><button class="pill mini" type="button" data-cap="1200000">120 萬</button><button class="pill mini" type="button" data-cap="3000000">300 萬</button></div><label class="expert-only">入金方式<select id="btCapitalMode"><option value="pool">一筆資金，分批布局</option><option value="monthly">每月入金（像領薪水）</option></select></label><label class="expert-only">定期定額分幾期<select id="btDcaPeriods"><option value="auto">自動：每月一期</option><option value="6">6 期（半年）</option><option value="12">12 期（1 年）</option><option value="24">24 期（2 年）</option><option value="36">36 期（3 年）</option><option value="60">60 期（5 年）</option><option value="custom">自訂…</option></select></label><label>回測期間<select id="btPeriod"><option value="1">近 1 年</option><option value="3">近 3 年</option><option value="5">近 5 年</option><option value="10">近 10 年</option><option value="all">全部資料</option><option value="custom">自訂日期…</option></select></label><span class="bt-dates hidden" id="btDates"><input type="date" id="btFrom" aria-label="回測起始日"><span>至</span><input type="date" id="btTo" aria-label="回測結束日"></span><p class="bt-split" id="btSplit"></p></section>
 <section class="bt-step bt-params"><h4><b>2</b>策略設定</h4><div id="btParams"></div></section>
-<section class="bt-step"><h4><b>3</b>水位區間</h4><label>觀察窗<select id="btWindow"></select></label><label>高低點算法<select id="btAnchorMode"></select></label><label class="bt-if-average">各取幾筆<span class="bt-num"><input id="btAnchorCount" type="number" min="1" max="20" step="1"><em>筆</em></span></label><label>刻度方式<select id="btMethod"></select></label><button class="pill mini" id="btSyncView" type="button">沿用上方觀察條件</button></section>
+<section class="bt-step expert-only"><h4><b>3</b>水位區間</h4><label class="bt-check bt-sync"><input type="checkbox" id="btSync">🔗 與上方觀察條件同步</label><label>觀察窗<select id="btWindow"></select></label><label>高低點算法<select id="btAnchorMode"></select></label><label class="bt-if-average">各取幾筆<span class="bt-num"><input id="btAnchorCount" type="number" min="1" max="20" step="1"><em>筆</em></span></label><label>刻度方式<select id="btMethod"></select></label></section>
 </div>
-<details class="bt-advanced" id="btAdvanced"><summary>⚙ 交易成本、閒置資金與配息 <span class="bt-badge" id="btFriction"></span></summary><div class="bt-adv-grid">
+<details class="bt-advanced expert-only" id="btAdvanced"><summary>⚙ 交易成本、閒置資金與配息 <span class="bt-badge" id="btFriction"></span></summary><div class="bt-adv-grid">
 <label>手續費<span class="bt-num"><input id="btFee" type="number" min="0" max="1" step="0.0001"><em>%</em></span></label><label>折扣<span class="bt-num"><input id="btDiscount" type="number" min="10" max="100" step="1"><em>%</em></span></label><label>證交稅<span class="bt-num"><input id="btTax" type="number" min="0" max="1" step="0.01"><em>%</em></span></label>
 <label>閒置資金年利率<span class="bt-num"><input id="btParking" type="number" min="0" max="10" step="0.1"><em>%</em></span></label><label class="bt-check"><input type="checkbox" id="btDrip">配息再投入</label><label class="bt-check"><input type="checkbox" id="btWhole">只買整股</label></div></details>
 <p class="bt-summary" id="btSummary"></p>
-<div class="bt-verdict" id="btVerdict" aria-live="polite"></div>
+<div class="bt-risk" id="btRisk"></div><div class="bt-verdict" id="btVerdict" aria-live="polite"></div><div class="bt-now" id="btNow" aria-live="polite"></div>
 <div class="bt-kpis" id="btKpis"></div>
 <div class="bt-equity-wrap"><div class="bt-equity-legend"><span class="s">策略資產</span><span class="d">定期定額</span><span class="h">買進持有</span><span class="c">資金基數</span></div><div class="bt-equity" id="btEquity" role="img" aria-label="資產價值走勢"></div><div class="bt-equity-legend sub"><span class="s">策略回落</span><span class="d">定期定額回落</span><span class="e">持股比例</span></div><div class="bt-under" id="btUnder" role="img" aria-label="回落與持股比例"></div></div>
-<div class="bt-now" id="btNow" aria-live="polite"></div>
 <div class="bt-actions"><button class="pill chip" id="btMarkers" type="button" aria-pressed="true">在 K 線上標示買賣點</button><button class="pill chip" id="btCsv" type="button">下載交易明細 CSV</button></div>
 <details class="bt-detail" id="btRollingBox"><summary>滾動期間勝率（避免只看單一起點）</summary><div id="btRolling"></div></details>
-<details class="bt-detail bt-if-classic"><summary>參數比較</summary><div class="bt-grid" id="btGrid"></div></details>
+<details class="bt-detail bt-if-classic expert-only"><summary>參數比較</summary><div class="bt-grid" id="btGrid"></div></details>
 <details class="bt-detail"><summary id="btTradesTitle">交易明細</summary><div class="bt-trade-filter segment" id="btTradeFilter"><button type="button" data-f="all" class="active">全部</button><button type="button" data-f="buy">買進</button><button type="button" data-f="sell">賣出</button><button type="button" data-f="dca">定投</button></div><div class="bt-trades" id="btTrades"></div></details>
 <p class="small bt-note">以收盤價成交、價格已還原分割；配息依證交所除息資料入帳。為歷史模擬，不代表未來報酬。</p>
 </div>
 
-            <div class="weights-card card member-only" id="method"><div class="member-lock" role="group" aria-label="我的權重方案：會員專屬"><div class="member-lock-box"><span class="member-badge">會員專屬</span><h4>我的權重方案</h4><p>自訂 ETF、大盤、量能、原油與匯率的權重，算出你的綜合分數，並儲存多組方案。</p><button class="action" type="button" data-open-account>用 Google 登入解鎖</button><p class="small">免費登入，設定會同步到你的 Google 帳號。</p></div></div><div class="card-heading"><h3>我的權重方案</h3><span class="small">本機儲存 · 可複製檢視連結</span></div><div class="weights"><div class="weight"><label for="wEtf">本檔 ETF</label><input id="wEtf" type="range" min="0" max="100" step="1" value="100"><input class="w-num" type="number" min="0" max="100" step="1" data-for="wEtf" aria-label="權重數值"><output id="oEtf">100%</output></div><div class="weight"><label for="wIndex">大盤價格</label><input id="wIndex" type="range" min="0" max="100" step="1" value="0"><input class="w-num" type="number" min="0" max="100" step="1" data-for="wIndex" aria-label="權重數值"><output id="oIndex">0%</output></div><div class="weight"><label for="wVolume">大盤量能</label><input id="wVolume" type="range" min="0" max="100" step="1" value="0"><input class="w-num" type="number" min="0" max="100" step="1" data-for="wVolume" aria-label="權重數值"><output id="oVolume">0%</output></div><div class="weight"><label for="wBrent">布蘭特原油</label><input id="wBrent" type="range" min="0" max="100" step="1" value="0"><input class="w-num" type="number" min="0" max="100" step="1" data-for="wBrent" aria-label="權重數值"><output id="oBrent">0%</output></div><div class="weight"><label for="wFx">美元／新台幣</label><input id="wFx" type="range" min="0" max="100" step="1" value="0"><input class="w-num" type="number" min="0" max="100" step="1" data-for="wFx" aria-label="權重數值"><output id="oFx">0%</output></div></div><div class="controls"><label>量能解讀<select id="volumeDirection"><option value="off">不納入綜合分</option><option value="low">低量分高</option><option value="high">高量分高</option></select></label></div><div class="summary"><div><p class="small" id="weightStatus">權重合計 100%</p><strong id="combined">—</strong><p class="small" id="combinedExtra">連續分：—</p></div><div class="summary-actions"><button class="pill" id="normalize" type="button">平均分配</button><button class="pill" id="share" type="button">複製方案連結</button></div></div><p class="small">低水位 5 分、高水位 1 分；原油越便宜分越高，台幣越升值（美元兌台幣數字越小）分越低。分數是歷史相對位置，不是預測。</p></div>
+            <div class="weights-card card member-only" id="weights"><div class="member-lock" role="group" aria-label="我的權重方案：會員專屬"><div class="member-lock-box"><span class="member-badge">會員專屬</span><h4>我的權重方案</h4><p>自訂 ETF、大盤、量能、原油與匯率的權重，算出你的綜合分數，並儲存多組方案。</p><button class="action" type="button" data-open-account>用 Google 登入解鎖</button><p class="small">免費登入，設定會同步到你的 Google 帳號。</p></div></div><div class="card-heading"><h3>我的權重方案</h3><span class="small">本機儲存 · 可複製檢視連結</span></div><div class="weights"><div class="weight"><label for="wEtf">本檔 ETF</label><input id="wEtf" type="range" min="0" max="100" step="1" value="100"><input class="w-num" type="number" min="0" max="100" step="1" data-for="wEtf" aria-label="權重數值"><output id="oEtf">100%</output></div><div class="weight"><label for="wIndex">大盤價格</label><input id="wIndex" type="range" min="0" max="100" step="1" value="0"><input class="w-num" type="number" min="0" max="100" step="1" data-for="wIndex" aria-label="權重數值"><output id="oIndex">0%</output></div><div class="weight"><label for="wVolume">大盤量能</label><input id="wVolume" type="range" min="0" max="100" step="1" value="0"><input class="w-num" type="number" min="0" max="100" step="1" data-for="wVolume" aria-label="權重數值"><output id="oVolume">0%</output></div><div class="weight"><label for="wBrent">布蘭特原油</label><input id="wBrent" type="range" min="0" max="100" step="1" value="0"><input class="w-num" type="number" min="0" max="100" step="1" data-for="wBrent" aria-label="權重數值"><output id="oBrent">0%</output></div><div class="weight"><label for="wFx">美元／新台幣</label><input id="wFx" type="range" min="0" max="100" step="1" value="0"><input class="w-num" type="number" min="0" max="100" step="1" data-for="wFx" aria-label="權重數值"><output id="oFx">0%</output></div></div><div class="controls"><label>量能解讀<select id="volumeDirection"><option value="off">不納入綜合分</option><option value="low">低量分高</option><option value="high">高量分高</option></select></label></div><div class="weight-bar" id="weightBar" aria-hidden="true"></div><p class="weight-preview" id="weightPreview" aria-live="polite"></p><div class="summary"><div><p class="small" id="weightStatus">權重合計 100%</p><strong id="combined">—</strong><p class="small" id="combinedExtra">連續分：—</p></div><div class="summary-actions"><button class="pill" id="normalize" type="button">平均分配</button><button class="pill" id="share" type="button">複製方案連結</button></div></div><p class="small">低水位 5 分、高水位 1 分；原油越便宜分越高，台幣越升值（美元兌台幣數字越小）分越低。分數是歷史相對位置，不是預測。</p></div>
             </div>
         </div>
       </section>
@@ -370,7 +398,7 @@ function installChaoweiIdentity(host){
   const base='https://www.gstatic.com/firebasejs/13.0.0/';
   let auth,db,user=null,api,plans=[],saveTimer=0,applying=false,ready=false;
   const profileRef=()=>api.doc(db,'users',user.uid);
-  const safeSettings=s=>({window:s.window,method:s.method,anchorMode:s.anchorMode,anchorCount:s.anchorCount,showLevels:s.showLevels!==false,font:s.font,dark:!!s.dark,weights:s.weights,volumeDirection:s.volumeDirection,watchlist:s.watchlist,overlays:s.overlays,osc:s.osc,oscs:s.oscs,ind:s.ind,chartType:s.chartType,colorScheme:s.colorScheme,tourDone:s.tourDone,fxDirection:s.fxDirection,paneHeights:s.paneHeights,volumeBasis:s.volumeBasis,bt:s.bt,favorites:s.favorites,preferredWindow:s.preferredWindow});
+  const safeSettings=s=>({window:s.window,method:s.method,anchorMode:s.anchorMode,anchorCount:s.anchorCount,showLevels:s.showLevels!==false,font:s.font,dark:!!s.dark,weights:s.weights,volumeDirection:s.volumeDirection,watchlist:s.watchlist,overlays:s.overlays,osc:s.osc,oscs:s.oscs,ind:s.ind,chartType:s.chartType,colorScheme:s.colorScheme,tourDone:s.tourDone,uiMode:s.uiMode,fxDirection:s.fxDirection,paneHeights:s.paneHeights,volumeBasis:s.volumeBasis,bt:s.bt,favorites:s.favorites,preferredWindow:s.preferredWindow});
   const getLocal=()=>{try{return safeSettings(JSON.parse(localStorage.getItem('chaowei-settings')||'{}'))}catch{return {}}};
   const showPlans=()=>{const list=$('planList');list.replaceChildren(new Option('選擇方案',''));plans.forEach((p,i)=>list.add(new Option(p.name,String(i))))};
   const write=async settings=>{if(!user||!db)return;try{await api.setDoc(profileRef(),{settings:safeSettings(settings),plans,updatedAt:api.serverTimestamp()},{merge:true});status(`已登入 ${user.email} · 設定已同步`)}catch(e){status(`已登入 ${user.email} · 雲端同步失敗：${e.code||e.message}`)}};
@@ -486,10 +514,21 @@ function openSearch(){lastFocus=document.activeElement;$('searchOverlay').classL
 // After a pick, focus must not jump back to the opener: the same Enter press would "click" it and reopen the sheet.
 function closeSearch(restore=true){if($('searchOverlay').classList.contains('hidden'))return;$('searchOverlay').classList.add('hidden');document.body.classList.remove('searching');if(restore)lastFocus?.focus?.({preventScroll:true});else document.activeElement?.blur?.()}
 function pick(code){selected=code;closeSearch(false);renderList();loadBars();const t=document.querySelector('.toolbar');window.scrollTo({top:t.getBoundingClientRect().top+scrollY-12,behavior:'instant'})}
+/* Risk badge from the catalog name and index: inverse and leveraged first (their index names look like the core ones). */
+function etfRisk(code){
+  const e=catalog.find(x=>x.code===code);if(!e)return null;const t=e.name+' '+(e.note||'');
+  if(/R$/.test(code)&&/反/.test(e.name))return{kind:'inverse',tag:'⚠️ 反向',warn:'反向 ETF 每日重設倍數，盤整與上漲時會持續耗損，只適合短線避險，不適合定期定額或逢低攤平。'};
+  if(/L$/.test(code)&&/正2|正二/.test(e.name))return{kind:'lev',tag:'⚡ 2倍槓桿',warn:'2 倍槓桿波動約為原型的兩倍，盤整時有耗損；逢低攤平又不設停損，回落可能非常深。建議改用再平衡或趨勢策略。'};
+  if(/B$/.test(code)||/債/.test(e.name))return{kind:'bond',tag:'🏦 債券'};
+  if(/高息|高股息|股息|收息|高收益/.test(t))return{kind:'income',tag:'💰 高息'};
+  if(e.type==='passive'&&/臺灣50指數|臺灣加權|發行量加權/.test(t))return{kind:'core',tag:'🌱 市值核心'};
+  return null;
+}
+function riskBadge(code){const r=etfRisk(code);if(!r)return null;const s=document.createElement('span');s.className='risk-tag '+r.kind;s.textContent=r.tag;return s}
 function renderQuick(){
   for(const id of ['quickPicks','quickInline']){
     const box=$(id);box.replaceChildren();
-    for(const code of settings.watchlist){const e=catalog.find(x=>x.code===code);if(!e)continue;const b=document.createElement('button');b.type='button';b.className='pill mini'+(code===selected?' on':'');b.textContent=`${code} ${e.name}`;b.addEventListener('click',()=>pick(code));box.append(b)}
+    for(const code of settings.watchlist){const e=catalog.find(x=>x.code===code);if(!e)continue;const b=document.createElement('button');b.type='button';b.className='pill mini'+(code===selected?' on':'');b.textContent=`${code} ${e.name}`;const rb=riskBadge(code);if(rb)b.append(rb);b.addEventListener('click',()=>pick(code));box.append(b)}
     if(!box.children.length){const p=document.createElement('span');p.className='small';p.textContent='點候選卡片上的☆建立追蹤清單';box.append(p)}
   }
 }
@@ -518,7 +557,7 @@ renderList=function(){
   for(const e of matches.slice(0,limit)){
     const row=document.createElement('div');row.className='etf-result';
     const b=document.createElement('button');b.type='button';b.className='candidate-pick'+(e.code===selected?' selected':'');
-    const strong=document.createElement('strong');strong.textContent=`${e.code} · ${e.name}`;
+    const strong=document.createElement('strong');strong.textContent=`${e.code} · ${e.name}`;const rb=riskBadge(e.code);if(rb)strong.append(rb);
     const small=document.createElement('small');small.textContent=`${e.type==='active'?'主動型':'被動型'} · ${e.listingDate?e.listingDate+' 上市':'上市日期待查'}`;
     b.append(strong,small);
     if(e.note&&e.note!=='主動管理'){const idx=document.createElement('small');idx.className='index';idx.textContent=e.note;b.append(idx)}
@@ -530,6 +569,7 @@ renderList=function(){
   if(!matches.length)$('etfList').textContent='沒有符合的 ETF；請確認名稱或代號';
   else if(matches.length>limit){const p=document.createElement('p');p.className='small more';p.textContent=`顯示前 ${limit} 檔，繼續輸入可縮小範圍。`;$('etfList').append(p)}
   renderQuick();
+  const risk=etfRisk(selected);$('riskTag').textContent=risk?.tag||'';$('riskTag').className='risk-tag'+(risk?' '+risk.kind:' hidden');
 };
 $('search').addEventListener('keydown',e=>{if(e.key==='Enter'){const first=$('etfList').querySelector('.candidate-pick');if(first){e.preventDefault();first.click()}}});
 
@@ -1155,7 +1195,7 @@ const ChaoweiEngine=(()=>{
   }
   function account(ctx,cfg){
     const fee=cfg.fee/100*cfg.discount/100,tax=cfg.tax/100;
-    return{cash:0,shares:0,cost:0,fee,tax,fees:0,trades:[],
+    return{cash:0,shares:0,cost:0,fee,tax,fees:0,trades:[],divs:[],
       buy(i,amount,reason,kind){
         const c=ctx.close[i],spend=Math.min(amount,this.cash);if(!(spend>0))return 0;
         let sh=spend/(c*(1+fee));if(cfg.wholeShares)sh=Math.floor(sh);if(!(sh>0))return 0;
@@ -1177,15 +1217,19 @@ const ChaoweiEngine=(()=>{
   function run(ctx,cfg,start,end){
     end=end==null?ctx.n-1:end;start=Math.max(0,start);
     const strat=STRATEGIES[cfg.strategy]||STRATEGIES.classic,months=[];for(let i=start;i<=end;i++)if(i===start||ctx.monthStart[i])months.push(i);
-    // One capital base C for everyone, deposited on the first day. 定期定額 invests C ÷ N on the first trading
-    // day of each of the first N months; staged strategies split C by their number of stages; smart-DCA
-    // strategies scale the same monthly base C ÷ N. Unspent cash earns the parking rate.
-    const lump=true,inflowAt=new Map([[start,cfg.capital]]),N=Math.max(1,Math.round(Number(cfg.dcaPeriods)||12));
-    const base=cfg.capital/N,dcaMonths=new Set(months.slice(0,N));
+    // One capital base C for everyone. N defaults to the number of months in the window ('auto'), so a
+    // five-year test spreads 定期定額 over 60 months instead of spending C in the first year.
+    // Pool mode (default): C is in the account on day one; 定期定額 invests C ÷ N on the first trading day
+    // of each of the first N months; staged strategies split C by their number of stages.
+    // Monthly mode: C ÷ N is deposited on each of those days instead (a salary), and buy-and-hold still
+    // invests C on day one with its own cash flows, so its XIRR stays comparable.
+    const auto=cfg.dcaPeriods==null||cfg.dcaPeriods==='auto',N=auto?months.length:Math.max(1,Math.round(Number(cfg.dcaPeriods)||12));
+    const monthly=cfg.capitalMode==='monthly',lump=!monthly,base=cfg.capital/N,dcaMonths=new Set(months.slice(0,N));
+    const inflowAt=monthly?new Map(months.slice(0,N).map(i=>[i,base])):new Map([[start,cfg.capital]]);
     const park=Math.pow(1+cfg.parking/100,1/365)-1,acc=account(ctx,cfg),state={};
-    // Benchmarks: buy-and-hold (inflows invested at once) and monthly investing (a lump split by month).
+    // Benchmarks: buy-and-hold (C invested on day one) and 定期定額 (C ÷ N per month), same fees and tax.
     const bh=account(ctx,cfg),dca=account(ctx,cfg);
-    const flows=[],series=[],bhSeries=[],dcaSeries=[];
+    const flows=[],bhFlows=monthly?[[Date.parse(ctx.bars[start].date),-cfg.capital]]:flows,series=[],bhSeries=[],dcaSeries=[];
     let contributed=0,interest=0,dividends=0,nav=1,prevEq=0,peakNav=1,mdd=0,utilSum=0,days=0,lastT=Date.parse(ctx.bars[start].date),rets=[];
     let bhNav=1,bhPrev=0,bhPeak=1,bhMdd=0,dcaNav=1,dcaPrev=0,dcaPeak=1,dcaMdd=0;
     const helpers={base,months,lump,N,dcaMonths,water:cfg.ref?water(ctx,cfg.ref):null};
@@ -1194,31 +1238,37 @@ const ChaoweiEngine=(()=>{
       const t=Date.parse(ctx.bars[i].date),dd=Math.round((t-lastT)/DAY);lastT=t;
       // Interest on parked cash for the calendar days since the previous bar.
       if(dd>0)for(const a of [acc,bh,dca]){const r=a.cash*(Math.pow(1+park,dd)-1);a.cash+=r;if(a===acc)interest+=r}
-      const inflow=inflowAt.get(i)||0;
-      if(inflow){acc.cash+=inflow;bh.cash+=inflow;dca.cash+=inflow;contributed+=inflow;flows.push([t,-inflow])}
+      const inflow=inflowAt.get(i)||0,bhIn=monthly?(i===start?cfg.capital:0):inflow;
+      if(inflow){acc.cash+=inflow;dca.cash+=inflow;contributed+=inflow;flows.push([t,-inflow])}
+      bh.cash+=bhIn;
       // Dividends on shares held before today's trades.
-      if(ctx.div[i]>0)for(const a of [acc,bh,dca]){const d=a.shares*ctx.div[i];if(d>0){a.cash+=d;if(a===acc)dividends+=d;if(cfg.drip)a.buy(i,d,'配息再投入','drip')}}
-      if(inflow)bh.buy(i,bh.cash,'買進持有','bench');
+      if(ctx.div[i]>0)for(const a of [acc,bh,dca]){const d=a.shares*ctx.div[i];if(d>0){a.cash+=d;a.divs.push([t,d]);if(a===acc)dividends+=d;if(cfg.drip)a.buy(i,d,'配息再投入','drip')}}
+      if(bhIn)bh.buy(i,bh.cash,'買進持有','bench');
       if(dcaMonths.has(i))dca.buy(i,base,'定期定額','bench');
       strat.day(i,ctx,cfg,acc,state,helpers,inflow);
       const eq=acc.value(i),c=ctx.close[i];
       // Time-weighted return strips out deposits, so drawdowns are not hidden by new money.
       if(prevEq>0)nav*=(eq-inflow)/prevEq;prevEq=eq;peakNav=Math.max(peakNav,nav);const ddown=nav/peakNav-1;mdd=Math.min(mdd,ddown);
       if(series.length)rets.push(nav/series.at(-1).nav-1);
-      const bq=bh.value(i);if(bhPrev>0)bhNav*=(bq-inflow)/bhPrev;bhPrev=bq;bhPeak=Math.max(bhPeak,bhNav);bhMdd=Math.min(bhMdd,bhNav/bhPeak-1);
+      const bq=bh.value(i);if(bhPrev>0)bhNav*=(bq-bhIn)/bhPrev;bhPrev=bq;bhPeak=Math.max(bhPeak,bhNav);bhMdd=Math.min(bhMdd,bhNav/bhPeak-1);
       const dq=dca.value(i);if(dcaPrev>0)dcaNav*=(dq-inflow)/dcaPrev;dcaPrev=dq;dcaPeak=Math.max(dcaPeak,dcaNav);dcaMdd=Math.min(dcaMdd,dcaNav/dcaPeak-1);
       utilSum+=eq>0?acc.shares*c/eq:0;days++;
       series.push({time:ctx.bars[i].date,value:eq,nav,dd:ddown,exposure:eq>0?acc.shares*c/eq:0,contributed});
       bhSeries.push({time:ctx.bars[i].date,value:bq,dd:bhNav/bhPeak-1});dcaSeries.push({time:ctx.bars[i].date,value:dq,dd:dcaNav/dcaPeak-1});
     }
     const tEnd=Date.parse(ctx.bars[end].date),years=Math.max(1/365,(tEnd-Date.parse(ctx.bars[start].date))/(365.25*DAY));
-    const summary=(a,navEnd,m)=>{const eq=a.value(end);return{equity:eq,ret:contributed?eq/contributed-1:0,xirr:xirr([...flows,[tEnd,eq]]),cagr:Math.pow(navEnd,1/years)-1,mdd:-m}};
-    const s=summary(acc,nav,mdd),mean=rets.reduce((x,y)=>x+y,0)/Math.max(1,rets.length),sd=Math.sqrt(rets.reduce((x,y)=>x+(y-mean)**2,0)/Math.max(1,rets.length-1));
+    const summary=(a,navEnd,m,fl,paid)=>{const eq=a.value(end);return{equity:eq,ret:paid?eq/paid-1:0,xirr:xirr([...fl,[tEnd,eq]]),cagr:Math.pow(navEnd,1/years)-1,mdd:-m,fees:a.fees}};
+    // Return on deployed capital: XIRR of the position alone (buys out, sales and dividends in, final
+    // holding back), so cash waiting on the sidelines does not count. Answers "when it was invested, how
+    // hard did the money work?" for strategies that sit mostly in cash.
+    const sleeve=acc.trades.map(x=>[Date.parse(x.date),x.type==='buy'?-x.amount:x.amount]).concat(acc.divs);
+    if(acc.shares>0)sleeve.push([tEnd,acc.shares*ctx.close[end]]);sleeve.sort((x,y)=>x[0]-y[0]);
+    const s=summary(acc,nav,mdd,flows,contributed),mean=rets.reduce((x,y)=>x+y,0)/Math.max(1,rets.length),sd=Math.sqrt(rets.reduce((x,y)=>x+(y-mean)**2,0)/Math.max(1,rets.length-1));
     const sells=acc.trades.filter(x=>x.type==='sell'&&x.kind!=='rebalance');
-    return{cfg,start:ctx.bars[start].date,end:ctx.bars[end].date,years,contributed,...s,
+    return{cfg,start:ctx.bars[start].date,end:ctx.bars[end].date,years,contributed,N,base,monthly,...s,roic:acc.trades.length?xirr(sleeve):null,
       calmar:s.mdd>0?s.cagr/s.mdd:null,sharpe:sd>0?(mean-park)/sd*Math.sqrt(245):null,utilization:utilSum/Math.max(1,days),
       interest,dividends,fees:acc.fees,trades:acc.trades,sells:sells.length,wins:sells.filter(x=>x.pnl>0).length,buys:acc.trades.filter(x=>x.type==='buy').length,
-      shares:acc.shares,cost:acc.cost,cash:acc.cash,state,series,bh:{...summary(bh,bhNav,bhMdd),series:bhSeries},dca:{...summary(dca,dcaNav,dcaMdd),series:dcaSeries}};
+      shares:acc.shares,cost:acc.cost,cash:acc.cash,state,series,bh:{...summary(bh,bhNav,bhMdd,bhFlows,cfg.capital),series:bhSeries},dca:{...summary(dca,dcaNav,dcaMdd,flows,contributed),series:dcaSeries}};
   }
 
   /* ---------- strategies ---------- */
@@ -1263,23 +1313,36 @@ const ChaoweiEngine=(()=>{
     if(why){acc.sell(i,acc.shares,why,'exit');st.buys=0;st.armed=false}
   }
   const multByGrade=(p,g)=>p.mult[Math.max(1,Math.min(5,g))-1];
+  // Two pots for the multiplier strategies: each scheduled month releases B = C ÷ N. A month with a
+  // multiplier below 1 spends B × m and moves the rest into a reserve; a month above 1 spends B plus an
+  // extra drawn from the reserve (B × (m − 1), or draw % of the reserve if larger). Spending can never
+  // run ahead of the schedule, so the pot does not run dry in year one, and after the N months the
+  // reserve is still there for low-water months. Sale proceeds (trims) also go to the reserve.
+  function paced(i,acc,st,h,m,reason,draw){
+    const B=h.dcaMonths.has(i)?h.base:0,reserve=st.reserve||0,regular=B*Math.min(1,Math.max(0,m));
+    const extra=m>1?Math.min(reserve,Math.max(h.base*(m-1),reserve*(draw||0)/100)):0,before=acc.cash;
+    if(regular+extra>0)acc.buy(i,regular+extra,reason+(extra>0.5?'（動用蓄水池 '+Math.round(extra)+' 元）':''),'dca');
+    st.reserve=Math.max(0,reserve+B-(before-acc.cash));
+  }
+  const toReserve=(st,net)=>{st.reserve=(st.reserve||0)+(net||0)};
   const STRATEGIES={
     classic:{day:classicDay},
     dca:{day(i,ctx,cfg,acc,st,h){if(h.dcaMonths.has(i))acc.buy(i,h.base,'定期定額：C ÷ '+h.N,'dca')}},
     smart_dca_water:{day(i,ctx,cfg,acc,st,h){
-      if(!monthDay(ctx,i,h.months[0]))return;const g=h.water.grade[i]||3,m=multByGrade(cfg.params,g);
-      acc.buy(i,h.base*m,'潮位定投：水位 '+g+' 分 × '+m,'dca');
-      const p=cfg.params;if(p.trim&&g===1&&ctx.ma60[i]&&ctx.close[i]/ctx.ma60[i]-1>p.trimBias/100)acc.sell(i,acc.shares*p.trimPct/100,'高檔減碼 '+p.trimPct+'%','trim');
+      if(!monthDay(ctx,i,h.months[0]))return;const p=cfg.params,g=h.water.grade[i]||3,m=multByGrade(p,g);
+      paced(i,acc,st,h,m,'潮位定投：水位 '+g+' 分 × '+m,g>=5?p.draw:0);
+      if(p.trim&&g===1&&ctx.ma60[i]&&ctx.close[i]/ctx.ma60[i]-1>p.trimBias/100)toReserve(st,acc.sell(i,acc.shares*p.trimPct/100,'高檔減碼 '+p.trimPct+'%，轉入蓄水池','trim'));
     }},
     value_averaging:{day(i,ctx,cfg,acc,st,h){
-      if(!monthDay(ctx,i,h.months[0]))return;const p=cfg.params,g=p.growth/100;st.m=(st.m||0)+1;
-      const target=g>0?h.base*((Math.pow(1+g,st.m)-1)/g):h.base*st.m,cur=acc.shares*ctx.close[i],gap=target-cur;
-      if(gap>0)acc.buy(i,Math.min(gap,h.base*p.cap),'定期定值：補到目標市值','dca');
-      else if(gap<0&&p.allowSell)acc.sell(i,-gap/ctx.close[i],'定期定值：超出目標的部分轉回現金','trim');
+      // After the N scheduled months no new installments are added; the target keeps only its monthly growth.
+      if(!monthDay(ctx,i,h.months[0]))return;const p=cfg.params,g=p.growth/100;st.m=(st.m||0)+1;const k=Math.min(h.N,st.m);
+      const target=(g>0?h.base*((Math.pow(1+g,k)-1)/g):h.base*k)*Math.pow(1+g,st.m-k),cur=acc.shares*ctx.close[i],gap=target-cur;
+      if(gap>=0)paced(i,acc,st,h,Math.min(p.cap,gap/h.base),'定期定值：補到目標市值');
+      else{if(h.dcaMonths.has(i))toReserve(st,h.base);if(p.allowSell)toReserve(st,acc.sell(i,-gap/ctx.close[i],'定期定值：超出目標的部分轉入蓄水池','trim'))}
     }},
     bias_tiered_dca:{day(i,ctx,cfg,acc,st,h){
       if(!monthDay(ctx,i,h.months[0])||!(ctx.ma60[i]>0))return;const b=(ctx.close[i]/ctx.ma60[i]-1)*100,t=cfg.params.tiers;
-      const m=b>15?t[0]:b>=-5?t[1]:b>=-10?t[2]:b>=-15?t[3]:t[4];acc.buy(i,h.base*m,'乖離定投：MA60 乖離 '+b.toFixed(1)+'% × '+m,'dca');
+      const m=b>15?t[0]:b>=-5?t[1]:b>=-10?t[2]:b>=-15?t[3]:t[4];paced(i,acc,st,h,m,'乖離定投：MA60 乖離 '+b.toFixed(1)+'% × '+m);
     }},
     tech_bb_rsi_dca:{day(i,ctx,cfg,acc,st,h){
       const p=cfg.params;if(monthDay(ctx,i,h.months[0]))acc.buy(i,h.base*p.baseRatio,'技術存股：每月底倉','dca');
@@ -1347,7 +1410,7 @@ const ChaoweiEngine=(()=>{
   const PARAMS={
     classic:{entry:'drop',drop:20,levels:[0.382,0.5,0.618],buyGrade:5,step:10,adds:3,exit:'gain',rise:20,sellGrade:1,fibExt:1,trail:10,atrMult:3,stop:0,maxDays:0},
     dca:{},
-    smart_dca_water:{mult:[0.3,0.7,1,1.8,3],trim:false,trimBias:25,trimPct:15},
+    smart_dca_water:{mult:[0.3,0.7,1,1.8,3],draw:30,trim:false,trimBias:25,trimPct:15},
     value_averaging:{growth:0.6,cap:3.5,allowSell:true},
     bias_tiered_dca:{tiers:[0.5,1,1.5,2.2,3.5]},
     tech_bb_rsi_dca:{baseRatio:0.6,dipMult:2,pbLow:0.15,rsiLow:35,pbHigh:1.05,rsiHigh:80,trimPct:10},
@@ -1385,12 +1448,16 @@ const ChaoweiEngine=(()=>{
 
 /* ---------- Strategy backtest panel (uses ChaoweiEngine from strategy-engine.js) ---------- */
 const E=ChaoweiEngine;
-const BT_DEFAULT={v:3,family:'dca',preset:'smartDca',strategy:'smart_dca_water',params:{...E.PARAMS.smart_dca_water},
-  ref:{window:'240',anchorMode:'wick',anchorCount:5,method:'equal'},capital:1200000,dcaPeriods:12,period:'5',
+// dcaPeriods 'auto' = one installment per month of the backtest window; sync = use the observation settings above.
+const BT_DEFAULT={v:4,family:'dca',preset:'smartDca',strategy:'smart_dca_water',params:{...E.PARAMS.smart_dca_water},
+  ref:{window:'240',anchorMode:'wick',anchorCount:5,method:'equal'},capital:1200000,dcaPeriods:'auto',capitalMode:'pool',sync:true,period:'5',
   fee:0.1425,discount:100,tax:0.1,parking:1.5,drip:true,wholeShares:false,markers:true};
 // v2 stored the classic builder's fields at the top level; keep the user's swing settings.
+// v3 defaulted to 12 installments, which spent C in the first year of a five-year test; 12 becomes 'auto'.
 function btMigrate(b){
-  if(b&&b.v===3)return{...BT_DEFAULT,...b,ref:{...BT_DEFAULT.ref,...b.ref},params:{...E.PARAMS[b.strategy]||{},...b.params}};
+  if(b&&(b.v===3||b.v===4)){const out={...BT_DEFAULT,...b,v:4,ref:{...BT_DEFAULT.ref,...b.ref},params:{...E.PARAMS[b.strategy]||{},...b.params}};
+    if(b.v===3){if(b.dcaPeriods===12)out.dcaPeriods='auto';out.sync=String(out.ref.window)===String(settings.window)&&out.ref.method===settings.method&&out.ref.anchorMode===settings.anchorMode}
+    return out}
   const out={...BT_DEFAULT,ref:{...BT_DEFAULT.ref,window:settings.window||'240',anchorMode:settings.anchorMode||'wick',anchorCount:settings.anchorCount||5,method:settings.method||'equal'}};
   if(b&&typeof b==='object'&&(b.v===2||b.mode)){
     const keys=['entry','drop','levels','buyGrade','step','adds','exit','rise','sellGrade','fibExt','stop','maxDays'],params={...E.PARAMS.classic};
@@ -1455,7 +1522,12 @@ function btContext(){
 // Custom dates use the first bar on or after the start and the last bar on or before the end.
 function btEnd(){const b=settings.bt;if(b.period!=='custom'||!b.to)return bars.length-1;let j=-1;for(let i=0;i<bars.length;i++)if(bars[i].date<=b.to)j=i;return Math.max(0,j)}
 function btStart(period){if(period==='all')return 0;if(period==='custom'){const b=settings.bt,i=b.from?bars.findIndex(x=>x.date>=b.from):0;return Math.max(0,Math.min(i<0?0:i,btEnd()-40))}const d=new Date(bars.at(-1).date+'T00:00:00Z');d.setUTCFullYear(d.getUTCFullYear()-Number(period));const i=bars.findIndex(b=>b.date>=d.toISOString().slice(0,10));return i<0?0:i}
-const btCfg=(over={})=>{const b=settings.bt;return{ref:{...b.ref},capital:b.capital,dcaPeriods:b.dcaPeriods,fee:b.fee,discount:b.discount,tax:b.tax,parking:b.parking,drip:b.drip,wholeShares:b.wholeShares,strategy:b.strategy,params:{...b.params},...over}};
+// With sync on, the backtest reads the observation settings above at run time, so the two never disagree.
+const btTopRef=()=>({window:String(settings.window),anchorMode:settings.anchorMode||'wick',anchorCount:Number(settings.anchorCount)||5,method:settings.method==='fib'?'fib':'equal'});
+const btRef=()=>settings.bt.sync?btTopRef():settings.bt.ref;
+function btMonths(){if(!bars.length)return 0;const s=btStart(settings.bt.period),e=btEnd();let n=0;for(let i=s;i<=e;i++)if(i===s||bars[i].date.slice(0,7)!==bars[i-1].date.slice(0,7))n++;return n}
+const btN=()=>settings.bt.dcaPeriods==='auto'?btMonths():settings.bt.dcaPeriods;
+const btCfg=(over={})=>{const b=settings.bt;return{ref:{...btRef()},capital:b.capital,dcaPeriods:b.dcaPeriods,capitalMode:b.capitalMode,fee:b.fee,discount:b.discount,tax:b.tax,parking:b.parking,drip:b.drip,wholeShares:b.wholeShares,strategy:b.strategy,params:{...b.params},...over}};
 
 /* ---------- form ---------- */
 function btFieldHtml([key,label,type,extra,visible],p){
@@ -1476,11 +1548,16 @@ function btFillForm(){
   $('btFamilies').innerHTML=E.FAMILIES.map(([id,name])=>`<button type="button" role="tab" data-family="${id}" aria-selected="${b.family===id}" class="${b.family===id?'active':''}">${name}</button>`).join('');
   $('btPresets').innerHTML=E.PRESETS.filter(p=>p.family===b.family).map(p=>`<button class="pill mini${b.preset===p.id?' on':''}" type="button" data-preset="${p.id}">${p.name}</button>`).join('');
   const set=(id,v)=>{$(id).value=String(v)};
-  set('btCapital',b.capital);customOption($('btDcaPeriods'),b.dcaPeriods,b.dcaPeriods+' 期（自訂）');set('btDcaPeriods',b.dcaPeriods);set('btPeriod',b.period);
+  set('btCapital',b.capital);set('btCapitalMode',b.capitalMode);
+  const months=btMonths();$('btDcaPeriods').options[0].textContent='自動：每月一期'+(months?'（共 '+months+' 期）':'');
+  if(b.dcaPeriods!=='auto')customOption($('btDcaPeriods'),b.dcaPeriods,b.dcaPeriods+' 期（自訂）');set('btDcaPeriods',b.dcaPeriods);set('btPeriod',b.period);
+  $('btCapChips').querySelectorAll('[data-cap]').forEach(x=>x.classList.toggle('on',Number(x.dataset.cap)===b.capital));
   $('btDates').classList.toggle('hidden',b.period!=='custom');if(b.period==='custom'&&bars.length){$('btFrom').value=b.from||bars[btStart('5')].date;$('btTo').value=b.to||bars.at(-1).date}
-  customOption($('btWindow'),b.ref.window,b.ref.window+' 交易日（自訂）');set('btWindow',b.ref.window);set('btAnchorMode',b.ref.anchorMode);set('btAnchorCount',b.ref.anchorCount);set('btMethod',b.ref.method);
+  const ref=btRef();$('btSync').checked=!!b.sync;
+  customOption($('btWindow'),ref.window,ref.window+' 交易日（自訂）');set('btWindow',ref.window);set('btAnchorMode',ref.anchorMode);set('btAnchorCount',ref.anchorCount);set('btMethod',ref.method);
+  for(const id of ['btWindow','btAnchorMode','btAnchorCount','btMethod'])$(id).disabled=!!b.sync;
   set('btFee',b.fee);set('btDiscount',b.discount);set('btTax',b.tax);set('btParking',b.parking);$('btDrip').checked=!!b.drip;$('btWhole').checked=!!b.wholeShares;
-  const card=$('backtestCard');card.querySelectorAll('.bt-if-average').forEach(e=>e.classList.toggle('hidden',b.ref.anchorMode!=='average'));
+  const card=$('backtestCard');card.querySelectorAll('.bt-if-average').forEach(e=>e.classList.toggle('hidden',ref.anchorMode!=='average'));
   card.querySelectorAll('.bt-if-classic').forEach(e=>e.classList.toggle('hidden',b.strategy!=='classic'));
   btRenderSplit();
   $('btFriction').textContent='買賣一次成本 '+fmt(b.fee*b.discount/100*2+b.tax,4)+'%';
@@ -1488,22 +1565,26 @@ function btFillForm(){
   btRenderParams();
 }
 function btRenderSplit(){
-  const b=settings.bt,p=b.params,C=b.capital,N=b.dcaPeriods,base=C/N,m=v=>fmt(Math.round(v),0)+' 元';
+  const b=settings.bt,p=b.params,C=b.capital,N=btN(),base=N?C/N:0,m=v=>fmt(Math.round(v),0)+' 元',monthly=b.capitalMode==='monthly';
+  if(!N){$('btSplit').textContent='';return}
   let mine;
-  if(b.strategy==='classic'){const k=p.entry==='fib'?p.levels.length:1+p.adds;mine='本策略分 '+k+' 批：每批 C ÷ '+k+' = '+m(C/k)}
+  if(b.strategy==='classic'){const k=p.entry==='fib'?p.levels.length:1+p.adds;mine=monthly?'本策略分 '+k+' 批：每批＝當時可用現金 ÷ 剩下批數':'本策略分 '+k+' 批：每批 C ÷ '+k+' = '+m(C/k)}
   else if(b.strategy==='dca')mine='本策略就是定期定額';
-  else if(['smart_dca_water','bias_tiered_dca','value_averaging'].includes(b.strategy))mine='本策略每月基準 C ÷ '+N+' = '+m(base)+'，再乘上當月倍數，直到資金用完';
+  else if(['smart_dca_water','bias_tiered_dca','value_averaging'].includes(b.strategy))mine='本策略每月基準 '+m(base)+' × 當月倍數；少扣的錢存入蓄水池，低水位時再動用';
   else if(b.strategy==='tech_bb_rsi_dca')mine='本策略每月底倉 '+m(base*p.baseRatio)+'，超賣時加碼 '+m(base*p.dipMult);
   else if(b.strategy==='core_satellite')mine='核心每月 '+m(base*p.core/100)+' × 倍數；衛星資金 '+m(C*(100-p.core)/100)+' 分 2 批';
   else if(['rebalance_50_50','vol_targeting'].includes(b.strategy))mine='本策略依目標持股比例調整，不分期';
   else mine='本策略符合條件時投入全部可用資金';
-  $('btSplit').innerHTML='定期定額：每月 C ÷ '+N+' = <b>'+m(base)+'</b><br>'+mine+'<br>買進持有：第一天投入 C = '+m(C);
+  $('btSplit').innerHTML=(monthly?'每月入金 C ÷ '+N+' = <b>'+m(base)+'</b>，定期定額當月全數買進':'定期定額：每月 C ÷ '+N+' = <b>'+m(base)+'</b>')+'<br>'+mine+'<br>買進持有：第一天投入 C = '+m(C);
 }
 function btReadForm(){
   const b=settings.bt,num=(id,lo,hi,d)=>clampNum($(id).value,lo,hi,d);
-  b.capital=Math.round(num('btCapital',10000,1e9,1200000));{const n=Math.round(Number($('btDcaPeriods').value));if(Number.isFinite(n)&&n>=1&&n<=240)b.dcaPeriods=n}
+  b.capital=Math.round(num('btCapital',10000,1e9,1200000));b.capitalMode=$('btCapitalMode').value==='monthly'?'monthly':'pool';
+  if($('btDcaPeriods').value==='auto')b.dcaPeriods='auto';else{const n=Math.round(Number($('btDcaPeriods').value));if(Number.isFinite(n)&&n>=1&&n<=240)b.dcaPeriods=n}
   b.period=['1','3','5','10','all','custom'].includes($('btPeriod').value)?$('btPeriod').value:'5';if(b.period==='custom'){b.from=$('btFrom').value||b.from;b.to=$('btTo').value||b.to}
-  b.ref={window:$('btWindow').value,anchorMode:$('btAnchorMode').value,anchorCount:Math.round(num('btAnchorCount',1,20,5)),method:$('btMethod').value==='fib'?'fib':'equal'};
+  // Unticking sync starts from the observation settings, then the step-3 fields are the backtest's own.
+  const wasSync=b.sync;b.sync=$('btSync').checked;
+  if(!b.sync)b.ref=wasSync?btTopRef():{window:$('btWindow').value,anchorMode:$('btAnchorMode').value,anchorCount:Math.round(num('btAnchorCount',1,20,5)),method:$('btMethod').value==='fib'?'fib':'equal'};
   b.fee=num('btFee',0,1,0.1425);b.discount=num('btDiscount',10,100,100);b.tax=num('btTax',0,1,0.1);b.parking=num('btParking',0,10,1.5);b.drip=$('btDrip').checked;b.wholeShares=$('btWhole').checked;
   $('btParams').querySelectorAll('[data-k]').forEach(el=>{const k=el.dataset.k,v=el.type==='checkbox'?el.checked:el.tagName==='SELECT'?el.value:Number(el.value);
     b.params[k]=el.tagName==='SELECT'&&/^-?\d+(\.\d+)?$/.test(v)?Number(v):(typeof v==='number'&&!Number.isFinite(v)?b.params[k]:v)});
@@ -1517,7 +1598,11 @@ $('btFamilies').addEventListener('click',e=>{const t=e.target.closest('[data-fam
 $('btPresets').addEventListener('click',e=>{const t=e.target.closest('[data-preset]');if(t)btApplyPreset(t.dataset.preset)});
 function btApplyPreset(id,over){const p=E.PRESETS.find(x=>x.id===id);if(!p)return;Object.assign(settings.bt,{family:p.family,preset:p.id,strategy:p.strategy,params:JSON.parse(JSON.stringify({...E.PARAMS[p.strategy],...p.params}))},over||{});save();btFillForm();renderBacktest()}
 $('backtestCard').addEventListener('change',e=>{if(e.target.closest('.bt-steps,.bt-advanced')){btReadForm();btFillForm();btSchedule()}});
-$('btSyncView').addEventListener('click',()=>{settings.bt.ref={window:settings.window,anchorMode:settings.anchorMode,anchorCount:settings.anchorCount,method:settings.method};save();btFillForm();renderBacktest()});
+$('btRisk').addEventListener('click',e=>{const t=e.target.closest('[data-preset]');if(t)btApplyPreset(t.dataset.preset)});
+$('btCapChips').addEventListener('click',e=>{const t=e.target.closest('[data-cap]');if(!t)return;$('btCapital').value=t.dataset.cap;btReadForm();btFillForm();btSchedule()});
+// Observation settings changed above: a synced backtest follows.
+function btFollowTop(){if(settings.bt.sync&&btResult&&JSON.stringify(btResult.cfg.ref)!==JSON.stringify(btRef())){btFillForm();btSchedule()}}
+document.querySelector('.view-card').addEventListener('change',()=>setTimeout(btFollowTop,0));
 $('btMarkers').addEventListener('click',()=>{settings.bt.markers=!settings.bt.markers;save();btFillForm();applyMarkers()});
 $('btTradeFilter').addEventListener('click',e=>{const t=e.target.closest('[data-f]');if(!t)return;btTradeFilter=t.dataset.f;$('btTradeFilter').querySelectorAll('button').forEach(x=>x.classList.toggle('active',x===t));btRenderTrades()});
 
@@ -1574,7 +1659,7 @@ function btDrawCharts(r){
 function btNow(r){
   const ctx=btCtx,i=ctx.n-1,c=ctx.close[i],p=r.cfg.params,st=r.state,w=E.water(ctx,r.cfg.ref),g=w.grade[i],core=w.core[i],rows=[];
   const at=v=>'<b>'+fmt(v,2)+'</b>（較今日 '+pctText(v/c-1)+'）',hold=r.shares>0?'持有 '+fmt(r.shares,0)+' 股、現金 '+money(r.cash):'空手、現金 '+money(r.cash);
-  rows.push(['目前',hold+'；今日水位 '+(Number.isFinite(core)?fmt(core,1)+' 分':'—')]);
+  rows.push(['目前',hold]);
   const s=r.cfg.strategy;
   if(s==='classic'){
     // Tomorrow's range includes today; use the engine's own reference for the next bar when it exists.
@@ -1583,7 +1668,7 @@ function btNow(r){
     else{const avg=r.cost/r.shares;rows.push(['平均成本',fmt(avg,2)+'，未實現 '+pctText(c/avg-1)]);
       if(p.exit==='gain')rows.push(['賣出點','收盤漲到 '+at(avg*(1+p.rise/100))]);if(p.exit==='trailing')rows.push(['移動停利',st.armed?'收盤跌到 '+at(st.peak*(1-p.trail/100)):'需先回到進場前高點 '+fmt(st.hi,2)+' 才啟動']);
       if(p.stop)rows.push(['停損點','收盤跌到 '+at(avg*(1-p.stop/100))])}
-  }else if(s==='smart_dca_water'||s==='core_satellite'){const m=p.mult[Math.max(1,Math.min(5,g||3))-1];rows.push(['本月扣款','水位 '+(g||'—')+' 分 → '+m+' 倍']);}
+  }else if(s==='smart_dca_water'||s==='core_satellite'||s==='value_averaging'){if(st.reserve>0)rows.push(['蓄水池',money(st.reserve)])}
   else if(s==='bias_tiered_dca'&&ctx.ma60[i]>0){const b=(c/ctx.ma60[i]-1)*100;rows.push(['MA60 乖離',fmt(b,1)+'%'])}
   else if(s==='tech_bb_rsi_dca'){const pb=(c-ctx.bbLo[i])/(ctx.bbUp[i]-ctx.bbLo[i]);rows.push(['%B／RSI',fmt(pb,2)+'／'+fmt(ctx.rsi[i],0)+'（加碼門檻 %B<'+p.pbLow+' 且 RSI<'+p.rsiLow+'）'])}
   else if(s==='dual_momentum'&&i>=120){const mom=0.5*(c/ctx.close[i-60]-1)+0.5*(c/ctx.close[i-120]-1);rows.push(['動能',pctText(mom)+(c>ctx.ma120[i]?'，在 MA120 之上':'，在 MA120 之下')+(st.on?'（滿倉中）':'（持現金）')])}
@@ -1593,6 +1678,44 @@ function btNow(r){
   else if(s==='rebalance_50_50'){const v=r.shares*c,eq=v+r.cash;rows.push(['持股比例',fmt(v/eq*100,0)+'%（目標 '+p.weight+'%，±'+p.band+'% 時再平衡）'])}
   return rows;
 }
+/* 🎯 Today's action: the selected rule applied to today's close, in plain words with amounts. */
+const BT_ZONE=['','高水位・偏貴','中段偏高','中段','偏低','低水位・便宜'];
+function btAction(r){
+  const ctx=btCtx,i=ctx.n-1,c=ctx.close[i],cfg=r.cfg,p=cfg.params,s=cfg.strategy,st=r.state,B=r.base,e=catalog.find(x=>x.code===selected);
+  // Tomorrow's range includes today's bar, like the water card above.
+  const ref=E.reference(ctx,cfg.ref.window,cfg.ref.anchorMode,cfg.ref.anchorCount),byClose=cfg.ref.anchorMode==='close';
+  const hi=Math.max(ref.hi[i],byClose?c:ctx.high[i]),lo=Math.min(ref.lo[i],byClose?c:ctx.low[i]),sc=hi>lo?E.score((c-lo)/(hi-lo),cfg.ref.method):null,g=sc?.grade;
+  // Close at or below which the tier is at least k (inverse of the score scale).
+  const priceFor=k=>lo+(cfg.ref.method==='fib'?[0,.236,.382,.618,.786,1][6-k]:1-(k-1)/5)*(hi-lo);
+  const amt=v=>'<b>'+money(v)+'</b>',px=v=>'<b>'+fmt(v,2)+' 元</b>';
+  let main='';
+  if((s==='smart_dca_water'||s==='core_satellite')&&g){
+    const m=p.mult[g-1],k=s==='core_satellite'?p.core/100:1,b=B*k,next=g<4?4:null;
+    main=m<1?`依「${btName()}」：水位 ${g} 分，本期扣款縮減為 <b>${m} 倍</b>＝${amt(b*m)}（基準 ${money(b)}），省下的 ${amt(b*(1-m))} 存入蓄水池。`
+      :m===1?`依「${btName()}」：水位 ${g} 分，維持標準扣款 ${amt(b)}。`
+      :`依「${btName()}」：水位 ${g} 分，低檔加碼 <b>${m} 倍</b>＝${amt(b*m)}，超出基準的部分由蓄水池支付（目前約 ${money(st.reserve||0)}）。`;
+    if(next)main+=`收盤跌到 ${px(priceFor(next))} 以下（水位 ${next} 分，較今日 ${pctText(priceFor(next)/c-1)}）時，加碼到 ${p.mult[next-1]} 倍。`;
+  }else if(s==='bias_tiered_dca'&&ctx.ma60[i]>0){
+    const b=(c/ctx.ma60[i]-1)*100,t=p.tiers,m=b>15?t[0]:b>=-5?t[1]:b>=-10?t[2]:b>=-15?t[3]:t[4];
+    main=`依「${btName()}」：MA60 乖離 ${fmt(b,1)}%，本期扣款 <b>${m} 倍</b>＝${amt(B*m)}${m<1?'，省下的錢存入蓄水池':''}。`;
+  }else if(s==='value_averaging'){
+    const g2=p.growth/100,mm=(st.m||0)+1,k=Math.min(r.N,mm),target=(g2>0?B*((Math.pow(1+g2,k)-1)/g2):B*k)*Math.pow(1+g2,mm-k),cur=r.shares*c,gap=target-cur;
+    main=gap>0?`依「定期定值」：下期目標市值 ${money(target)}，目前持股 ${money(cur)}，應補 ${amt(Math.min(gap,B*p.cap))}${gap>B*p.cap?'（已達單月上限 '+p.cap+' 倍）':''}。`
+      :`依「定期定值」：持股市值已超過目標 ${amt(-gap)}，${p.allowSell?'可賣出超出部分轉入蓄水池':'本期不扣款'}。`;
+  }else if(s==='dca')main=`依「定期定額」：每月照常扣款 ${amt(B)}，不看水位。`;
+  else if(s==='tech_bb_rsi_dca')main=`依「${btName()}」：每月底倉 ${amt(B*p.baseRatio)}；%B 低於 ${p.pbLow} 且 RSI 低於 ${p.rsiLow} 時加碼 ${amt(B*p.dipMult)}。`;
+  else if(s==='classic'){
+    const k=p.entry==='fib'?p.levels.length:1+p.adds;
+    if(!st.buys){const at=p.entry==='drop'?hi*(1-p.drop/100):p.entry==='fib'?hi-p.levels[0]*(hi-lo):g>=p.buyGrade?c:priceFor(p.buyGrade);
+      main=`依「${btName()}」：目前空手。收盤跌到 ${px(at)}（較今日 ${pctText(at/c-1)}）時買進第一批，約 ${amt(r.cash/k)}。`}
+    else main=`依「${btName()}」：持有中，已買 ${st.buys} 批，平均成本 ${fmt(r.cost/r.shares,2)} 元（未實現 ${pctText(c*r.shares/r.cost-1)}）。`;
+  }
+  const rows=btNow(r).filter(x=>!['下一個買點','平均成本'].includes(x[0]));
+  return `<h4>🎯 今日行動</h4><p class="bt-act-meta">${selected} ${e?.name||''}｜收盤 ${fmt(c,2)}｜水位 ${sc?fmt(sc.core,1):'—'} / 5${g?'（'+BT_ZONE[g]+'）':''}</p>`+
+    (main?`<p class="bt-act-main">${main}</p>`:'')+(rows.length?'<dl>'+rows.map(([a,b])=>`<dt>${a}</dt><dd>${b}</dd>`).join('')+'</dl>':'')+
+    '<p class="bt-act-note">依你選的規則與今日收盤推算，僅供參考，不是投資建議。</p>';
+}
+const btName=()=>E.PRESETS.find(x=>x.id===settings.bt.preset)?.name||'自訂組合';
 function btRenderTrades(){
   const r=btResult;if(!r)return;
   const list=r.trades.filter(t=>btTradeFilter==='all'||(btTradeFilter==='dca'?['dca','drip'].includes(t.kind):t.type===btTradeFilter&&!['dca','drip'].includes(t.kind)));
@@ -1611,14 +1734,21 @@ function renderBacktest(){
   const dx=r.xirr-r.dca.xirr,dm=r.dca.mdd-r.mdd,calS=r.calmar,calD=r.dca.mdd>0?r.dca.cagr/r.dca.mdd:null;
   $('btVerdict').innerHTML=r.cfg.strategy==='dca'?'<span class="bt-tag">這就是定期定額本身，可作為其他策略的比較基準。</span>':
     (dx>0?`<span class="bt-tag win">🏆 年化報酬勝過定期定額 ${fmt(dx*100,1)} 個百分點</span>`:`<span class="bt-tag lose">年化報酬落後定期定額 ${fmt(-dx*100,1)} 個百分點</span>`)+
-    (dm>0.005?`<span class="bt-tag win">最大回落少 ${fmt(dm*100,1)} 個百分點</span>`:'')+(calS!=null&&calD!=null&&calS>calD?`<span class="bt-tag win">風險調整後（Calmar）較佳：${fmt(calS,2)} vs ${fmt(calD,2)}</span>`:'');
-  const k=[['策略年化報酬',r.xirr,v=>pctText(v),'總報酬 '+pctText(r.ret)],['定期定額年化',r.dca.xirr,v=>pctText(v),'C ÷ '+settings.bt.dcaPeriods+' 每月一期'],['買進持有年化',r.bh.xirr,v=>pctText(v),'第一天全部投入'],['最大回落',r.mdd,v=>'−'+fmt(v*100,1)+'%','定期定額 −'+fmt(r.dca.mdd*100,1)+'%']];
-  const small=[['期間',r.start+' 至 '+r.end],['資金基數',money(r.contributed)],['期末資產',money(r.equity)],['Calmar',r.calmar!=null?fmt(r.calmar,2):'—'],['Sharpe',r.sharpe!=null?fmt(r.sharpe,2):'—'],['平均持股比例',fmt(r.utilization*100,0)+'%'],['股利入帳',money(r.dividends)],['停泊利息',money(r.interest)],['手續費與稅',money(r.fees)],['交易',r.buys+' 買／'+r.sells+' 賣'+(r.sells?'（勝率 '+fmt(r.wins/r.sells*100,0)+'%）':'')]];
-  if(!$('btKpis').querySelector('.bt-big'))$('btKpis').innerHTML=`<div class="bt-big">${k.map((_,j)=>`<div><small></small><b data-k="${j}"></b><span></span></div>`).join('')}</div><div class="bt-small"></div>`;
+    (dm>0.005?`<span class="bt-tag win">最大回落少 ${fmt(dm*100,1)} 個百分點</span>`:'')+(calS!=null&&calD!=null&&calS>calD?`<span class="bt-tag win">風險調整後（Calmar）較佳：${fmt(calS,2)} vs ${fmt(calD,2)}</span>`:'')+
+    // Mostly-cash strategies: the pot's return understates what the invested part earned; say both.
+    (r.cfg.strategy!=='dca'&&r.utilization<0.5?`<span class="bt-tag shield">🛡️ 低曝險防禦型：平均只動用 ${fmt(r.utilization*100,0)}% 資金${r.dca.mdd>0&&r.mdd<r.dca.mdd?'，最大回落比定期定額少 '+fmt((1-r.mdd/r.dca.mdd)*100,0)+'%':''}；實動資金年化 ${pctText(r.roic)}</span>`:'');
+  // Same three lines on every benchmark card: annualised (XIRR) big; total return and final value small.
+  const wan=v=>fmt(v/10000,v>=1e7?0:1)+' 萬',sub=x=>'總報酬 '+pctText(x.ret)+' · 期末 '+wan(x.equity);
+  const k=[['策略績效',r.xirr,v=>pctText(v),sub(r)],['定期定額基準',r.dca.xirr,v=>pctText(v),sub(r.dca)],['買進持有基準',r.bh.xirr,v=>pctText(v),sub(r.bh)],['最大回落',r.mdd,v=>'−'+fmt(v*100,1)+'%','定期定額 −'+fmt(r.dca.mdd*100,1)+'%']];
+  const small=[['期間',r.start+' 至 '+r.end],['資金基數',money(r.contributed)+(r.monthly?'（每月入金）':'')],['實動資金年化',pctText(r.roic)],['期末現金',money(r.cash)],['Calmar',r.calmar!=null?fmt(r.calmar,2):'—'],['Sharpe',r.sharpe!=null?fmt(r.sharpe,2):'—'],['平均持股比例',fmt(r.utilization*100,0)+'%'],['股利入帳',money(r.dividends)],['停泊利息',money(r.interest)],['手續費與稅',money(r.fees)],['基準手續費','定額 '+money(r.dca.fees)+'／持有 '+money(r.bh.fees)],['交易',r.buys+' 買／'+r.sells+' 賣'+(r.sells?'（勝率 '+fmt(r.wins/r.sells*100,0)+'%）':'')]];
+  if(!$('btKpis').querySelector('.bt-big'))$('btKpis').innerHTML=`<p class="bt-kpi-note">大字＝年化報酬（XIRR，依實際入金日計算）</p><div class="bt-big">${k.map((_,j)=>`<div><small></small><b data-k="${j}"></b><span></span></div>`).join('')}</div><div class="bt-small"></div>`;
   $('btKpis').querySelectorAll('.bt-big>div').forEach((el,j)=>{const [label,v,f,sub]=k[j];el.querySelector('small').textContent=label;el.querySelector('span').textContent=sub;const b=el.querySelector('b');b.className=j<3?(v>0?'up':v<0?'down':''):'';btAnimate(b,v,f)});
   $('btKpis').querySelector('.bt-small').innerHTML=small.map(([a,b])=>`<span><small>${a}</small>${b}</span>`).join('');
   btDrawCharts(r);
-  $('btNow').innerHTML='<h4>今日狀態</h4><dl>'+btNow(r).map(([a,b])=>`<dt>${a}</dt><dd>${b}</dd>`).join('')+'</dl>';
+  $('btNow').innerHTML=btAction(r);
+  // Leveraged and inverse ETFs decay in sideways markets; averaging down without a stop is the risky combination.
+  const risk=etfRisk(selected),dip=['dca','smart_dca_water','value_averaging','bias_tiered_dca','tech_bb_rsi_dca','core_satellite'].includes(cfg.strategy)||cfg.strategy==='classic'&&!cfg.params.stop;
+  $('btRisk').innerHTML=risk&&(risk.kind==='inverse'||risk.kind==='lev'&&dip)?`<div class="bt-risk-box ${risk.kind}"><p><b>${risk.tag}</b>${risk.warn}</p><span><button class="pill mini" type="button" data-preset="rebalance">改用 50:50 動態再平衡</button><button class="pill mini" type="button" data-preset="momentum">改用雙動能趨勢</button></span></div>`:'';
   btRenderTrades();
   if(cfg.strategy==='classic')btRenderGrid(ctx,cfg,start,end);
   if($('btRollingBox').open)btRenderRolling();else $('btRolling').innerHTML='';
@@ -1667,11 +1797,11 @@ $('btOptimize').addEventListener('click',()=>{
     }
     const calD=dcaRef.mdd>0?dcaRef.cagr/dcaRef.mdd:0,board=(title,key,dir,fmtv)=>{const seen=new Set(),list=[...rows].filter(x=>x.p.strategy!=='dca').sort((a,b)=>dir*((b.r[key]??-9)-(a.r[key]??-9))).filter(x=>!seen.has(x.p.id)&&seen.add(x.p.id)).slice(0,3);
       return `<section class="bt-board"><h4>${title}</h4>${list.map((x,j)=>`<button class="bt-rank" type="button" data-preset="${x.p.id}" data-window="${x.w}"><b>${j+1}</b><span>${x.p.name}${x.usesWater?'（'+x.w+' 日）':''}</span><em>${fmtv(x.r)}</em></button>`).join('')}</section>`};
-    $('btOptNote').textContent=`${selected}，${settings.bt.period==='custom'?bars[start].date+' 至 '+bars[end].date:settings.bt.period==='all'?'全部資料':'近 '+settings.bt.period+' 年'}，資金 ${fmt(settings.bt.capital/10000,0)} 萬元、定期定額分 ${settings.bt.dcaPeriods} 期；共試算 ${rows.length} 組。定期定額：年化 ${pctText(dcaRef.xirr)}、最大回落 −${fmt(dcaRef.mdd*100,1)}%、Calmar ${fmt(calD,2)}。`;
+    $('btOptNote').textContent=`${selected}，${settings.bt.period==='custom'?bars[start].date+' 至 '+bars[end].date:settings.bt.period==='all'?'全部資料':'近 '+settings.bt.period+' 年'}，資金 ${fmt(settings.bt.capital/10000,0)} 萬元、定期定額分 ${btN()} 期；共試算 ${rows.length} 組。定期定額：年化 ${pctText(dcaRef.xirr)}、最大回落 −${fmt(dcaRef.mdd*100,1)}%、Calmar ${fmt(calD,2)}。`;
     $('btOptBody').innerHTML='<div class="bt-boards">'+board('年化報酬最高','xirr',1,r=>pctText(r.xirr)+(r.xirr>r.dca.xirr?' 🏆':''))+board('風險調整後（Calmar）最高','calmar',1,r=>fmt(r.calmar,2)+(r.calmar>calD?' 🏆':''))+board('最大回落最小','mdd',-1,r=>'−'+fmt(r.mdd*100,1)+'%，年化 '+pctText(r.xirr))+'</div><p class="small">🏆 表示該指標勝過定期定額。歷史最佳參數未必在未來有效，請搭配「滾動期間勝率」一起判斷。點任一列即可套用。</p>';
   },30);
 });
-$('btOptBody').addEventListener('click',e=>{const t=e.target.closest('.bt-rank');if(!t)return;btCloseSheet();const ref={...settings.bt.ref,window:t.dataset.window};btApplyPreset(t.dataset.preset,{ref});$('backtestCard').scrollIntoView({behavior:'smooth',block:'start'})});
+$('btOptBody').addEventListener('click',e=>{const t=e.target.closest('.bt-rank');if(!t)return;btCloseSheet();const cur=btRef(),ref={...cur,window:t.dataset.window};btApplyPreset(t.dataset.preset,ref.window===cur.window?{ref}:{ref,sync:false});$('backtestCard').scrollIntoView({behavior:'smooth',block:'start'})});
 function btCloseSheet(){$('btOptSheet').classList.add('hidden');document.body.classList.remove('searching')}
 $('btOptClose').addEventListener('click',btCloseSheet);$('btOptSheet').addEventListener('click',e=>{if(e.target===$('btOptSheet'))btCloseSheet()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('btOptSheet').classList.contains('hidden'))btCloseSheet()});
@@ -1692,7 +1822,7 @@ function applyMarkers(){
   lwc.s.candle.setMarkers(markers);
 }
 const btDrawChart=drawChart;
-drawChart=function(keepView){btDrawChart(keepView);if(bars.length&&btBarsRef!==bars){btCtx=null;renderBacktest()}else applyMarkers()};
+drawChart=function(keepView){btDrawChart(keepView);if(bars.length&&btBarsRef!==bars){btCtx=null;btFillForm();renderBacktest()}else{applyMarkers();btFollowTop()}};
 const btPrefs=prefs;
 prefs=function(){btPrefs();if(btCharts){const o={...chartOptions(),handleScroll:false,handleScale:false};btCharts.top.applyOptions({...o,timeScale:{...o.timeScale,visible:false}});btCharts.under.applyOptions(o)}};
 // Brent / FX arrive after the first render; the macro filter needs them.
@@ -1878,7 +2008,7 @@ function renderHot(){
   // Shown while the search box is empty: what visitors looked at most in the last 30 days.
   const q=$('search').value.trim(),list=(popular&&popular.length>=3?popular:POPULAR).slice(0,8);
   $('hotSearches').classList.toggle('hidden',!!q);
-  $('hotList').innerHTML=list.map(c=>{const e=catalog.find(x=>x.code===c);return e?`<button class="pill mini" type="button" data-hot="${c}">${c} ${e.name}</button>`:''}).join('');
+  $('hotList').innerHTML=list.map(c=>{const e=catalog.find(x=>x.code===c);const r=etfRisk(c);return e?`<button class="pill mini" type="button" data-hot="${c}">${c} ${e.name}${r?`<span class="risk-tag ${r.kind}">${r.tag}</span>`:''}</button>`:''}).join('');
   $('hotNote').textContent=popular&&popular.length>=3?'近 30 天最多人查看':'常用 ETF（熱門資料累積中）';
 }
 $('hotList').addEventListener('click',e=>{const b=e.target.closest('[data-hot]');if(b){$('search').value='';pick(b.dataset.hot)}});
@@ -1918,6 +2048,60 @@ document.addEventListener('visibilitychange',()=>{
 });
 window.addEventListener('pagehide',()=>{if(!document.hidden){activeMs+=Date.now()-visibleSince;endView();track('leave',{seconds:activeMs/1000,code:selected})}flushEvents()});
 track('visit',{code:selected});
+
+/* ---------- Beginner / expert mode for the backtest ---------- */
+// Beginner mode hides the fine-tuning fields; the hidden values are pinned to the safe defaults
+// (one installment per month, water levels synced with the observation settings above).
+settings.uiMode=settings.uiMode==='expert'?'expert':'novice';
+function applyUiMode(){
+  const novice=settings.uiMode==='novice';document.body.classList.toggle('novice',novice);
+  $('btMode').querySelectorAll('[data-mode]').forEach(b=>{const on=b.dataset.mode===settings.uiMode;b.classList.toggle('active',on);b.setAttribute('aria-pressed',String(on))});
+  if(novice&&(settings.bt.dcaPeriods!=='auto'||!settings.bt.sync)){settings.bt.dcaPeriods='auto';settings.bt.sync=true;save();btFillForm();if(btResult)btSchedule()}
+}
+$('btMode').addEventListener('click',e=>{const t=e.target.closest('[data-mode]');if(!t)return;settings.uiMode=t.dataset.mode;save();applyUiMode()});
+applyUiMode();
+
+/* ---------- Plain-language scenarios for the observation window ---------- */
+function markScenario(){$('scenarios').querySelectorAll('[data-win]').forEach(b=>b.classList.toggle('on',b.dataset.win===String(settings.window)))}
+$('scenarios').addEventListener('click',e=>{
+  const t=e.target.closest('[data-win]');if(!t)return;const sel=$('window');
+  if(![...sel.options].some(o=>o.value===t.dataset.win))customOption(sel,t.dataset.win,t.dataset.win+' 交易日（自訂）');
+  sel.value=t.dataset.win;sel.dispatchEvent(new Event('change',{bubbles:true}));markScenario();
+});
+$('window').addEventListener('change',()=>setTimeout(markScenario,0));
+markScenario();
+
+/* ---------- Weights: used in proportion, so any total works; live preview of the combined score ---------- */
+const WEIGHT_LABELS=['本檔 ETF','大盤價格','大盤量能','布蘭特原油','美元／新台幣'];
+const shareUpdateWeights=updateWeights;
+updateWeights=function(){
+  shareUpdateWeights();
+  const w=settings.weights||[],sum=w.reduce((a,b)=>a+b,0),share=w.map(x=>sum>0?x/sum:0);
+  ['oEtf','oIndex','oVolume','oBrent','oFx'].forEach((k,i)=>$(k).textContent=Math.round(share[i]*100)+'%');
+  $('weightStatus').textContent=sum===100?'權重合計 100%':sum>0?`權重合計 ${sum}%，已依比例換算成 100%`:'請至少設定一項權重';
+  $('weightBar').innerHTML=share.map((s,i)=>s>0?`<span class="w${i}" style="width:${(s*100).toFixed(2)}%" title="${WEIGHT_LABELS[i]} ${Math.round(s*100)}%">${s>=0.12?WEIGHT_LABELS[i]+' '+Math.round(s*100)+'%':''}</span>`:'').join('');
+  const vs=marketPosition?.volumeScore??0,v=settings.volumeDirection==='low'?5-vs:vs;
+  const ready=[!!position,!!marketPosition,!!marketPosition&&settings.volumeDirection!=='off'&&marketPosition.volumeGrade!=null,!!brentPosition,!!fxPosition];
+  if(!position||sum<=0||share.some((s,i)=>s>0&&!ready[i])){
+    $('combined').textContent='—';$('combinedExtra').textContent=sum<=0?'請至少設定一項權重':'資料不足或量能方向未設定';$('weightPreview').textContent='';return}
+  const core=[position.core,marketPosition?.index.core||0,v||0,brentPosition?.core||0,fxPosition?.core||0].reduce((a,x,i)=>a+share[i]*x,0);
+  const ext=[position.raw,marketPosition?.index.raw||0,v||0,brentPosition?.raw||0,fxPosition?.raw||0].reduce((a,x,i)=>a+share[i]*x,0);
+  $('combined').textContent=fmt(core,1)+' / 5';$('combinedExtra').textContent='延伸綜合分 '+fmt(ext,1);
+  const d=core-position.core;
+  $('weightPreview').innerHTML=`📊 只看 ${selected}：<b>${fmt(position.core,1)}</b> 分 → 依你的權重：<b>${fmt(core,1)}</b> 分`+(Math.abs(d)>=0.05?`（${d>0?'偏向加碼':'偏向減碼'} ${fmt(Math.abs(d),1)} 分）`:'');
+};
+// The sliders were bound to the first version of updateWeights; run the current chain after them.
+for(const id of ['wEtf','wIndex','wVolume','wBrent','wFx','volumeDirection','normalize'])$(id).addEventListener(id==='normalize'?'click':id==='volumeDirection'?'change':'input',()=>updateWeights());
+
+/* ---------- Back to the observation area ---------- */
+const toTop=document.createElement('button');toTop.type='button';toTop.className='to-top hidden';toTop.textContent='⬆ 回到上方觀測區';
+toTop.addEventListener('click',()=>{const t=document.querySelector('.toolbar');window.scrollTo({top:t.getBoundingClientRect().top+scrollY-12,behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'})});
+document.body.append(toTop);
+// Shown once the price chart has scrolled out of view, hidden while a sheet is open.
+// (A scroll check, not an IntersectionObserver: a jump straight past the chart never changes its intersection.)
+const chartCard=document.querySelector('.chart-card');let toTopFrame=0;
+const placeToTop=()=>{toTopFrame=0;toTop.classList.toggle('hidden',!chartCard||chartCard.getBoundingClientRect().bottom>0)};
+window.addEventListener('scroll',()=>{if(!toTopFrame)toTopFrame=requestAnimationFrame(placeToTop)},{passive:true});placeToTop();
 
 })();
 </script>

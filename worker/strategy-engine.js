@@ -64,7 +64,7 @@ const ChaoweiEngine=(()=>{
   }
   function account(ctx,cfg){
     const fee=cfg.fee/100*cfg.discount/100,tax=cfg.tax/100;
-    return{cash:0,shares:0,cost:0,fee,tax,fees:0,trades:[],
+    return{cash:0,shares:0,cost:0,fee,tax,fees:0,trades:[],divs:[],
       buy(i,amount,reason,kind){
         const c=ctx.close[i],spend=Math.min(amount,this.cash);if(!(spend>0))return 0;
         let sh=spend/(c*(1+fee));if(cfg.wholeShares)sh=Math.floor(sh);if(!(sh>0))return 0;
@@ -86,15 +86,19 @@ const ChaoweiEngine=(()=>{
   function run(ctx,cfg,start,end){
     end=end==null?ctx.n-1:end;start=Math.max(0,start);
     const strat=STRATEGIES[cfg.strategy]||STRATEGIES.classic,months=[];for(let i=start;i<=end;i++)if(i===start||ctx.monthStart[i])months.push(i);
-    // One capital base C for everyone, deposited on the first day. 定期定額 invests C ÷ N on the first trading
-    // day of each of the first N months; staged strategies split C by their number of stages; smart-DCA
-    // strategies scale the same monthly base C ÷ N. Unspent cash earns the parking rate.
-    const lump=true,inflowAt=new Map([[start,cfg.capital]]),N=Math.max(1,Math.round(Number(cfg.dcaPeriods)||12));
-    const base=cfg.capital/N,dcaMonths=new Set(months.slice(0,N));
+    // One capital base C for everyone. N defaults to the number of months in the window ('auto'), so a
+    // five-year test spreads 定期定額 over 60 months instead of spending C in the first year.
+    // Pool mode (default): C is in the account on day one; 定期定額 invests C ÷ N on the first trading day
+    // of each of the first N months; staged strategies split C by their number of stages.
+    // Monthly mode: C ÷ N is deposited on each of those days instead (a salary), and buy-and-hold still
+    // invests C on day one with its own cash flows, so its XIRR stays comparable.
+    const auto=cfg.dcaPeriods==null||cfg.dcaPeriods==='auto',N=auto?months.length:Math.max(1,Math.round(Number(cfg.dcaPeriods)||12));
+    const monthly=cfg.capitalMode==='monthly',lump=!monthly,base=cfg.capital/N,dcaMonths=new Set(months.slice(0,N));
+    const inflowAt=monthly?new Map(months.slice(0,N).map(i=>[i,base])):new Map([[start,cfg.capital]]);
     const park=Math.pow(1+cfg.parking/100,1/365)-1,acc=account(ctx,cfg),state={};
-    // Benchmarks: buy-and-hold (inflows invested at once) and monthly investing (a lump split by month).
+    // Benchmarks: buy-and-hold (C invested on day one) and 定期定額 (C ÷ N per month), same fees and tax.
     const bh=account(ctx,cfg),dca=account(ctx,cfg);
-    const flows=[],series=[],bhSeries=[],dcaSeries=[];
+    const flows=[],bhFlows=monthly?[[Date.parse(ctx.bars[start].date),-cfg.capital]]:flows,series=[],bhSeries=[],dcaSeries=[];
     let contributed=0,interest=0,dividends=0,nav=1,prevEq=0,peakNav=1,mdd=0,utilSum=0,days=0,lastT=Date.parse(ctx.bars[start].date),rets=[];
     let bhNav=1,bhPrev=0,bhPeak=1,bhMdd=0,dcaNav=1,dcaPrev=0,dcaPeak=1,dcaMdd=0;
     const helpers={base,months,lump,N,dcaMonths,water:cfg.ref?water(ctx,cfg.ref):null};
@@ -103,31 +107,37 @@ const ChaoweiEngine=(()=>{
       const t=Date.parse(ctx.bars[i].date),dd=Math.round((t-lastT)/DAY);lastT=t;
       // Interest on parked cash for the calendar days since the previous bar.
       if(dd>0)for(const a of [acc,bh,dca]){const r=a.cash*(Math.pow(1+park,dd)-1);a.cash+=r;if(a===acc)interest+=r}
-      const inflow=inflowAt.get(i)||0;
-      if(inflow){acc.cash+=inflow;bh.cash+=inflow;dca.cash+=inflow;contributed+=inflow;flows.push([t,-inflow])}
+      const inflow=inflowAt.get(i)||0,bhIn=monthly?(i===start?cfg.capital:0):inflow;
+      if(inflow){acc.cash+=inflow;dca.cash+=inflow;contributed+=inflow;flows.push([t,-inflow])}
+      bh.cash+=bhIn;
       // Dividends on shares held before today's trades.
-      if(ctx.div[i]>0)for(const a of [acc,bh,dca]){const d=a.shares*ctx.div[i];if(d>0){a.cash+=d;if(a===acc)dividends+=d;if(cfg.drip)a.buy(i,d,'配息再投入','drip')}}
-      if(inflow)bh.buy(i,bh.cash,'買進持有','bench');
+      if(ctx.div[i]>0)for(const a of [acc,bh,dca]){const d=a.shares*ctx.div[i];if(d>0){a.cash+=d;a.divs.push([t,d]);if(a===acc)dividends+=d;if(cfg.drip)a.buy(i,d,'配息再投入','drip')}}
+      if(bhIn)bh.buy(i,bh.cash,'買進持有','bench');
       if(dcaMonths.has(i))dca.buy(i,base,'定期定額','bench');
       strat.day(i,ctx,cfg,acc,state,helpers,inflow);
       const eq=acc.value(i),c=ctx.close[i];
       // Time-weighted return strips out deposits, so drawdowns are not hidden by new money.
       if(prevEq>0)nav*=(eq-inflow)/prevEq;prevEq=eq;peakNav=Math.max(peakNav,nav);const ddown=nav/peakNav-1;mdd=Math.min(mdd,ddown);
       if(series.length)rets.push(nav/series.at(-1).nav-1);
-      const bq=bh.value(i);if(bhPrev>0)bhNav*=(bq-inflow)/bhPrev;bhPrev=bq;bhPeak=Math.max(bhPeak,bhNav);bhMdd=Math.min(bhMdd,bhNav/bhPeak-1);
+      const bq=bh.value(i);if(bhPrev>0)bhNav*=(bq-bhIn)/bhPrev;bhPrev=bq;bhPeak=Math.max(bhPeak,bhNav);bhMdd=Math.min(bhMdd,bhNav/bhPeak-1);
       const dq=dca.value(i);if(dcaPrev>0)dcaNav*=(dq-inflow)/dcaPrev;dcaPrev=dq;dcaPeak=Math.max(dcaPeak,dcaNav);dcaMdd=Math.min(dcaMdd,dcaNav/dcaPeak-1);
       utilSum+=eq>0?acc.shares*c/eq:0;days++;
       series.push({time:ctx.bars[i].date,value:eq,nav,dd:ddown,exposure:eq>0?acc.shares*c/eq:0,contributed});
       bhSeries.push({time:ctx.bars[i].date,value:bq,dd:bhNav/bhPeak-1});dcaSeries.push({time:ctx.bars[i].date,value:dq,dd:dcaNav/dcaPeak-1});
     }
     const tEnd=Date.parse(ctx.bars[end].date),years=Math.max(1/365,(tEnd-Date.parse(ctx.bars[start].date))/(365.25*DAY));
-    const summary=(a,navEnd,m)=>{const eq=a.value(end);return{equity:eq,ret:contributed?eq/contributed-1:0,xirr:xirr([...flows,[tEnd,eq]]),cagr:Math.pow(navEnd,1/years)-1,mdd:-m}};
-    const s=summary(acc,nav,mdd),mean=rets.reduce((x,y)=>x+y,0)/Math.max(1,rets.length),sd=Math.sqrt(rets.reduce((x,y)=>x+(y-mean)**2,0)/Math.max(1,rets.length-1));
+    const summary=(a,navEnd,m,fl,paid)=>{const eq=a.value(end);return{equity:eq,ret:paid?eq/paid-1:0,xirr:xirr([...fl,[tEnd,eq]]),cagr:Math.pow(navEnd,1/years)-1,mdd:-m,fees:a.fees}};
+    // Return on deployed capital: XIRR of the position alone (buys out, sales and dividends in, final
+    // holding back), so cash waiting on the sidelines does not count. Answers "when it was invested, how
+    // hard did the money work?" for strategies that sit mostly in cash.
+    const sleeve=acc.trades.map(x=>[Date.parse(x.date),x.type==='buy'?-x.amount:x.amount]).concat(acc.divs);
+    if(acc.shares>0)sleeve.push([tEnd,acc.shares*ctx.close[end]]);sleeve.sort((x,y)=>x[0]-y[0]);
+    const s=summary(acc,nav,mdd,flows,contributed),mean=rets.reduce((x,y)=>x+y,0)/Math.max(1,rets.length),sd=Math.sqrt(rets.reduce((x,y)=>x+(y-mean)**2,0)/Math.max(1,rets.length-1));
     const sells=acc.trades.filter(x=>x.type==='sell'&&x.kind!=='rebalance');
-    return{cfg,start:ctx.bars[start].date,end:ctx.bars[end].date,years,contributed,...s,
+    return{cfg,start:ctx.bars[start].date,end:ctx.bars[end].date,years,contributed,N,base,monthly,...s,roic:acc.trades.length?xirr(sleeve):null,
       calmar:s.mdd>0?s.cagr/s.mdd:null,sharpe:sd>0?(mean-park)/sd*Math.sqrt(245):null,utilization:utilSum/Math.max(1,days),
       interest,dividends,fees:acc.fees,trades:acc.trades,sells:sells.length,wins:sells.filter(x=>x.pnl>0).length,buys:acc.trades.filter(x=>x.type==='buy').length,
-      shares:acc.shares,cost:acc.cost,cash:acc.cash,state,series,bh:{...summary(bh,bhNav,bhMdd),series:bhSeries},dca:{...summary(dca,dcaNav,dcaMdd),series:dcaSeries}};
+      shares:acc.shares,cost:acc.cost,cash:acc.cash,state,series,bh:{...summary(bh,bhNav,bhMdd,bhFlows,cfg.capital),series:bhSeries},dca:{...summary(dca,dcaNav,dcaMdd,flows,contributed),series:dcaSeries}};
   }
 
   /* ---------- strategies ---------- */
@@ -172,23 +182,36 @@ const ChaoweiEngine=(()=>{
     if(why){acc.sell(i,acc.shares,why,'exit');st.buys=0;st.armed=false}
   }
   const multByGrade=(p,g)=>p.mult[Math.max(1,Math.min(5,g))-1];
+  // Two pots for the multiplier strategies: each scheduled month releases B = C ÷ N. A month with a
+  // multiplier below 1 spends B × m and moves the rest into a reserve; a month above 1 spends B plus an
+  // extra drawn from the reserve (B × (m − 1), or draw % of the reserve if larger). Spending can never
+  // run ahead of the schedule, so the pot does not run dry in year one, and after the N months the
+  // reserve is still there for low-water months. Sale proceeds (trims) also go to the reserve.
+  function paced(i,acc,st,h,m,reason,draw){
+    const B=h.dcaMonths.has(i)?h.base:0,reserve=st.reserve||0,regular=B*Math.min(1,Math.max(0,m));
+    const extra=m>1?Math.min(reserve,Math.max(h.base*(m-1),reserve*(draw||0)/100)):0,before=acc.cash;
+    if(regular+extra>0)acc.buy(i,regular+extra,reason+(extra>0.5?'（動用蓄水池 '+Math.round(extra)+' 元）':''),'dca');
+    st.reserve=Math.max(0,reserve+B-(before-acc.cash));
+  }
+  const toReserve=(st,net)=>{st.reserve=(st.reserve||0)+(net||0)};
   const STRATEGIES={
     classic:{day:classicDay},
     dca:{day(i,ctx,cfg,acc,st,h){if(h.dcaMonths.has(i))acc.buy(i,h.base,'定期定額：C ÷ '+h.N,'dca')}},
     smart_dca_water:{day(i,ctx,cfg,acc,st,h){
-      if(!monthDay(ctx,i,h.months[0]))return;const g=h.water.grade[i]||3,m=multByGrade(cfg.params,g);
-      acc.buy(i,h.base*m,'潮位定投：水位 '+g+' 分 × '+m,'dca');
-      const p=cfg.params;if(p.trim&&g===1&&ctx.ma60[i]&&ctx.close[i]/ctx.ma60[i]-1>p.trimBias/100)acc.sell(i,acc.shares*p.trimPct/100,'高檔減碼 '+p.trimPct+'%','trim');
+      if(!monthDay(ctx,i,h.months[0]))return;const p=cfg.params,g=h.water.grade[i]||3,m=multByGrade(p,g);
+      paced(i,acc,st,h,m,'潮位定投：水位 '+g+' 分 × '+m,g>=5?p.draw:0);
+      if(p.trim&&g===1&&ctx.ma60[i]&&ctx.close[i]/ctx.ma60[i]-1>p.trimBias/100)toReserve(st,acc.sell(i,acc.shares*p.trimPct/100,'高檔減碼 '+p.trimPct+'%，轉入蓄水池','trim'));
     }},
     value_averaging:{day(i,ctx,cfg,acc,st,h){
-      if(!monthDay(ctx,i,h.months[0]))return;const p=cfg.params,g=p.growth/100;st.m=(st.m||0)+1;
-      const target=g>0?h.base*((Math.pow(1+g,st.m)-1)/g):h.base*st.m,cur=acc.shares*ctx.close[i],gap=target-cur;
-      if(gap>0)acc.buy(i,Math.min(gap,h.base*p.cap),'定期定值：補到目標市值','dca');
-      else if(gap<0&&p.allowSell)acc.sell(i,-gap/ctx.close[i],'定期定值：超出目標的部分轉回現金','trim');
+      // After the N scheduled months no new installments are added; the target keeps only its monthly growth.
+      if(!monthDay(ctx,i,h.months[0]))return;const p=cfg.params,g=p.growth/100;st.m=(st.m||0)+1;const k=Math.min(h.N,st.m);
+      const target=(g>0?h.base*((Math.pow(1+g,k)-1)/g):h.base*k)*Math.pow(1+g,st.m-k),cur=acc.shares*ctx.close[i],gap=target-cur;
+      if(gap>=0)paced(i,acc,st,h,Math.min(p.cap,gap/h.base),'定期定值：補到目標市值');
+      else{if(h.dcaMonths.has(i))toReserve(st,h.base);if(p.allowSell)toReserve(st,acc.sell(i,-gap/ctx.close[i],'定期定值：超出目標的部分轉入蓄水池','trim'))}
     }},
     bias_tiered_dca:{day(i,ctx,cfg,acc,st,h){
       if(!monthDay(ctx,i,h.months[0])||!(ctx.ma60[i]>0))return;const b=(ctx.close[i]/ctx.ma60[i]-1)*100,t=cfg.params.tiers;
-      const m=b>15?t[0]:b>=-5?t[1]:b>=-10?t[2]:b>=-15?t[3]:t[4];acc.buy(i,h.base*m,'乖離定投：MA60 乖離 '+b.toFixed(1)+'% × '+m,'dca');
+      const m=b>15?t[0]:b>=-5?t[1]:b>=-10?t[2]:b>=-15?t[3]:t[4];paced(i,acc,st,h,m,'乖離定投：MA60 乖離 '+b.toFixed(1)+'% × '+m);
     }},
     tech_bb_rsi_dca:{day(i,ctx,cfg,acc,st,h){
       const p=cfg.params;if(monthDay(ctx,i,h.months[0]))acc.buy(i,h.base*p.baseRatio,'技術存股：每月底倉','dca');
@@ -256,7 +279,7 @@ const ChaoweiEngine=(()=>{
   const PARAMS={
     classic:{entry:'drop',drop:20,levels:[0.382,0.5,0.618],buyGrade:5,step:10,adds:3,exit:'gain',rise:20,sellGrade:1,fibExt:1,trail:10,atrMult:3,stop:0,maxDays:0},
     dca:{},
-    smart_dca_water:{mult:[0.3,0.7,1,1.8,3],trim:false,trimBias:25,trimPct:15},
+    smart_dca_water:{mult:[0.3,0.7,1,1.8,3],draw:30,trim:false,trimBias:25,trimPct:15},
     value_averaging:{growth:0.6,cap:3.5,allowSell:true},
     bias_tiered_dca:{tiers:[0.5,1,1.5,2.2,3.5]},
     tech_bb_rsi_dca:{baseRatio:0.6,dipMult:2,pbLow:0.15,rsiLow:35,pbHigh:1.05,rsiHigh:80,trimPct:10},
