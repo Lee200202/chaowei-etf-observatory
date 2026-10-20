@@ -106,6 +106,12 @@ renderPosition=function(){
     $('barPrice').textContent=fmt(liveQuote.price,2);
     $('barDate').textContent=liveQuote.date.slice(5);
   }
+  const prev=bars.at(-2),reference=provisional?(liveQuote.previousClose||last.close):prev?.close;
+  const value=provisional?liveQuote.price:last?.close;
+  for(const id of ['price','barPrice']){
+    $(id).classList.toggle('price-up',Number.isFinite(value)&&Number.isFinite(reference)&&value>reference);
+    $(id).classList.toggle('price-down',Number.isFinite(value)&&Number.isFinite(reference)&&value<reference);
+  }
 };
 
 const originalComputePosition=computePosition;
@@ -248,8 +254,7 @@ drawChart=function(keepView=false){
   if(o==='macd')guide(s.dif,0,'');
   if(old)main.timeScale().setVisibleLogicalRange(old);else setVisible(chartRange);
   if(o!=='none')requestAnimationFrame(()=>{const r=main.timeScale().getVisibleLogicalRange();if(r)osc.timeScale().setVisibleLogicalRange(r)});
-  const adj=historyMeta?.adjustments||[];
-  $('chartCaption').textContent=`${ivName()} K 共 ${all.length.toLocaleString()} 根${provisional?' · 最後一根為富果盤中暫值':''} · 紅漲綠跌（台股慣例）· 下方柱狀為成交量（張）· ${adj.length?'分割前價格已依比例還原；':''}未納入配息再投入。滾輪或雙指縮放、拖曳平移，游標停在 K 棒上看當日數值。`;
+  $('chartCaption').textContent=`${ivName()} K · ${all.length.toLocaleString()} 根${provisional?' · 末根暫值':''} · 紅漲綠跌 · 量：張 · 滾輪縮放、拖曳平移 · 未含息`;
   $('chart').setAttribute('aria-label',all.length?`${selected} ${ivName()} K，${all[0].date} 至 ${all.at(-1).date}`:'尚未取得 K 線資料');
   updateLegend(null);renderTechRead(provisional?all.slice(0,-1):all,provisional?technical(all.slice(0,-1)):tech);
 };
@@ -296,7 +301,12 @@ function renderTechRead(all,t){
   const r=t.rsi[n];rows.push(['RSI 14',fmt(r,1),r>=70?'位於 70 以上的偏熱區。':r<=30?'位於 30 以下的偏冷區。':`位於 30–70 中性區，${r>=50?'漲幅略占上風':'跌幅略占上風'}。`]);
   const kc=lastCross(t.k,t.d);rows.push(['KD 9',`K ${fmt(t.k[n],1)}／D ${fmt(t.d[n],1)}`,`${t.k[n]>=80?'K 值在 80 以上高檔':t.k[n]<=20?'K 值在 20 以下低檔':'K 值在中段'}；${kc?`${kc.ago===0?'本'+u:kc.ago+' '+u+'前'} K ${kc.up?'向上':'向下'}穿越 D`:'近期無交叉'}。`]);
   const vr=all[n].volume/t.volMa20[n];rows.push(['量能',`${fmt(vr,2)} 倍`,`最新成交 ${lots(all[n].volume)}，為 20 ${u}均量的 ${fmt(vr,2)} 倍（${vr>=1.5?'明顯放量':vr<=.6?'明顯縮量':'接近均量'}）。`]);
-  box.innerHTML=`<div class="tech-head"><h4>技術面讀數</h4><span class="small">截至 ${all[n].date} 的${u} K · 描述現況，非買賣建議</span></div><div class="tech-grid">${rows.map(([k,v,d])=>`<div class="tech-item"><small>${k}</small><b>${v}</b><p>${d}</p></div>`).join('')}</div>`;
+  const active=new Set(['趨勢','量能']);
+  if(settings.overlays.boll)active.add('布林通道');
+  if(settings.osc==='macd')active.add('MACD');
+  if(settings.osc==='rsi')active.add('RSI 14');
+  if(settings.osc==='kd')active.add('KD 9');
+  box.innerHTML=`<div class="tech-head"><h4>技術面讀數</h4><span class="small">${all[n].date} · ${u} K</span></div><div class="tech-grid">${rows.filter(([k])=>active.has(k)).map(([k,v,d])=>`<div class="tech-item"><small>${k}</small><b>${v}</b><details><summary>判讀</summary><p>${d}</p></details></div>`).join('')}</div>`;
 }
 function drawSvgFallback(all){
   const node=$('chart');$('techRead').innerHTML='';

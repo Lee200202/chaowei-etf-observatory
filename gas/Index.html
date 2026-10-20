@@ -52,6 +52,13 @@ body.searching{overflow:hidden}
 body.account-open{overflow:hidden}.account-overlay{position:fixed;inset:0;z-index:150;display:grid;place-items:center;padding:20px;background:#08262cb3;backdrop-filter:blur(9px)}.account-dialog{width:min(100%,530px);padding:35px;position:relative;box-shadow:0 25px 90px #092c3970}.account-dialog h2{font-size:clamp(26px,3vw,39px);letter-spacing:-.06em;line-height:1.15}.account-dialog p{line-height:1.65}.account-dialog .close-account{position:absolute;top:17px;right:17px}.account-dialog .action{margin:10px 10px 14px 0}.account-status{background:var(--mist);border-radius:14px;padding:13px 16px;font-size:13px;line-height:1.5}.account-top{white-space:nowrap}
 .search-sheet .etf-result{display:grid;grid-template-columns:minmax(0,1fr) 50px;background:var(--paper);border:1px solid var(--line);border-radius:18px;overflow:hidden}.search-sheet .etf-result:hover{border-color:#8bcfce}.search-sheet .etf-result .candidate-pick,.search-sheet .etf-result .watch-star{background:transparent;border:0;border-radius:0}.search-sheet .etf-result .candidate-pick:hover,.search-sheet .etf-result .candidate-pick.selected{background:var(--pale)}.search-sheet .etf-result .watch-star{font-size:25px;display:grid;place-items:center;padding:0;color:#b98319}.search-sheet .etf-result .watch-star:hover{background:var(--pale)}
 .account-plans{border-top:1px solid var(--line);padding-top:18px;margin-top:6px;display:grid;gap:9px}.account-plans label{font-size:12px;font-weight:800;color:var(--muted)}.account-plans>div{display:flex;gap:8px}.account-plans input,.account-plans select{min-width:0;flex:1;border:1px solid var(--line);border-radius:12px;background:var(--paper);color:var(--ink);padding:9px 12px}.account-plans .pill{white-space:nowrap}
+/* Rounded cards and concise readings share one visual language. */
+.search-sheet input,.search-launch,.account-plans input,.account-plans select{border-radius:999px}
+.search-sheet .etf-result,.member-benefits>div,.factor,.tech-item,.account-status,.notice{border-radius:25px}
+.meta span{border-radius:999px}
+.factor h4,.factor p{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+.tech-item{min-height:94px}.tech-item details{font-size:11px;color:var(--muted)}.tech-item details summary{cursor:pointer;font-weight:800}.tech-item details p{margin:8px 0 0;line-height:1.55}
+.price-up{color:#d63a3f!important}.price-down{color:#0f8a5c!important}
 @media(max-width:920px){.member-intro{grid-template-columns:1fr}.member-benefits{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:760px){.member-intro{padding:24px}.member-benefits{grid-template-columns:1fr}.topbar nav{gap:5px}.account-top{font-size:12px}}
 </style>
@@ -360,6 +367,12 @@ renderPosition=function(){
     $('barPrice').textContent=fmt(liveQuote.price,2);
     $('barDate').textContent=liveQuote.date.slice(5);
   }
+  const prev=bars.at(-2),reference=provisional?(liveQuote.previousClose||last.close):prev?.close;
+  const value=provisional?liveQuote.price:last?.close;
+  for(const id of ['price','barPrice']){
+    $(id).classList.toggle('price-up',Number.isFinite(value)&&Number.isFinite(reference)&&value>reference);
+    $(id).classList.toggle('price-down',Number.isFinite(value)&&Number.isFinite(reference)&&value<reference);
+  }
 };
 
 const originalComputePosition=computePosition;
@@ -502,8 +515,7 @@ drawChart=function(keepView=false){
   if(o==='macd')guide(s.dif,0,'');
   if(old)main.timeScale().setVisibleLogicalRange(old);else setVisible(chartRange);
   if(o!=='none')requestAnimationFrame(()=>{const r=main.timeScale().getVisibleLogicalRange();if(r)osc.timeScale().setVisibleLogicalRange(r)});
-  const adj=historyMeta?.adjustments||[];
-  $('chartCaption').textContent=`${ivName()} K 共 ${all.length.toLocaleString()} 根${provisional?' · 最後一根為富果盤中暫值':''} · 紅漲綠跌（台股慣例）· 下方柱狀為成交量（張）· ${adj.length?'分割前價格已依比例還原；':''}未納入配息再投入。滾輪或雙指縮放、拖曳平移，游標停在 K 棒上看當日數值。`;
+  $('chartCaption').textContent=`${ivName()} K · ${all.length.toLocaleString()} 根${provisional?' · 末根暫值':''} · 紅漲綠跌 · 量：張 · 滾輪縮放、拖曳平移 · 未含息`;
   $('chart').setAttribute('aria-label',all.length?`${selected} ${ivName()} K，${all[0].date} 至 ${all.at(-1).date}`:'尚未取得 K 線資料');
   updateLegend(null);renderTechRead(provisional?all.slice(0,-1):all,provisional?technical(all.slice(0,-1)):tech);
 };
@@ -550,7 +562,12 @@ function renderTechRead(all,t){
   const r=t.rsi[n];rows.push(['RSI 14',fmt(r,1),r>=70?'位於 70 以上的偏熱區。':r<=30?'位於 30 以下的偏冷區。':`位於 30–70 中性區，${r>=50?'漲幅略占上風':'跌幅略占上風'}。`]);
   const kc=lastCross(t.k,t.d);rows.push(['KD 9',`K ${fmt(t.k[n],1)}／D ${fmt(t.d[n],1)}`,`${t.k[n]>=80?'K 值在 80 以上高檔':t.k[n]<=20?'K 值在 20 以下低檔':'K 值在中段'}；${kc?`${kc.ago===0?'本'+u:kc.ago+' '+u+'前'} K ${kc.up?'向上':'向下'}穿越 D`:'近期無交叉'}。`]);
   const vr=all[n].volume/t.volMa20[n];rows.push(['量能',`${fmt(vr,2)} 倍`,`最新成交 ${lots(all[n].volume)}，為 20 ${u}均量的 ${fmt(vr,2)} 倍（${vr>=1.5?'明顯放量':vr<=.6?'明顯縮量':'接近均量'}）。`]);
-  box.innerHTML=`<div class="tech-head"><h4>技術面讀數</h4><span class="small">截至 ${all[n].date} 的${u} K · 描述現況，非買賣建議</span></div><div class="tech-grid">${rows.map(([k,v,d])=>`<div class="tech-item"><small>${k}</small><b>${v}</b><p>${d}</p></div>`).join('')}</div>`;
+  const active=new Set(['趨勢','量能']);
+  if(settings.overlays.boll)active.add('布林通道');
+  if(settings.osc==='macd')active.add('MACD');
+  if(settings.osc==='rsi')active.add('RSI 14');
+  if(settings.osc==='kd')active.add('KD 9');
+  box.innerHTML=`<div class="tech-head"><h4>技術面讀數</h4><span class="small">${all[n].date} · ${u} K</span></div><div class="tech-grid">${rows.filter(([k])=>active.has(k)).map(([k,v,d])=>`<div class="tech-item"><small>${k}</small><b>${v}</b><details><summary>判讀</summary><p>${d}</p></details></div>`).join('')}</div>`;
 }
 function drawSvgFallback(all){
   const node=$('chart');$('techRead').innerHTML='';
