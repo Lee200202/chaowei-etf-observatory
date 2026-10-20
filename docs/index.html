@@ -437,11 +437,16 @@ async function loadQuote(){
 setInterval(()=>{if(!document.hidden)loadQuote()},300000);
 
 /* ---------- Data loading ---------- */
+// A short-history ETF narrows the window only for itself; the user's own choice comes back for the next ETF.
+if(!settings.preferredWindow)settings.preferredWindow=settings.window;
+$('window').addEventListener('change',function(){settings.preferredWindow=this.value;save()});
 function autoWindow(code){
-  if(shareView||settings.window==='all'||bars.length-1>=Number(settings.window))return '';
-  const old=settings.window,next=[2400,1200,600,400,240,200,120,60].find(n=>n<=bars.length-1);
+  if(shareView)return '';
+  const want=settings.preferredWindow||settings.window;
+  if(want==='all'||bars.length-1>=Number(want)){if(settings.window!==want){settings.window=want;$('window').value=want;save()}return ''}
+  const next=[2400,1200,600,400,240,200,120,60].find(n=>n<=bars.length-1);
   settings.window=next?String(next):'all';$('window').value=settings.window;save();
-  return `${code} 上市後只有 ${bars.length} 個交易日；觀察窗已由 ${old} 日改為 ${next?next+' 日':'已取得全部'}。`;
+  return `${code} 上市後只有 ${bars.length} 個交易日；本檔觀察窗暫由 ${want} 日改為 ${next?next+' 日':'已取得全部'}，換回其他 ETF 時恢復 ${want} 日。`;
 }
 loadBars=async function(keepView=false){
   const code=selected,generation=++historyGeneration;
