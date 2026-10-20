@@ -100,7 +100,7 @@ renderPosition=function(){
   const anchorName={wick:'最高／最低價',close:'收盤極值',average:`高低價各 ${settings.anchorCount} 筆平均`}[settings.anchorMode];
   $('anchorSummary').textContent=position?`${position.count} 日 · ${anchorName} · ${settings.method==='fib'?'黃金分割':'等距刻度'}`:`基準：${anchorName}`;
   $('barPrice').textContent=last?fmt(last.close,2):'—';
-  $('barGrade').textContent=position?position.grade+' / 5':'—';
+  $('barGrade').textContent=position?fmt(position.core,1)+' / 5':'—';
   $('barDate').textContent=last?last.date.slice(5):'—';
   const provisional=liveQuote?.available&&last&&liveQuote.date>last.date;
   $('liveSource').classList.toggle('hidden',!provisional);
@@ -464,12 +464,12 @@ computeMarket=function(){
   const prior=(intradayProfile?.days||[]).filter(([d])=>d<li.date).slice(-n).map(([,l])=>l[idx]).filter(Number.isFinite);
   const today=li.marks?.[mark]??li.lots;
   if(idx<0||prior.length<20||!(today>0)){
-    marketPosition.volumeGrade=null;$('volumeScore').textContent='—';
+    marketPosition.volumeGrade=null;marketPosition.volumeScore=null;$('volumeScore').textContent='—';
     $('volumeMeta').textContent='盤中 '+t.slice(0,5)+' 累計 '+fmt(li.lots*1000/1e8,2)+' 億股 · 同時段歷史不足，暫不計分';return;
   }
   const rank=prior.filter(v=>v<=today).length/prior.length,grade=Math.max(1,Math.min(5,Math.ceil(rank*5)));
-  marketPosition.volumeGrade=grade;marketPosition.rank=rank;
-  $('volumeScore').textContent=grade+' / 5';
+  marketPosition.volumeGrade=grade;marketPosition.volumeScore=rank*5;marketPosition.rank=rank;
+  $('volumeScore').textContent=fmt(rank*5,1)+' / 5';
   $('volumeMeta').textContent='盤中 '+mark.slice(0,2)+':'+mark.slice(2)+' 累計 '+fmt(today*1000/1e8,2)+' 億股 · 與前 '+prior.length+' 日同時段比第 '+Math.round(rank*100)+' 百分位';
 };
 // Factor notes keep value and date only; the scoring direction and update time are stated once on the card.
@@ -480,6 +480,9 @@ const liveComputeFx=computeFx;
 computeFx=function(){liveComputeFx();tidyMeta('fxMeta')};
 const baseUpdateWeights=updateWeights;
 updateWeights=function(){baseUpdateWeights();if(Number($('wVolume').value)>0&&settings.volumeDirection!=='off'&&marketPosition&&marketPosition.volumeGrade==null){$('combined').textContent='—';$('combinedExtra').textContent='盤中同時段量能資料不足，暫不計算綜合分'}};
+// USD/TWD scoring direction is the user's call: a strong or a weak TWD can be the favourable side.
+settings.fxDirection=settings.fxDirection==='high'?'high':'low';$('fxDirection').value=settings.fxDirection;
+$('fxDirection').addEventListener('change',function(){settings.fxDirection=this.value==='high'?'high':'low';computeFx();updateWeights();save()});
 loadLive();
 setInterval(()=>{if(!document.hidden)loadLive()},300000);
 
