@@ -37,13 +37,13 @@ updateWeights=function(){
   const ext=[position.raw,marketPosition?.index.raw||0,v||0,brentPosition?.raw||0,fxPosition?.raw||0].reduce((a,x,i)=>a+share[i]*x,0);
   $('combined').textContent=fmt(core,1)+' / 5';$('combinedExtra').textContent='延伸綜合分 '+fmt(ext,1);
   const d=core-position.core;
-  $('weightPreview').innerHTML=`📊 只看 ${selected}：<b>${fmt(position.core,1)}</b> 分 → 依你的權重：<b>${fmt(core,1)}</b> 分`+(Math.abs(d)>=0.05?`（${d>0?'偏向加碼':'偏向減碼'} ${fmt(Math.abs(d),1)} 分）`:'');
+  $('weightPreview').innerHTML=`只看 ${selected}：<b>${fmt(position.core,1)}</b> 分 → 依你的權重：<b>${fmt(core,1)}</b> 分`+(Math.abs(d)>=0.05?`（${d>0?'偏向加碼':'偏向減碼'} ${fmt(Math.abs(d),1)} 分）`:'');
 };
 // The sliders were bound to the first version of updateWeights; run the current chain after them.
 for(const id of ['wEtf','wIndex','wVolume','wBrent','wFx','volumeDirection','normalize'])$(id).addEventListener(id==='normalize'?'click':id==='volumeDirection'?'change':'input',()=>updateWeights());
 
 /* ---------- Back to the observation area ---------- */
-const toTop=document.createElement('button');toTop.type='button';toTop.className='to-top hidden';toTop.textContent='⬆ 回到上方觀測區';
+const toTop=document.createElement('button');toTop.type='button';toTop.className='to-top hidden';toTop.textContent='回到上方觀測區';
 toTop.addEventListener('click',()=>{const t=document.querySelector('.toolbar');window.scrollTo({top:t.getBoundingClientRect().top+scrollY-12,behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'})});
 document.body.append(toTop);
 // Shown once the price chart has scrolled out of view, hidden while a sheet is open.

@@ -29,11 +29,11 @@ function pick(code){selected=code;closeSearch(false);renderList();loadBars();con
 /* Risk badge from the catalog name and index: inverse and leveraged first (their index names look like the core ones). */
 function etfRisk(code){
   const e=catalog.find(x=>x.code===code);if(!e)return null;const t=e.name+' '+(e.note||'');
-  if(/R$/.test(code)&&/反/.test(e.name))return{kind:'inverse',tag:'⚠️ 反向',warn:'反向 ETF 每日重設倍數，盤整與上漲時會持續耗損，只適合短線避險，不適合定期定額或逢低攤平。'};
-  if(/L$/.test(code)&&/正2|正二/.test(e.name))return{kind:'lev',tag:'⚡ 2倍槓桿',warn:'2 倍槓桿波動約為原型的兩倍，盤整時有耗損；逢低攤平又不設停損，回落可能非常深。建議改用再平衡或趨勢策略。'};
-  if(/B$/.test(code)||/債/.test(e.name))return{kind:'bond',tag:'🏦 債券'};
-  if(/高息|高股息|股息|收息|高收益/.test(t))return{kind:'income',tag:'💰 高息'};
-  if(e.type==='passive'&&/臺灣50指數|臺灣加權|發行量加權/.test(t))return{kind:'core',tag:'🌱 市值核心'};
+  if(/R$/.test(code)&&/反/.test(e.name))return{kind:'inverse',tag:'反向',warn:'反向 ETF 每日重設倍數，盤整與上漲時會持續耗損，只適合短線避險，不適合定期定額或逢低攤平。'};
+  if(/L$/.test(code)&&/正2|正二/.test(e.name))return{kind:'lev',tag:'2倍槓桿',warn:'2 倍槓桿波動約為原型的兩倍，盤整時有耗損；逢低攤平又不設停損，回落可能非常深。建議改用再平衡或趨勢策略。'};
+  if(/B$/.test(code)||/債/.test(e.name))return{kind:'bond',tag:'債券'};
+  if(/高息|高股息|股息|收息|高收益/.test(t))return{kind:'income',tag:'高息'};
+  if(e.type==='passive'&&/臺灣50指數|臺灣加權|發行量加權/.test(t))return{kind:'core',tag:'市值核心'};
   return null;
 }
 function riskBadge(code){const r=etfRisk(code);if(!r)return null;const s=document.createElement('span');s.className='risk-tag '+r.kind;s.textContent=r.tag;return s}
