@@ -1,0 +1,76 @@
+// Shared by GitHub Pages and Apps Script.
+// Long history comes from the daily snapshot files (one request per ETF); TWSE is asked live
+// at most once per series, only when the snapshot is behind the latest expected trading day.
+function installChaoweiApi(base,serverFallback){
+  const nativeFetch=window.fetch.bind(window),memo=new Map();
+  const response=data=>({ok:!data.error,status:data.error?503:200,json:async()=>data});
+  const n=v=>{const x=Number(String(v??'').replaceAll(',',''));return Number.isFinite(x)?x:null};
+  const roc=s=>{const m=String(s).match(/^(\d{2,3})\/(\d{2})\/(\d{2})$/);return m?`${Number(m[1])+1911}-${m[2]}-${m[3]}`:null};
+  const taipei=()=>new Date(Date.now()+28800000);
+  // TWSE publishes the day's table after the 13:30 close; before 14:30 the previous weekday is the newest.
+  function expectedLatest(){const d=taipei();if(d.getUTCHours()*60+d.getUTCMinutes()<870)d.setUTCDate(d.getUTCDate()-1);while(d.getUTCDay()===0||d.getUTCDay()===6)d.setUTCDate(d.getUTCDate()-1);return d.toISOString().slice(0,10)}
+  async function getJson(url,ttl=600000,cache='no-cache'){
+    const hit=memo.get(url);if(hit&&Date.now()-hit.time<ttl)return hit.promise;
+    const promise=nativeFetch(url,{cache}).then(async r=>{if(!r.ok)throw Error(`HTTP ${r.status}`);return r.json()});
+    memo.set(url,{time:Date.now(),promise});promise.catch(()=>memo.delete(url));return promise;
+  }
+  // One small manifest revalidates daily snapshots. Versioned files then use the browser's
+  // persistent HTTP cache across ETF switches and page reloads, without stale deployments.
+  let versionPromise,versionAt=0;
+  async function version(){
+    if(!versionPromise||Date.now()-versionAt>300000){versionAt=Date.now();versionPromise=getJson(base+'data/history/_meta.json',300000).then(m=>encodeURIComponent(m.updated||m.latest||'0')).catch(()=>null)}
+    return versionPromise;
+  }
+  async function file(path){
+    try{const v=await version();return await getJson(base+path+(v?'?v='+v:''),600000,v?'force-cache':'no-cache')}
+    catch(e){if(serverFallback)return serverFallback(path);throw e}
+  }
+  async function twseMonth(report,code){
+    const month=taipei().toISOString().slice(0,7).replace('-','')+'01';
+    const url=`https://www.twse.com.tw/exchangeReport/${report}?response=json&date=${month}${code?`&stockNo=${code}`:''}`;
+    const data=await getJson(url,300000);
+    if(data.stat!=='OK'&&!/查無|很抱歉|沒有符合/.test(data.stat||''))throw Error(data.stat||'資料格式異常');
+    return Array.isArray(data.data)?data.data:[];
+  }
+  async function history(code){
+    if(!/^[0-9A-Z]{4,6}$/.test(code||''))return{error:'代號格式錯誤'};
+    let snap=null,snapError='';
+    try{snap=await file(`data/history/${code}.json`)}catch(e){snapError=e.message}
+    const bars=(snap?.rows||[]).map(([date,open,high,low,close,volume])=>({date,open,high,low,close,volume}));
+    let live=0,liveNote='';
+    if(!bars.length||bars.at(-1).date<expectedLatest()){
+      try{
+        const last=bars.at(-1);
+        for(const r of await twseMonth('STOCK_DAY',code)){
+          const date=roc(r[0]),volume=n(r[1]),open=n(r[3]),high=n(r[4]),low=n(r[5]),close=n(r[6]);
+          if(!date||![volume,open,high,low,close].every(Number.isFinite)||last&&date<=last.date)continue;
+          // An unadjusted split day must not be glued to adjusted history.
+          if(last&&(close/last.close>1.8||close/last.close<0.55)){liveNote='最新交易日疑似分割，待快照校正後顯示';break}
+          bars.push({date,open,high,low,close,volume});live++;
+        }
+      }catch(e){liveNote='證交所即時補充暫不可用：'+e.message}
+    }
+    if(!bars.length)return{error:snapError?`歷史快照讀取失敗（${snapError}）`:'證交所尚無可用的上市後日 K'};
+    return{code,bars,latest:bars.at(-1).date,first:bars[0].date,source:snap?.source||'TWSE STOCK_DAY',
+      basis:snap?.basis||'raw-price',adjustments:snap?.adjustments||[],snapshotLatest:snap?.latest||null,live,liveNote};
+  }
+  async function market(){
+    const snap=await file('data/history/market.json').catch(()=>null);
+    const days=(snap?.rows||[]).map(([date,volume,value,index])=>({date,volume,value,index}));
+    let live=0;
+    if(!days.length||days.at(-1).date<expectedLatest()){
+      try{for(const r of await twseMonth('FMTQIK')){const date=roc(r[0]),volume=n(r[1]),value=n(r[2]),index=n(r[4]);if(date&&[volume,value,index].every(Number.isFinite)&&(!days.length||date>days.at(-1).date)){days.push({date,volume,value,index});live++}}}catch{}
+    }
+    if(!days.length)return{error:'大盤資料暫不可用'};
+    return{days,latest:days.at(-1).date,source:'TWSE FMTQIK',live};
+  }
+  async function api(path,params){
+    if(path==='/api/etfs')return file('etf-catalog.json');
+    if(path==='/api/brent')return file('data/brent.json');
+    if(path==='/api/fx')return file('data/fx.json');
+    if(path==='/api/history')return history(params.get('code'));
+    if(path==='/api/market')return market();
+    return{error:'未知 API'};
+  }
+  window.fetch=(input,options)=>{const url=new URL(input,location.href);if(!url.pathname.startsWith('/api/'))return nativeFetch(input,options);return api(url.pathname,url.searchParams).then(response).catch(e=>response({error:e.message}))};
+}

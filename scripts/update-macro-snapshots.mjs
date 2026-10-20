@@ -13,7 +13,7 @@ const raw=JSON.parse(await fetchText('https://cpx.cbc.gov.tw/api/OpenData/FTDOpe
 for(const row of raw){const date=String(row['日期']||''),value=Number(row.NTD_USD);if(/^\d{8}$/.test(date)&&Number.isFinite(value))fx.push({date:`${date.slice(0,4)}-${date.slice(4,6)}-${date.slice(6)}`,value})}
 if(fx.length<200)throw Error('CBC snapshot has too few days');
 await mkdir(new URL('pages-data/',root),{recursive:true});
-const b=brent.slice(-650),f=fx.slice(-650);
+const b=brent.slice(-2700),f=fx.slice(-2700);
 await writeFile(new URL('pages-data/brent.json',root),JSON.stringify({days:b,latest:b.at(-1).date,source:'EIA Brent daily snapshot',snapshot:true,unit:'USD/barrel'})+'\n');
 await writeFile(new URL('pages-data/fx.json',root),JSON.stringify({days:f,latest:f.at(-1).date,source:'CBC FTDOpenData_Day',unit:'TWD/USD'})+'\n');
 console.log(`EIA: ${b.length} through ${b.at(-1).date}; CBC: ${f.length} through ${f.at(-1).date}`);

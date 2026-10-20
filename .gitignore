@@ -1,3 +1,4 @@
 dist/
 site.tar.gz
 .clasp.json
+.history-cache/

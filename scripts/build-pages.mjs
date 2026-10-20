@@ -1,11 +1,17 @@
-import {mkdir,readFile,writeFile,copyFile} from 'node:fs/promises';
+import {mkdir,readFile,writeFile,copyFile,readdir,rm} from 'node:fs/promises';
 const root=new URL('../',import.meta.url),read=p=>readFile(new URL(p,root),'utf8');
-const [page,css,client,enhancements,shim]=await Promise.all([read('worker/page.html'),read('worker/style.css'),read('worker/client.js'),read('worker/chart-enhancements.js'),read('pages-src/api-shim.js')]);
-let html=page.replace('__CSS__',css).replace('__JS__',shim+client.replace('__ENHANCEMENTS__',enhancements));
-html=html.replace('私人驗收期間，方案連結','公開版本中，方案連結');
-await mkdir(new URL('docs/data/',root),{recursive:true});
+const [page,css,client,enhancements,dataLayer,quoteLayer,identityLayer]=await Promise.all([read('worker/page.html'),read('worker/style.css'),read('worker/client.js'),read('worker/chart-enhancements.js'),read('pages-src/data-layer.js'),read('pages-src/quote-layer.js'),read('pages-src/identity-layer.js')]);
+const GAS_URL='https://script.google.com/macros/s/AKfycbwea2kGu7UX0RPfUYW2IaMmtar5_LitJth3mQ_c5uGOtgeihU_nmkM3uNw1CnddLdd6Kw/exec';
+const shim=`${dataLayer}\n${quoteLayer}\n${identityLayer}\nwindow.CHAOWEI_STATIC=true;installChaoweiApi('./');installChaoweiQuote('${GAS_URL}');installChaoweiIdentity('pages');\n`;
+const html=page.replace('__CSS__',()=>css).replace('__JS__',()=>shim+client.replace('__ENHANCEMENTS__',()=>enhancements));
+await mkdir(new URL('docs/data/history/',root),{recursive:true});
 await writeFile(new URL('docs/index.html',root),html);
 await writeFile(new URL('docs/.nojekyll',root),'');
 await copyFile(new URL('worker/etf-catalog.json',root),new URL('docs/etf-catalog.json',root));
 for(const file of ['brent.json','fx.json'])await copyFile(new URL(`pages-data/${file}`,root),new URL(`docs/data/${file}`,root));
-console.log('Built GitHub Pages website');
+// Long history: mirror pages-data/history into docs/data/history (stale files removed).
+const src=new URL('pages-data/history/',root),dst=new URL('docs/data/history/',root);
+const wanted=new Set((await readdir(src).catch(()=>[])).filter(f=>f.endsWith('.json')));
+for(const f of await readdir(dst))if(!wanted.has(f))await rm(new URL(f,dst));
+for(const f of wanted)await copyFile(new URL(f,src),new URL(f,dst));
+console.log(`Built GitHub Pages website with ${wanted.size} history files`);

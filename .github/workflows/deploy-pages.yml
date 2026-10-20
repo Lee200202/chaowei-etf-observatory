@@ -31,18 +31,27 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - name: Refresh ETF catalogue
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        continue-on-error: true
+        run: npm run catalog:update
+      - name: Append TWSE daily history (ETF K lines and market turnover)
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        run: npm run history:update
       - name: Refresh official daily snapshots
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        continue-on-error: true
         run: npm run snapshots:update
+      - run: npm run history:validate
       - run: npm run build:pages
       - name: Save refreshed snapshots
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         run: |
-          git add pages-data docs
+          git add pages-data docs worker/etf-catalog.json
           if git diff --cached --quiet; then exit 0; fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m 'Refresh EIA and CBC daily snapshots'
+          git commit -m 'Daily snapshot: TWSE history, catalogue, EIA and CBC'
           git push
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
