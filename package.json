@@ -14,6 +14,8 @@
     "history:update": "node scripts/update-history.mjs",
     "history:validate": "node scripts/validate-history.mjs",
     "intraday:update": "node scripts/update-intraday.mjs",
-    "test:store": "node scripts/test-store.mjs"
+    "test:store": "node scripts/test-store.mjs",
+    "dividends:update": "node scripts/update-dividends.mjs",
+    "test:engine": "node scripts/test-engine.mjs"
   }
 }

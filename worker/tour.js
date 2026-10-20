@@ -56,3 +56,42 @@ $('startTour').addEventListener('click',startTour);
 // First sign-in: wait for the cloud profile to load (it may say the tour was already done on another device).
 const tourSetMember=window.chaoweiSetMember;
 window.chaoweiSetMember=signedIn=>{tourSetMember(signedIn);if(signedIn&&!settings.tourDone)setTimeout(()=>{if(isMember&&!settings.tourDone&&tourIndex<0)startTour()},1800)};
+
+/* ---------- Tide-wave gauge colours: low tide (cheap) green, mid-tide blue, high tide (dear) coral ---------- */
+function tideColors(score){
+  // Three clear zones rather than a blend (mixing coral and blue reads as muddy purple); the CSS transition smooths changes.
+  const s=Math.max(0,Math.min(5,score));
+  return s>=3.5?['#34d399','#06b6d4']:s>1.5?['#38bdf8','#0e7490']:['#fb7185','#f59e0b'];
+}
+const tideRenderPosition=renderPosition;
+renderPosition=function(){
+  tideRenderPosition();
+  const w=$('cupWater');if(!w)return;
+  if(position){const [a,b]=tideColors(position.core);w.style.setProperty('--w1',a);w.style.setProperty('--w2',b)}
+};
+
+/* ---------- Tide radar inside the search sheet (precomputed daily for every ETF) ---------- */
+let radar=null,radarFilter='all';
+const RADAR_TESTS={low:x=>x.score>=4.5,bias:x=>x.bias60!=null&&x.bias60<=-10,rsi:x=>x.rsi!=null&&x.rsi<30,squeeze:x=>!!x.squeeze};
+async function loadRadar(){if(radar)return radar;try{const r=await fetch('/api/radar'),d=await r.json();if(r.ok&&Array.isArray(d.rows))radar={...d,map:new Map(d.rows.map(x=>[x.code,x]))}}catch{}return radar}
+const radarRenderList=renderList;
+renderList=function(){
+  radarRenderList();
+  if(!radar)return;
+  const rows=[...$('etfList').querySelectorAll('.etf-result')];let shown=0;
+  for(const row of rows){
+    const pick=row.querySelector('.candidate-pick'),code=pick.querySelector('strong').textContent.split(' · ')[0],x=radar.map.get(code);
+    const ok=radarFilter==='all'||(x&&RADAR_TESTS[radarFilter](x));row.classList.toggle('hidden',!ok);if(ok)shown++;
+    if(x&&x.score!=null&&!pick.querySelector('.radar-badge')){
+      const b=document.createElement('span');b.className='radar-badge'+(x.score>=4?' hot':x.score<=1?' cold':'');
+      b.textContent='水位 '+x.score.toFixed(1)+(radarFilter==='bias'?' · 乖離 '+x.bias60+'%':radarFilter==='rsi'?' · RSI '+x.rsi:'');pick.append(b);
+    }
+  }
+  // Under a radar filter, the best candidates (highest water score) come first.
+  if(radarFilter!=='all'){rows.filter(r=>!r.classList.contains('hidden')).sort((a,b)=>(radar.map.get(b.querySelector('strong').textContent.split(' · ')[0])?.score??-1)-(radar.map.get(a.querySelector('strong').textContent.split(' · ')[0])?.score??-1)).forEach(r=>$('etfList').append(r));
+    $('searchCount').textContent='今日潮位雷達：符合 '+shown+' 檔（資料日 '+radar.latest+'）'}
+};
+$('radarChips').addEventListener('click',async e=>{const b=e.target.closest('[data-radar]');if(!b)return;radarFilter=b.dataset.radar;$('radarChips').querySelectorAll('button').forEach(x=>x.classList.toggle('active',x===b));await loadRadar();renderList()});
+const radarOpenSearch=openSearch;
+openSearch=function(){radarOpenSearch();loadRadar().then(()=>{if(!$('searchOverlay').classList.contains('hidden'))renderList()})};
+for(const id of ['openSearch','openSearchTop'])$(id).addEventListener('click',()=>loadRadar().then(renderList));

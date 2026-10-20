@@ -552,7 +552,7 @@ settings.favorites=Array.isArray(settings.favorites)?settings.favorites.filter(f
 function favSnapshot(){return{window:settings.window,preferredWindow:settings.preferredWindow||settings.window,method:settings.method,anchorMode:settings.anchorMode,anchorCount:settings.anchorCount,basis:$('basis').value,bt:{...settings.bt}}}
 function favLabel(s){
   const a={wick:'最高最低',close:'收盤極值',average:'平均 '+s.anchorCount+' 筆'}[s.anchorMode]||'';
-  const b=s.bt?.v===2?s.bt:null,bt=!b?'':b.entry==='fib'?'黃金分割回測':b.entry==='grade'?'水位 '+b.buyGrade+' 分買':'跌 '+b.drop+'% 買';
+  const bt=s.bt?.v===3?((ChaoweiEngine.PRESETS.find(x=>x.id===s.bt.preset)||{}).name||'自訂策略'):'';
   return (s.window==='all'?'全部':s.window+' 日')+' · '+(s.method==='fib'?'黃金分割':'等距')+' · '+a+' · '+bt;
 }
 const favSame=(a,b)=>JSON.stringify({...a,bt:{...a.bt,markers:0}})===JSON.stringify({...b,bt:{...b.bt,markers:0}});

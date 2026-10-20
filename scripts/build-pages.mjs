@@ -1,6 +1,6 @@
 import {mkdir,readFile,writeFile,copyFile,readdir,rm} from 'node:fs/promises';
 const root=new URL('../',import.meta.url),read=p=>readFile(new URL(p,root),'utf8');
-const [page,css,client,enhancements,dataLayer,quoteLayer,identityLayer,liveLayer]=await Promise.all([read('worker/page.html'),read('worker/style.css'),read('worker/client.js'),read('worker/chart-enhancements.js').then(async s=>s+'\n'+await read('worker/backtest.js')+'\n'+await read('worker/tour.js')),read('pages-src/data-layer.js'),read('pages-src/quote-layer.js'),read('pages-src/identity-layer.js'),read('pages-src/live-layer.js')]);
+const [page,css,client,enhancements,dataLayer,quoteLayer,identityLayer,liveLayer]=await Promise.all([read('worker/page.html'),read('worker/style.css'),read('worker/client.js'),read('worker/chart-enhancements.js').then(async s=>s+'\n'+await read('worker/strategy-engine.js')+'\n'+await read('worker/backtest.js')+'\n'+await read('worker/tour.js')),read('pages-src/data-layer.js'),read('pages-src/quote-layer.js'),read('pages-src/identity-layer.js'),read('pages-src/live-layer.js')]);
 const GAS_URL='https://script.google.com/macros/s/AKfycbwea2kGu7UX0RPfUYW2IaMmtar5_LitJth3mQ_c5uGOtgeihU_nmkM3uNw1CnddLdd6Kw/exec';
 const shim=`${dataLayer}\n${quoteLayer}\n${identityLayer}\n${liveLayer}\nwindow.CHAOWEI_STATIC=true;installChaoweiApi('./');installChaoweiQuote('${GAS_URL}');installChaoweiIdentity('pages');installChaoweiLive('${GAS_URL}');\n`;
 const html=page.replace('__CSS__',()=>css).replace('__JS__',()=>shim+client.replace('__ENHANCEMENTS__',()=>enhancements));
@@ -9,6 +9,8 @@ await writeFile(new URL('docs/index.html',root),html);
 await writeFile(new URL('docs/.nojekyll',root),'');
 await copyFile(new URL('worker/etf-catalog.json',root),new URL('docs/etf-catalog.json',root));
 for(const file of ['brent.json','fx.json'])await copyFile(new URL(`pages-data/${file}`,root),new URL(`docs/data/${file}`,root));
+// Today's radar summary is derived from the history files, so it is rebuilt on every deploy.
+const {buildRadar}=await import('./build-radar.mjs');await buildRadar();
 // Long history: mirror pages-data/history into docs/data/history (stale files removed).
 const src=new URL('pages-data/history/',root),dst=new URL('docs/data/history/',root);
 const wanted=new Set((await readdir(src).catch(()=>[])).filter(f=>f.endsWith('.json')));

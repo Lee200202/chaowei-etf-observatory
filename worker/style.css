@@ -130,8 +130,35 @@ body.touring{overflow:hidden}.tour-shade{position:fixed;inset:0;z-index:200}
 .tour-actions{display:flex;justify-content:space-between;align-items:center;gap:8px}.tour-actions span{display:flex;gap:6px}.tour-actions .action{min-height:38px;padding:8px 18px;border:0;cursor:pointer;font-size:14px}
 @media(prefers-reduced-motion:reduce){.tour-spot{transition:none}}
 .nav-icon{vertical-align:-3px;margin-right:2px}
-@media(min-width:441px){#accountTop .nav-icon{display:none}}
+
 /* v5.2: the three top-right buttons share one size. */
 .topbar nav .pill{display:inline-flex;align-items:center;justify-content:center;gap:4px;font-size:14px;font-weight:780;line-height:1;min-height:42px;padding:8px 16px}
 @media(max-width:760px){.topbar nav .pill{font-size:13px;min-height:40px;padding:8px 12px}}
 @media(max-width:440px){.topbar nav .pill{min-width:40px;padding:8px 11px}}
+/* v6: strategy backtest — families, parameters, advanced drawer, verdict, charts, trades, optimizer. */
+.bt-opt-btn{border:0;cursor:pointer;min-height:42px;font-size:14px}.bt-families{margin:0 0 10px;flex-wrap:wrap}.bt-families button{min-height:38px;padding:8px 14px}
+.bt-steps{grid-template-columns:minmax(0,1fr) minmax(0,1.4fr) minmax(0,1fr)}.bt-params{min-height:260px}
+#btParams{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 10px}#btParams .bt-hint,#btParams fieldset{grid-column:1/-1}
+.bt-f{display:grid;gap:5px;font-size:11px;font-weight:850;color:var(--muted)}.bt-f select{width:100%;min-width:0;min-height:40px}
+.bt-array{border:0;margin:0;padding:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}.bt-array legend{font-size:11px;font-weight:850;color:var(--muted);margin-bottom:5px;padding:0}.bt-array input{min-width:0;min-height:38px;border:1px solid var(--line);border-radius:10px;background:var(--paper);color:var(--ink);text-align:center;font:inherit;font-size:13px;font-weight:750}
+.bt-split{margin:2px 0 0;font-size:12px;line-height:1.7;color:var(--muted)}.bt-split b{color:var(--ink)}
+.bt-advanced{margin-top:10px;border:1px solid var(--line);border-radius:16px;padding:10px 14px;background:var(--mist)}.bt-advanced summary{cursor:pointer;font-weight:800;font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}.bt-badge{font-size:11px;font-weight:800;color:#18656c;background:var(--pale);border-radius:999px;padding:3px 9px}
+.bt-adv-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:10px}.bt-adv-grid label{display:grid;gap:5px;font-size:11px;font-weight:850;color:var(--muted)}
+.bt-verdict{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px}.bt-tag{font-size:13px;font-weight:800;border-radius:999px;padding:6px 12px;background:var(--mist);border:1px solid var(--line)}.bt-tag.win{background:#e3f7ee;border-color:#9fdcc0;color:#0b6b48}.bt-tag.lose{background:#fdeceb;border-color:#f3b9b4;color:#a33a32}.dark .bt-tag.win{background:#173f31;color:#a9f0cf}.dark .bt-tag.lose{background:#4a2422;color:#ffc9c3}
+.bt-equity-legend .c:before{background:repeating-linear-gradient(90deg,#7c8a90 0 3px,transparent 3px 6px)}.bt-equity-legend .d:before{background:#e6a23c}.bt-equity-legend .e:before{background:rgba(25,167,170,.35);height:8px}.bt-equity-legend.sub{margin-top:8px}.bt-under{height:120px;margin-top:4px}
+.bt-roll{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:baseline;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px}.bt-roll span{color:var(--muted)}.bt-roll span b{color:var(--ink)}
+.bt-trade-filter{margin:10px 0 6px;width:max-content;max-width:100%;flex-wrap:wrap}.bt-trades{max-height:420px;overflow:auto;border:1px solid var(--line);border-radius:12px}
+.bt-trades thead th{position:sticky;top:0;z-index:2;background:color-mix(in srgb,var(--paper) 92%,transparent);backdrop-filter:blur(8px)}
+.bt-bar{display:inline-block;height:6px;width:calc(var(--w)*.5);max-width:50px;border-radius:3px;background:currentColor;opacity:.35;margin-right:6px;vertical-align:middle}
+.bt-sheet{position:fixed;inset:0;z-index:150;background:rgba(8,28,35,.55);display:grid;place-items:center;padding:16px}.bt-sheet-card{width:min(980px,100%);max-height:90vh;overflow:auto;padding:22px}
+.bt-boards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:10px}.bt-board{background:var(--mist);border:1px solid var(--line);border-radius:16px;padding:12px}.bt-board h4{margin:0 0 8px;font-size:14px}
+.bt-rank{display:grid;grid-template-columns:22px 1fr;gap:2px 8px;width:100%;text-align:left;border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:12px;padding:8px 10px;margin-bottom:6px;cursor:pointer;font:inherit}.bt-rank:hover{border-color:#19a7aa}.bt-rank b{grid-row:span 2;display:grid;place-items:center;background:#173e48;color:#fff;border-radius:50%;width:22px;height:22px;font-size:12px}.bt-rank span{font-size:13px;font-weight:800}.bt-rank em{font-style:normal;font-size:12px;color:var(--muted)}
+@media(max-width:1100px){.bt-steps{grid-template-columns:repeat(2,minmax(0,1fr))}.bt-params{grid-column:1/-1;grid-row:1}}
+@media(max-width:760px){.bt-boards{grid-template-columns:1fr}.bt-adv-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.bt-steps{grid-template-columns:1fr}.bt-params{min-height:0}#btParams{grid-template-columns:1fr 1fr}.bt-opt-btn{width:100%}}
+/* v6.1: tide-wave gauge and radar chips. */
+.cup-water{--w1:#63ded3;--w2:#0e9fb1;background:linear-gradient(180deg,var(--w1),var(--w2));transition:height .8s ease,background .6s ease}.cup-water:before{display:none}
+.cup-water .wave{position:absolute;left:0;width:200%;height:16px;top:-12px;fill:var(--w1);animation:tide 5.5s linear infinite}.cup-water .wave.w2{top:-9px;opacity:.45;animation-duration:8s;animation-direction:reverse}
+@keyframes tide{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.radar-chips{align-items:center}.radar-title{font-size:12px;font-weight:850;color:#128e95;margin-right:2px}
+.radar-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:850;border-radius:999px;padding:2px 8px;background:var(--pale);color:#18656c;width:max-content}.radar-badge.hot{background:#e3f7ee;color:#0b6b48}.radar-badge.cold{background:#fdeceb;color:#a33a32}

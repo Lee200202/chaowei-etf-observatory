@@ -72,6 +72,8 @@ function installChaoweiApi(base,serverFallback){
     if(path==='/api/history')return history(params.get('code'));
     if(path==='/api/market')return market();
     if(path==='/api/intraday-profile')return file('data/history/intraday-volume.json');
+    if(path==='/api/dividends')return file('data/history/dividends.json');
+    if(path==='/api/radar')return file('data/history/radar.json');
     return{error:'未知 API'};
   }
   window.fetch=(input,options)=>{const url=new URL(input,location.href);if(!url.pathname.startsWith('/api/'))return nativeFetch(input,options);return api(url.pathname,url.searchParams).then(response).catch(e=>response({error:e.message}))};
