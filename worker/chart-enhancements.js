@@ -481,7 +481,9 @@ computeFx=function(){liveComputeFx();tidyMeta('fxMeta')};
 const baseUpdateWeights=updateWeights;
 updateWeights=function(){baseUpdateWeights();if(Number($('wVolume').value)>0&&settings.volumeDirection!=='off'&&marketPosition&&marketPosition.volumeGrade==null){$('combined').textContent='—';$('combinedExtra').textContent='盤中同時段量能資料不足，暫不計算綜合分'}};
 // USD/TWD scoring direction is the user's call: a strong or a weak TWD can be the favourable side.
-settings.fxDirection=settings.fxDirection==='high'?'high':'low';$('fxDirection').value=settings.fxDirection;
+// Owner's rule (2026-10-20): a strong TWD (USD/TWD around 29) is no time to add, so a higher USD/TWD scores higher.
+if(!settings.fxRev){settings.fxDirection='high';settings.fxRev=1}
+settings.fxDirection=settings.fxDirection==='low'?'low':'high';$('fxDirection').value=settings.fxDirection;
 $('fxDirection').addEventListener('change',function(){settings.fxDirection=this.value==='high'?'high':'low';computeFx();updateWeights();save()});
 loadLive();
 setInterval(()=>{if(!document.hidden)loadLive()},300000);
