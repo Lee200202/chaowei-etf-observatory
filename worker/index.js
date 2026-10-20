@@ -1,25 +1,15 @@
 // Bundled by scripts/build.mjs. The HTML placeholder is replaced at build time.
 const PAGE = __PAGE__;
 const BRENT_FALLBACK = __BRENT__;
-const ETF = [
-  ['0050','元大台灣50','passive','大型權值'],
-  ['0056','元大高股息','passive','高股息'],
-  ['006208','富邦台50','passive','大型權值'],
-  ['00878','國泰永續高股息','passive','高股息'],
-  ['00919','群益台灣精選高息','passive','高股息'],
-  ['00929','復華台灣科技優息','passive','科技高息'],
-  ['00940','元大台灣價值高息','passive','高股息'],
-  ['00980A','主動野村臺灣優選','active','主動台股'],
-  ['00981A','主動統一台股增長','active','主動台股'],
-  ['00982A','主動群益台灣強棒','active','主動台股'],
-].map(([code,name,type,note])=>({code,name,type,note}));
+const CATALOG = __CATALOG__;
+const ETF = CATALOG.etfs;
 const monthCache=new Map();
 let brentCache=null;
 let fxCache=null;
 function json(body,status=200){return new Response(JSON.stringify(body),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':status===200?'public, max-age=300':'no-store','x-content-type-options':'nosniff'}})}
 function num(v){const n=Number(String(v??'').replaceAll(',',''));return Number.isFinite(n)?n:null}
 function rocDate(s){const m=String(s).match(/^(\d{2,3})\/(\d{2})\/(\d{2})$/);return m?`${Number(m[1])+1911}-${m[2]}-${m[3]}`:null}
-function months(count){const now=new Date(Date.now()+28800000),y=now.getUTCFullYear(),m=now.getUTCMonth();return Array.from({length:count},(_,i)=>{const d=new Date(Date.UTC(y,m-i,1));return `${d.getUTCFullYear()}${String(d.getUTCMonth()+1).padStart(2,'0')}01`})}
+function months(count,offset=0){const now=new Date(Date.now()+28800000),y=now.getUTCFullYear(),m=now.getUTCMonth();return Array.from({length:count},(_,i)=>{const d=new Date(Date.UTC(y,m-i-offset,1));return `${d.getUTCFullYear()}${String(d.getUTCMonth()+1).padStart(2,'0')}01`})}
 async function official(report,month,code){const key=`${report}/${month}/${code||''}`,old=monthCache.get(key);if(old&&Date.now()-old.time<21600000)return old.data;const url=new URL(`https://www.twse.com.tw/exchangeReport/${report}`);url.searchParams.set('response','json');url.searchParams.set('date',month);if(code)url.searchParams.set('stockNo',code);const res=await fetch(url,{headers:{accept:'application/json'},cf:{cacheTtl:3600,cacheEverything:true}});if(!res.ok)throw Error(`證交所 HTTP ${res.status}`);const data=await res.json();if(data.stat!=='OK'&&!/查無|很抱歉|沒有符合/.test(data.stat||''))throw Error(data.stat||'資料格式異常');monthCache.set(key,{time:Date.now(),data});return data}
 async function pool(items,limit,fn){const out=new Array(items.length);let cur=0;await Promise.all(Array.from({length:limit},async()=>{while(cur<items.length){const i=cur++;try{out[i]=await fn(items[i])}catch(e){out[i]={error:e.message}}}}));return out}
 function dedupSort(rows){return rows.sort((a,b)=>a.date.localeCompare(b.date)).filter((x,i,a)=>!i||x.date!==a[i-1].date)}
@@ -63,12 +53,14 @@ async function fxDaily(){
 }
 export default {async fetch(request){const url=new URL(request.url),path=url.pathname;
   if(path==='/')return new Response(PAGE,{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-cache','x-content-type-options':'nosniff','referrer-policy':'strict-origin-when-cross-origin'}});
-  if(path==='/api/etfs')return json({etfs:ETF});
+  if(path==='/api/etfs')return json(CATALOG);
   if(path==='/api/brent'){try{const data=await brentDaily();return json({days:data.days,latest:data.days.at(-1).date,source:data.source,snapshot:data.snapshot,unit:'USD/barrel'})}catch(e){return json({error:e.message},503)}}
   if(path==='/api/fx'){try{const days=await fxDaily();return json({days,latest:days.at(-1).date,source:'CBC FTDOpenData_Day',unit:'TWD/USD'})}catch(e){return json({error:e.message},503)}}
   if(path==='/api/bars'){
-    const code=url.searchParams.get('code');if(!ETF.some(x=>x.code===code))return json({error:'此 ETF 尚未列入首批名單'},404);
-    try{const raw=await pool(months(36),5,m=>official('STOCK_DAY',m,code)),bars=adjust0050(code,barsFrom(raw));if(!bars.length)throw Error('尚無有效日 K');return json({code,bars,latest:bars.at(-1).date,source:'TWSE STOCK_DAY',basis:'split-adjusted-price',missingMonths:raw.filter(x=>x?.error).length})}catch(e){return json({error:e.message},503)}
+    const code=url.searchParams.get('code');if(!ETF.some(x=>x.code===code))return json({error:'此 ETF 不在目前證交所名錄'},404);
+    const offset=Number(url.searchParams.get('offset')||0),count=Number(url.searchParams.get('count')||36);
+    if(!Number.isInteger(offset)||offset<0||offset>120||!Number.isInteger(count)||count<1||count>36)return json({error:'歷史資料查詢範圍錯誤'},400);
+    try{const raw=await pool(months(count,offset),5,m=>official('STOCK_DAY',m,code)),bars=adjust0050(code,barsFrom(raw));return json({code,bars,latest:bars.at(-1)?.date||null,source:'TWSE STOCK_DAY',basis:code==='0050'?'0050-split-adjusted':'raw-price',offset,count,missingMonths:raw.filter(x=>x?.error).length})}catch(e){return json({error:e.message},503)}
   }
   if(path==='/api/market'){
     try{const raw=await pool(months(36),5,m=>official('FMTQIK',m)),days=marketFrom(raw);if(!days.length)throw Error('尚無有效大盤資料');return json({days,latest:days.at(-1).date,source:'TWSE FMTQIK',missingMonths:raw.filter(x=>x?.error).length})}catch(e){return json({error:e.message},503)}

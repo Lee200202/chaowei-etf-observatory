@@ -4,6 +4,9 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
+    "build:gas": "node scripts/build-gas.mjs",
+    "catalog:update": "node scripts/update-etf-catalog.mjs",
+    "test:gas": "node scripts/test-gas.mjs",
     "validate": "node scripts/validate-artifact.mjs",
     "dev": "node scripts/dev.mjs"
   }
