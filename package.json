@@ -12,6 +12,7 @@
     "validate": "node scripts/validate-artifact.mjs",
     "dev": "node scripts/dev.mjs",
     "history:update": "node scripts/update-history.mjs",
-    "history:validate": "node scripts/validate-history.mjs"
+    "history:validate": "node scripts/validate-history.mjs",
+    "intraday:update": "node scripts/update-intraday.mjs"
   }
 }

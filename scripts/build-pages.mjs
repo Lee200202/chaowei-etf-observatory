@@ -1,8 +1,8 @@
 import {mkdir,readFile,writeFile,copyFile,readdir,rm} from 'node:fs/promises';
 const root=new URL('../',import.meta.url),read=p=>readFile(new URL(p,root),'utf8');
-const [page,css,client,enhancements,dataLayer,quoteLayer,identityLayer]=await Promise.all([read('worker/page.html'),read('worker/style.css'),read('worker/client.js'),read('worker/chart-enhancements.js'),read('pages-src/data-layer.js'),read('pages-src/quote-layer.js'),read('pages-src/identity-layer.js')]);
+const [page,css,client,enhancements,dataLayer,quoteLayer,identityLayer,liveLayer]=await Promise.all([read('worker/page.html'),read('worker/style.css'),read('worker/client.js'),read('worker/chart-enhancements.js'),read('pages-src/data-layer.js'),read('pages-src/quote-layer.js'),read('pages-src/identity-layer.js'),read('pages-src/live-layer.js')]);
 const GAS_URL='https://script.google.com/macros/s/AKfycbwea2kGu7UX0RPfUYW2IaMmtar5_LitJth3mQ_c5uGOtgeihU_nmkM3uNw1CnddLdd6Kw/exec';
-const shim=`${dataLayer}\n${quoteLayer}\n${identityLayer}\nwindow.CHAOWEI_STATIC=true;installChaoweiApi('./');installChaoweiQuote('${GAS_URL}');installChaoweiIdentity('pages');\n`;
+const shim=`${dataLayer}\n${quoteLayer}\n${identityLayer}\n${liveLayer}\nwindow.CHAOWEI_STATIC=true;installChaoweiApi('./');installChaoweiQuote('${GAS_URL}');installChaoweiIdentity('pages');installChaoweiLive('${GAS_URL}');\n`;
 const html=page.replace('__CSS__',()=>css).replace('__JS__',()=>shim+client.replace('__ENHANCEMENTS__',()=>enhancements));
 await mkdir(new URL('docs/data/history/',root),{recursive:true});
 await writeFile(new URL('docs/index.html',root),html);

@@ -36,4 +36,13 @@ assert.equal(JSON.stringify(quote).includes('test-only-secret'),false,'key must 
 assert.equal(box.getQuote('2330').available,false,'only catalogue ETFs may use the key');
 assert.equal(box.doGet({parameter:{api:'quote',code:'009816',callback:'__cwq_abcdefgh'}}).type,'js');
 assert.equal(box.doGet({parameter:{api:'quote',code:'009816',callback:'alert'}}).type,'json');
-console.log('Apps Script snapshot proxy, quote gate, ETF allow-list, key isolation and page entry passed');
+// Intraday TAIEX and cumulative turnover, parsed from TWSE's 5-second statistics.
+const idxRows=[['09:00:00','46,822.08'],['09:05:00','46,611.67'],['11:35:00','46,400.10'],['11:37:25','46,410.55']];
+const volRows=[['09:00:00','1','1','1','1','0','0','0'],['09:05:00','1','1','1','1','239,791','867,021','78,527'],['11:35:00','1','1','1','1','2','6,500,000','400,000'],['11:37:25','1','1','1','1','2','6,520,000','401,000']];
+box.UrlFetchApp.fetchAll=requests=>requests.map(r=>({getResponseCode:()=>200,getContentText:()=>JSON.stringify({stat:'OK',data:r.url.includes('MI_5MINS_INDEX')?idxRows:volRows})}));
+const intraday=box.twseIntraday_('2026-10-21');
+assert.equal(intraday.index,46410.55);assert.equal(intraday.time,'11:37:25');
+assert.equal(intraday.lots,6520000);assert.equal(intraday.marks['0905'],867021);assert.equal(intraday.marks['1135'],6500000);
+assert.equal(intraday.marks['0900'],undefined,'09:00 has no trades yet');
+assert.equal(box.doGet({parameter:{api:'live',callback:'__cwl_abcdefgh'}}).type,'js');
+console.log('Apps Script snapshot proxy, quote gate, ETF allow-list, key isolation, live market parsing and page entry passed');

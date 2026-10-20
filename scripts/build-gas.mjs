@@ -1,13 +1,13 @@
 import {mkdir,readFile,writeFile} from 'node:fs/promises';
 const root=new URL('../',import.meta.url),read=p=>readFile(new URL(p,root),'utf8');
 const PAGES_BASE='https://lee200202.github.io/chaowei-etf-observatory/';
-const [page,css,client,enhancements,dataLayer,quoteLayer,identityLayer,backend]=await Promise.all([
+const [page,css,client,enhancements,dataLayer,quoteLayer,identityLayer,liveLayer,backend]=await Promise.all([
   read('worker/page.html'),read('worker/style.css'),read('worker/client.js'),read('worker/chart-enhancements.js'),
-  read('pages-src/data-layer.js'),read('pages-src/quote-layer.js'),read('pages-src/identity-layer.js'),read('gas-src/Code.template.gs')
+  read('pages-src/data-layer.js'),read('pages-src/quote-layer.js'),read('pages-src/identity-layer.js'),read('pages-src/live-layer.js'),read('gas-src/Code.template.gs')
 ]);
 // The page reads the Pages snapshots directly (CORS is open); google.script.run is only the fallback.
 const fallback=`path=>new Promise((resolve,reject)=>google.script.run.withSuccessHandler(d=>d&&d.error?reject(Error(d.error)):resolve(d)).withFailureHandler(reject).readSnapshot(path))`;
-const shim=`${dataLayer}\n${quoteLayer}\n${identityLayer}\nwindow.CHAOWEI_STATIC=true;window.CHAOWEI_HOST='apps-script';installChaoweiApi('${PAGES_BASE}',${fallback});installChaoweiQuote('');installChaoweiIdentity('apps-script');\n`;
+const shim=`${dataLayer}\n${quoteLayer}\n${identityLayer}\n${liveLayer}\nwindow.CHAOWEI_STATIC=true;window.CHAOWEI_HOST='apps-script';installChaoweiApi('${PAGES_BASE}',${fallback});installChaoweiQuote('');installChaoweiIdentity('apps-script');installChaoweiLive('');\n`;
 const html=page.replace('__CSS__',()=>css).replace('__JS__',()=>shim+client.replace('__ENHANCEMENTS__',()=>enhancements));
 await mkdir(new URL('gas/',root),{recursive:true});
 await writeFile(new URL('gas/Index.html',root),html);
