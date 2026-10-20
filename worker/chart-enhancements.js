@@ -214,30 +214,36 @@ function themeColors(){const dark=document.body.classList.contains('dark');retur
 function chartOptions(){
   const c=themeColors();
   return{autoSize:true,layout:{background:{type:'solid',color:c.bg},textColor:c.text,fontFamily:'-apple-system,BlinkMacSystemFont,"Noto Sans TC","Microsoft JhengHei",sans-serif'},
-    grid:{vertLines:{color:c.grid},horzLines:{color:c.grid}},rightPriceScale:{borderColor:c.border},
-    timeScale:{borderColor:c.border,rightOffset:3,minBarSpacing:0.4,fixLeftEdge:true},
+    grid:{vertLines:{color:c.grid},horzLines:{color:c.grid}},rightPriceScale:{borderColor:c.border,minimumWidth:72},
+    timeScale:{borderColor:c.border,rightOffset:3,minBarSpacing:0.05,fixLeftEdge:true},
     crosshair:{mode:0},localization:{locale:'zh-TW',dateFormat:'yyyy-MM-dd'},
     handleScroll:{mouseWheel:false,pressedMouseMove:true,horzTouchDrag:true,vertTouchDrag:false},handleScale:{mouseWheel:true,pinch:true,axisPressedMouseMove:{time:true,price:false}},kineticScroll:{touch:true,mouse:false}};
 }
 function buildCharts(){
   if(lwc||!window.LightweightCharts)return lwc;
-  const L=window.LightweightCharts,main=L.createChart($('chart'),chartOptions()),osc=L.createChart($('oscChart'),{...chartOptions(),timeScale:{...chartOptions().timeScale,visible:true}});
+  // Volume sits in its own pane (as on the Stock site) so the price axis never labels the volume area.
+  const L=window.LightweightCharts,main=L.createChart($('chart'),{...chartOptions(),timeScale:{...chartOptions().timeScale,visible:false}}),vol=L.createChart($('volChart'),chartOptions()),osc=L.createChart($('oscChart'),chartOptions());
   const line=(chart,color,extra={})=>chart.addLineSeries({color,lineWidth:2,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false,...extra});
   const s={
     candle:main.addCandlestickSeries({upColor:RISE,downColor:FALL,borderUpColor:RISE,borderDownColor:FALL,wickUpColor:RISE,wickDownColor:FALL,priceFormat:{type:'price',precision:2,minMove:0.01}}),
-    volume:main.addHistogramSeries({priceScaleId:'vol',priceFormat:{type:'volume'},priceLineVisible:false,lastValueVisible:false}),
+    volume:vol.addHistogramSeries({priceFormat:{type:'volume'},priceLineVisible:false,lastValueVisible:false}),
     ma5:line(main,COLORS.ma5),ma20:line(main,COLORS.ma20),ma60:line(main,COLORS.ma60),
     bollUp:line(main,COLORS.boll,{lineStyle:2,lineWidth:1.5}),bollLow:line(main,COLORS.boll,{lineStyle:2,lineWidth:1.5}),
     hist:osc.addHistogramSeries({priceLineVisible:false,lastValueVisible:false}),dif:line(osc,COLORS.dif),dea:line(osc,COLORS.dea),
     rsi:line(osc,COLORS.rsi,{lastValueVisible:true}),k:line(osc,COLORS.k,{lastValueVisible:true}),d:line(osc,COLORS.d,{lastValueVisible:true})
   };
-  main.priceScale('right').applyOptions({scaleMargins:{top:.05,bottom:.3}});
-  main.priceScale('vol').applyOptions({scaleMargins:{top:.75,bottom:0}});
-  lwc={L,main,osc,s,guides:[],syncing:false,data:[],tech:null};
-  // Keep the indicator pane aligned bar-for-bar with the price pane.
-  const sync=(from,to)=>from.timeScale().subscribeVisibleLogicalRangeChange(r=>{if(!r||lwc.syncing||$('oscChart').classList.contains('hidden'))return;lwc.syncing=true;to.timeScale().setVisibleLogicalRange(r);lwc.syncing=false});
-  sync(main,osc);sync(osc,main);
+  main.priceScale('right').applyOptions({scaleMargins:{top:.05,bottom:.05}});
+  vol.priceScale('right').applyOptions({scaleMargins:{top:.12,bottom:0}});
+  lwc={L,main,vol,osc,s,guides:[],syncing:false,data:[],tech:null};
+  // Keep the volume and indicator panes aligned bar-for-bar with the price pane.
+  const panes=[main,vol,osc];
+  for(const from of panes)from.timeScale().subscribeVisibleLogicalRangeChange(r=>{
+    if(!r||lwc.syncing)return;lwc.syncing=true;
+    for(const to of panes)if(to!==from&&!(to===osc&&$('oscChart').classList.contains('hidden')))to.timeScale().setVisibleLogicalRange(r);
+    lwc.syncing=false;
+  });
   main.subscribeCrosshairMove(p=>{updateLegend(p?.logical);showTip(p)});
+  vol.subscribeCrosshairMove(p=>{updateLegend(p?.logical);showTip(p&&p.point?{...p,point:{x:p.point.x,y:$('chart').clientHeight-10}}:p)});
   osc.subscribeCrosshairMove(p=>updateLegend(p?.logical));
   return lwc;
 }
@@ -288,7 +294,7 @@ drawChart=function(keepView=false){
     }
   }
   if(old)main.timeScale().setVisibleLogicalRange(old);else setVisible(chartRange);
-  if(o!=='none')requestAnimationFrame(()=>{const r=main.timeScale().getVisibleLogicalRange();if(r)osc.timeScale().setVisibleLogicalRange(r)});
+  requestAnimationFrame(()=>{const r=main.timeScale().getVisibleLogicalRange();if(!r)return;lwc.vol.timeScale().setVisibleLogicalRange(r);if(o!=='none')osc.timeScale().setVisibleLogicalRange(r)});
   $('chartCaption').textContent=`${ivName()} K · ${all.length.toLocaleString()} 根${provisional?' · 末根暫值':''} · 紅漲綠跌 · 量：張 · 滾輪縮放、拖曳平移 · 未含息`;
   $('chart').setAttribute('aria-label',all.length?`${selected} ${ivName()} K，${all[0].date} 至 ${all.at(-1).date}`:'尚未取得 K 線資料');
   updateLegend(null);renderTechRead(provisional?all.slice(0,-1):all,provisional?technical(all.slice(0,-1)):tech);
@@ -377,5 +383,5 @@ $('panLeft').addEventListener('click',()=>pan(-1));$('panRight').addEventListene
 document.querySelectorAll('[data-overlay]').forEach(b=>b.addEventListener('click',()=>{const k=b.dataset.overlay;settings.overlays[k]=!settings.overlays[k];applyOverlayButtons();save();drawChart(true)}));
 $('oscSeg').addEventListener('click',e=>{const b=e.target.closest('button[data-osc]');if(!b)return;settings.osc=b.dataset.osc;applyOverlayButtons();save();drawChart(true)});
 const originalPrefs=prefs;
-prefs=function(){originalPrefs();if(lwc){lwc.main.applyOptions(chartOptions());lwc.osc.applyOptions(chartOptions())}};
+prefs=function(){originalPrefs();if(lwc){lwc.main.applyOptions({...chartOptions(),timeScale:{...chartOptions().timeScale,visible:false}});lwc.vol.applyOptions(chartOptions());lwc.osc.applyOptions(chartOptions())}};
 applyOverlayButtons();

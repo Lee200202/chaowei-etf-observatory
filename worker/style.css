@@ -54,3 +54,6 @@ body.account-open{overflow:hidden}.account-overlay{position:fixed;inset:0;z-inde
 .price-up{color:#d63a3f!important}.price-down{color:#0f8a5c!important}
 @media(max-width:920px){.member-intro{grid-template-columns:1fr}.member-benefits{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:760px){.member-intro{padding:24px}.member-benefits{grid-template-columns:1fr}.topbar nav{gap:5px}.account-top{font-size:12px}}
+/* v3.2: volume in its own pane under the price chart. */
+.chart{height:340px}.vol-wrap{position:relative;border-top:1px dashed var(--line);margin-top:2px}.vol-chart{height:130px}.vol-wrap .vol-label{top:6px;bottom:auto;left:8px;z-index:2}
+@media(max-width:760px){.chart{height:290px}.vol-chart{height:110px}}@media(max-width:440px){.chart{height:260px}}
