@@ -139,6 +139,10 @@ body.touring{overflow:hidden}.tour-shade{position:fixed;inset:0;z-index:200}
 @media(prefers-reduced-motion:reduce){.tour-spot{transition:none}}
 .nav-icon{vertical-align:-3px;margin-right:2px}
 @media(min-width:441px){#accountTop .nav-icon{display:none}}
+/* v5.2: the three top-right buttons share one size. */
+.topbar nav .pill{display:inline-flex;align-items:center;justify-content:center;gap:4px;font-size:14px;font-weight:780;line-height:1;min-height:42px;padding:8px 16px}
+@media(max-width:760px){.topbar nav .pill{font-size:13px;min-height:40px;padding:8px 12px}}
+@media(max-width:440px){.topbar nav .pill{min-width:40px;padding:8px 11px}}
 </style>
 </head>
 <body>
