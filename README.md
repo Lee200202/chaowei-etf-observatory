@@ -17,6 +17,10 @@
 
 執行 `npm run build:gas` 產生 `gas/Code.gs`、`gas/Index.html` 與 `gas/appsscript.json`。這個版本在 Apps Script 內用 `google.script.run` 呼叫同帳號的後端，不依賴 Sites。若要在自己的 Google 帳號部署，使用 `clasp create --type webapp --title '潮位 ETF 觀測所' --rootDir gas`，重新執行 `npm run build:gas`，接著 `clasp push --force`、`clasp deploy`。請用實際 `/exec` 網址驗證外部帳號可存取；Google Workspace 管理員可能限制公開存取。
 
+## GitHub Pages
+
+`npm run snapshots:update` 從 EIA 與中央銀行擷取最近 650 筆日資料，`npm run build:pages` 產生 `docs/`。GitHub Pages 版本在訪客瀏覽器直接讀取證交所開放 CORS 的日 K 與大盤資料；原油、匯率使用 repo 內每日快照。工作流程於臺北時間週一至週五 18:30 更新快照。快照過期逾 14 天時停止該因子計分。證交所暫時限制瀏覽器呼叫時，介面會顯示缺口。
+
 ## 技術指標
 
 - MA20：20 根收盤價的算術平均。

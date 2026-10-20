@@ -71,7 +71,7 @@ function prefs(){document.body.classList.toggle('dark',!!settings.dark);document
 $('search').addEventListener('input',renderList);$('typeChips').addEventListener('click',e=>{const b=e.target.closest('button[data-type]');if(!b)return;type=b.dataset.type;$('typeChips').querySelectorAll('button').forEach(x=>x.classList.toggle('active',x===b));renderList()});$('window').addEventListener('change',function(){settings.window=this.value;computePosition();renderPosition();computeMarket();computeBrent();computeFx();updateWeights();save()});$('method').addEventListener('change',function(){settings.method=this.value;computePosition();renderPosition();computeMarket();computeBrent();computeFx();updateWeights();save()});$('intervalSeg').addEventListener('click',e=>{const b=e.target.closest('button[data-interval]');if(!b)return;interval=b.dataset.interval;$('intervalSeg').querySelectorAll('button').forEach(x=>x.classList.toggle('active',x===b));drawChart()});$('indicator').addEventListener('click',function(){showMA=!showMA;this.setAttribute('aria-pressed',showMA?'true':'false');this.textContent=showMA?'✓ 移除 MA20':'＋ 加入 MA20';drawChart()});['wEtf','wIndex','wVolume','wBrent','wFx'].forEach(k=>$(k).addEventListener('input',updateWeights));$('volumeDirection').addEventListener('change',function(){settings.volumeDirection=this.value;updateWeights()});$('normalize').addEventListener('click',()=>{const available=[true,!!marketPosition,!!marketPosition&&settings.volumeDirection!=='off',!!brentPosition,!!fxPosition],count=available.filter(Boolean).length,v=[0,0,0,0,0];let left=100;available.forEach((yes,i)=>{if(yes){const chunk=Math.floor(100/count/5)*5;v[i]=chunk;left-=chunk}});v[0]+=left;['wEtf','wIndex','wVolume','wBrent','wFx'].forEach((k,i)=>$(k).value=v[i]);updateWeights()});$('share').addEventListener('click',share);$('fontSize').addEventListener('change',function(){settings.font=this.value;prefs();save()});['theme','themeTop'].forEach(k=>$(k).addEventListener('click',()=>{settings.dark=!settings.dark;prefs();save()}));
 prefs();fetch('/api/etfs').then(r=>r.json()).then(d=>{catalog=d.etfs;if(!catalog.some(x=>x.code===selected))selected='0050';renderList();loadBars();loadMarket();loadBrent();loadFx()}).catch(e=>notice('ETF 名單無法取得：'+e.message));function refresh(){if(document.hidden)return;$('refreshClock').textContent=new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Taipei'});loadBars();loadMarket();loadBrent();loadFx()}setInterval(refresh,300000);$('refreshClock').textContent=new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Taipei'});if(shareView){$('share').textContent='檢視中的方案';$('share').disabled=true;$('normalize').disabled=true;['wEtf','wIndex','wVolume','wBrent','wFx','window','method','volumeDirection'].forEach(k=>$(k).disabled=true)}
 // Kept inside the client closure so the chart and data loaders share one state.
-let chartRange=3,zoomBars=750,panOffset=0,loadedMonths=0,historyBusyGeneration=null,requestedMonths=0;
+let chartRange=3,zoomBars=750,panOffset=0,loadedMonths=0,historyBusyGeneration=null,requestedMonths=0,rangeAwaitingHistory=false;
 let showBollinger=false,showMACD=false,historyGeneration=0,historyMissing=0;
 
 renderList=function(){
@@ -89,6 +89,15 @@ renderList=function(){
   else if(matches.length>(q?60:24)){const p=document.createElement('p');p.className='small';p.textContent=`顯示前 ${q?60:24} 檔，繼續輸入名稱或代號可縮小範圍。`;$('etfList').append(p)}
 };
 $('search').addEventListener('input',renderList);
+
+const originalComputeFx=computeFx;
+computeFx=function(){
+  originalComputeFx();
+  if(!fxPosition||!bars.length)return;
+  const age=(Date.parse(bars.at(-1).date)-Date.parse(fxPosition.last.date))/86400000;
+  if(age>14){fxPosition=null;$('fxScore').textContent='逾期';$('fxMeta').textContent='央行資料停留在 '+fx.at(-1).date+'，暫停計分'}
+  else if(window.CHAOWEI_STATIC)$('fxMeta').textContent+=' · 每日快照';
+};
 
 function listingMonths(code){
   const e=catalog.find(x=>x.code===code),d=e?.listingDate;
@@ -113,6 +122,7 @@ async function ensureHistory(months,code=selected,generation=historyGeneration){
       computePosition();renderPosition();drawChart();updateWeights();
     }
     if(code===selected&&generation===historyGeneration){
+      if(rangeAwaitingHistory){rangeAwaitingHistory=false;setRange(chartRange)}
       if(historyMissing)notice(`已載入 ${bars.length} 個交易日；${historyMissing} 個月份讀取失敗，長期水位可能不完整。`);
       else $('status').classList.add('hidden');
       drawChart();
@@ -122,7 +132,7 @@ async function ensureHistory(months,code=selected,generation=historyGeneration){
 }
 loadBars=async function(){
   const code=selected,generation=++historyGeneration;
-  bars=[];position=null;loadedMonths=0;historyMissing=0;requestedMonths=0;panOffset=0;
+  bars=[];position=null;loadedMonths=0;historyMissing=0;requestedMonths=0;rangeAwaitingHistory=false;panOffset=0;
   renderPosition();drawChart();notice(`正在讀取 ${code} 的證交所日 K…`);
   try{
     const count=Math.min(36,listingMonths(code));
@@ -186,7 +196,7 @@ drawChart=function(){
     macdNode.innerHTML=m;macdNode.setAttribute('aria-label',`MACD，${vis[0].date} 至 ${vis.at(-1).date}`);
   }else macdNode.classList.add('hidden');
 };
-$('rangeSeg').addEventListener('click',e=>{const b=e.target.closest('button[data-range]');if(!b)return;const years=Number(b.dataset.range);setRange(years);if(years>3)void ensureHistory(years*12)});
+$('rangeSeg').addEventListener('click',e=>{const b=e.target.closest('button[data-range]');if(!b)return;const years=Number(b.dataset.range);setRange(years);rangeAwaitingHistory=years*12>loadedMonths&&years*12<=listingMonths(selected);if(years>3)void ensureHistory(years*12)});
 $('intervalSeg').addEventListener('click',()=>setTimeout(()=>setRange(chartRange),0));
 $('zoomIn').addEventListener('click',()=>{zoomBars=Math.max(20,Math.round(zoomBars*.65));drawChart()});
 $('zoomOut').addEventListener('click',()=>{zoomBars=Math.min(Math.max(20,aggregate(bars,interval).length),Math.round(zoomBars*1.55));drawChart()});

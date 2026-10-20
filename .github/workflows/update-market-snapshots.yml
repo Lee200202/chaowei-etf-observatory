@@ -1,0 +1,31 @@
+name: Update public market snapshots
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 18:30 Asia/Taipei, after the Taiwan market close.
+    - cron: '30 10 * * 1-5'
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm run snapshots:update
+      - run: npm run build:pages
+      - name: Commit refreshed source snapshots
+        run: |
+          git add pages-data docs
+          if git diff --cached --quiet; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Refresh EIA and CBC daily snapshots'
+          git push

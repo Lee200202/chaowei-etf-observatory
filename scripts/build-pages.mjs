@@ -1,0 +1,11 @@
+import {mkdir,readFile,writeFile,copyFile} from 'node:fs/promises';
+const root=new URL('../',import.meta.url),read=p=>readFile(new URL(p,root),'utf8');
+const [page,css,client,enhancements,shim]=await Promise.all([read('worker/page.html'),read('worker/style.css'),read('worker/client.js'),read('worker/chart-enhancements.js'),read('pages-src/api-shim.js')]);
+let html=page.replace('__CSS__',css).replace('__JS__',shim+client.replace('__ENHANCEMENTS__',enhancements));
+html=html.replace('私人驗收期間，方案連結','公開版本中，方案連結');
+await mkdir(new URL('docs/data/',root),{recursive:true});
+await writeFile(new URL('docs/index.html',root),html);
+await writeFile(new URL('docs/.nojekyll',root),'');
+await copyFile(new URL('worker/etf-catalog.json',root),new URL('docs/etf-catalog.json',root));
+for(const file of ['brent.json','fx.json'])await copyFile(new URL(`pages-data/${file}`,root),new URL(`docs/data/${file}`,root));
+console.log('Built GitHub Pages website');

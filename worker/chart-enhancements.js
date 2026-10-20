@@ -1,5 +1,5 @@
 // Kept inside the client closure so the chart and data loaders share one state.
-let chartRange=3,zoomBars=750,panOffset=0,loadedMonths=0,historyBusyGeneration=null,requestedMonths=0;
+let chartRange=3,zoomBars=750,panOffset=0,loadedMonths=0,historyBusyGeneration=null,requestedMonths=0,rangeAwaitingHistory=false;
 let showBollinger=false,showMACD=false,historyGeneration=0,historyMissing=0;
 
 renderList=function(){
@@ -17,6 +17,15 @@ renderList=function(){
   else if(matches.length>(q?60:24)){const p=document.createElement('p');p.className='small';p.textContent=`顯示前 ${q?60:24} 檔，繼續輸入名稱或代號可縮小範圍。`;$('etfList').append(p)}
 };
 $('search').addEventListener('input',renderList);
+
+const originalComputeFx=computeFx;
+computeFx=function(){
+  originalComputeFx();
+  if(!fxPosition||!bars.length)return;
+  const age=(Date.parse(bars.at(-1).date)-Date.parse(fxPosition.last.date))/86400000;
+  if(age>14){fxPosition=null;$('fxScore').textContent='逾期';$('fxMeta').textContent='央行資料停留在 '+fx.at(-1).date+'，暫停計分'}
+  else if(window.CHAOWEI_STATIC)$('fxMeta').textContent+=' · 每日快照';
+};
 
 function listingMonths(code){
   const e=catalog.find(x=>x.code===code),d=e?.listingDate;
@@ -41,6 +50,7 @@ async function ensureHistory(months,code=selected,generation=historyGeneration){
       computePosition();renderPosition();drawChart();updateWeights();
     }
     if(code===selected&&generation===historyGeneration){
+      if(rangeAwaitingHistory){rangeAwaitingHistory=false;setRange(chartRange)}
       if(historyMissing)notice(`已載入 ${bars.length} 個交易日；${historyMissing} 個月份讀取失敗，長期水位可能不完整。`);
       else $('status').classList.add('hidden');
       drawChart();
@@ -50,7 +60,7 @@ async function ensureHistory(months,code=selected,generation=historyGeneration){
 }
 loadBars=async function(){
   const code=selected,generation=++historyGeneration;
-  bars=[];position=null;loadedMonths=0;historyMissing=0;requestedMonths=0;panOffset=0;
+  bars=[];position=null;loadedMonths=0;historyMissing=0;requestedMonths=0;rangeAwaitingHistory=false;panOffset=0;
   renderPosition();drawChart();notice(`正在讀取 ${code} 的證交所日 K…`);
   try{
     const count=Math.min(36,listingMonths(code));
@@ -114,7 +124,7 @@ drawChart=function(){
     macdNode.innerHTML=m;macdNode.setAttribute('aria-label',`MACD，${vis[0].date} 至 ${vis.at(-1).date}`);
   }else macdNode.classList.add('hidden');
 };
-$('rangeSeg').addEventListener('click',e=>{const b=e.target.closest('button[data-range]');if(!b)return;const years=Number(b.dataset.range);setRange(years);if(years>3)void ensureHistory(years*12)});
+$('rangeSeg').addEventListener('click',e=>{const b=e.target.closest('button[data-range]');if(!b)return;const years=Number(b.dataset.range);setRange(years);rangeAwaitingHistory=years*12>loadedMonths&&years*12<=listingMonths(selected);if(years>3)void ensureHistory(years*12)});
 $('intervalSeg').addEventListener('click',()=>setTimeout(()=>setRange(chartRange),0));
 $('zoomIn').addEventListener('click',()=>{zoomBars=Math.max(20,Math.round(zoomBars*.65));drawChart()});
 $('zoomOut').addEventListener('click',()=>{zoomBars=Math.min(Math.max(20,aggregate(bars,interval).length),Math.round(zoomBars*1.55));drawChart()});

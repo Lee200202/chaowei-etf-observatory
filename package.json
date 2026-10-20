@@ -5,6 +5,8 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "build:gas": "node scripts/build-gas.mjs",
+    "build:pages": "node scripts/build-pages.mjs",
+    "snapshots:update": "node scripts/update-macro-snapshots.mjs",
     "catalog:update": "node scripts/update-etf-catalog.mjs",
     "test:gas": "node scripts/test-gas.mjs",
     "validate": "node scripts/validate-artifact.mjs",
