@@ -129,3 +129,5 @@ body.touring{overflow:hidden}.tour-shade{position:fixed;inset:0;z-index:200}
 .tour-card{position:fixed;padding:16px 18px;box-shadow:0 24px 60px #0008;z-index:201}.tour-card small{color:#128e95;font-weight:850;font-size:12px}.tour-card h4{margin:4px 0 6px;font-size:18px;letter-spacing:-.02em}.tour-card p{margin:0 0 14px;font-size:14px;line-height:1.7;color:var(--ink)}
 .tour-actions{display:flex;justify-content:space-between;align-items:center;gap:8px}.tour-actions span{display:flex;gap:6px}.tour-actions .action{min-height:38px;padding:8px 18px;border:0;cursor:pointer;font-size:14px}
 @media(prefers-reduced-motion:reduce){.tour-spot{transition:none}}
+.nav-icon{vertical-align:-3px;margin-right:2px}
+@media(min-width:441px){#accountTop .nav-icon{display:none}}
