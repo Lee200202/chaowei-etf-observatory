@@ -96,3 +96,5 @@ body:not(.member) .fav-add,body:not(.member) .fav-list{display:none}body.member 
 @media(max-width:760px){.toolbar{position:sticky;top:4px;padding:10px 14px;gap:6px 12px}.toolbar h3{font-size:18px}.toolbar #etfMeta{font-size:11px}
 .toolbar-stats{gap:10px;width:auto}.toolbar-stats small{font-size:10px}.toolbar-stats b{font-size:15px}.toolbar-stats .pill.mini{min-height:30px;padding:4px 10px}.view-card{padding:14px}}
 @media(max-width:440px){.view-card .controls{display:grid;grid-template-columns:1fr 1fr;gap:8px}.view-card .controls label{min-width:0}.view-card select{width:100%;min-width:0}}
+.osc-pane{border-top:1px dashed var(--line);margin-top:6px;padding-top:4px}.osc-pane .osc-legend{margin-top:4px}.osc-pane .osc-chart{height:150px}
+@media(max-width:760px){.osc-pane .osc-chart{height:120px}}

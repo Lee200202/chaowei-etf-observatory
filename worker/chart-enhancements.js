@@ -2,7 +2,10 @@
 // Chart: TradingView Lightweight Charts 4.1.3 (same version as the Stock site); SVG close line if the CDN fails.
 let chartRange='1m',historyMeta=null,historyGeneration=0,lwc=null,liveQuote=null,quoteDisabled=false;
 settings.overlays=Object.assign({ma5:false,ma20:false,ma60:false,boll:false},settings.overlays||{});
-settings.osc=['none','macd','rsi','kd'].includes(settings.osc)?settings.osc:'none';
+// Sub-charts are multi-select: any of MACD, RSI and KD, each in its own pane.
+const OSC_KEYS=['macd','rsi','kd'],OSC_ID={macd:'Macd',rsi:'Rsi',kd:'Kd'};
+settings.oscs=Array.isArray(settings.oscs)?settings.oscs.filter(k=>OSC_KEYS.includes(k)):(OSC_KEYS.includes(settings.osc)?[settings.osc]:[]);
+const oscOn=k=>settings.oscs.includes(k);
 settings.anchorMode=['wick','close','average'].includes(settings.anchorMode)?settings.anchorMode:'wick';
 settings.anchorCount=Math.max(1,Math.min(20,Math.round(Number(settings.anchorCount)||5)));
 settings.showLevels=settings.showLevels===true;
@@ -227,31 +230,35 @@ function chartOptions(){
 function buildCharts(){
   if(lwc||!window.LightweightCharts)return lwc;
   // Volume sits in its own pane (as on the Stock site) so the price axis never labels the volume area.
-  const L=window.LightweightCharts,main=L.createChart($('chart'),{...chartOptions(),timeScale:{...chartOptions().timeScale,visible:false}}),vol=L.createChart($('volChart'),chartOptions()),osc=L.createChart($('oscChart'),chartOptions());
+  const L=window.LightweightCharts,main=L.createChart($('chart'),{...chartOptions(),timeScale:{...chartOptions().timeScale,visible:false}}),vol=L.createChart($('volChart'),chartOptions());
+  const oscCharts={};for(const k of OSC_KEYS)oscCharts[k]=L.createChart($('chart'+OSC_ID[k]),chartOptions());
+  const {macd,rsi,kd}=oscCharts;
   const line=(chart,color,extra={})=>chart.addLineSeries({color,lineWidth:2,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false,...extra});
   const s={
     candle:main.addCandlestickSeries({upColor:RISE,downColor:FALL,borderUpColor:RISE,borderDownColor:FALL,wickUpColor:RISE,wickDownColor:FALL,priceFormat:{type:'price',precision:2,minMove:0.01}}),
     volume:vol.addHistogramSeries({priceFormat:{type:'volume'},priceLineVisible:false,lastValueVisible:false}),
     ma5:line(main,COLORS.ma5),ma20:line(main,COLORS.ma20),ma60:line(main,COLORS.ma60),
     bollUp:line(main,COLORS.boll,{lineStyle:2,lineWidth:1.5}),bollLow:line(main,COLORS.boll,{lineStyle:2,lineWidth:1.5}),
-    hist:osc.addHistogramSeries({priceLineVisible:false,lastValueVisible:false}),dif:line(osc,COLORS.dif),dea:line(osc,COLORS.dea),
-    rsi:line(osc,COLORS.rsi,{lastValueVisible:true}),k:line(osc,COLORS.k,{lastValueVisible:true}),d:line(osc,COLORS.d,{lastValueVisible:true})
+    hist:macd.addHistogramSeries({priceLineVisible:false,lastValueVisible:false}),dif:line(macd,COLORS.dif),dea:line(macd,COLORS.dea),
+    rsi:line(rsi,COLORS.rsi,{lastValueVisible:true}),k:line(kd,COLORS.k,{lastValueVisible:true}),d:line(kd,COLORS.d,{lastValueVisible:true})
   };
   main.priceScale('right').applyOptions({scaleMargins:{top:.05,bottom:.05}});
   vol.priceScale('right').applyOptions({scaleMargins:{top:.12,bottom:0}});
-  lwc={L,main,vol,osc,s,guides:[],syncing:false,data:[],tech:null};
+  lwc={L,main,vol,oscCharts,s,guides:[],syncing:false,data:[],tech:null};
   // Keep the volume and indicator panes aligned bar-for-bar with the price pane.
-  const panes=[main,vol,osc];
+  const panes=[main,vol,macd,rsi,kd];
   for(const from of panes)from.timeScale().subscribeVisibleLogicalRangeChange(r=>{
     if(!r||lwc.syncing)return;lwc.syncing=true;
-    for(const to of panes)if(to!==from&&!(to===osc&&$('oscChart').classList.contains('hidden')))to.timeScale().setVisibleLogicalRange(r);
+    for(const to of visiblePanes())if(to!==from)to.timeScale().setVisibleLogicalRange(r);
     lwc.syncing=false;
   });
   main.subscribeCrosshairMove(p=>{updateLegend(p?.logical);showTip(p)});
   vol.subscribeCrosshairMove(p=>{updateLegend(p?.logical);showTip(p&&p.point?{...p,point:{x:p.point.x,y:$('chart').clientHeight-10}}:p)});
-  osc.subscribeCrosshairMove(p=>updateLegend(p?.logical));
+  for(const k of OSC_KEYS)oscCharts[k].subscribeCrosshairMove(p=>updateLegend(p?.logical));
   return lwc;
 }
+// Hidden sub-chart panes have no width, so they are left out of range syncing.
+function visiblePanes(){return lwc?[lwc.main,lwc.vol,...OSC_KEYS.filter(oscOn).map(k=>lwc.oscCharts[k])]:[]}
 function seriesData(all,values){return all.map((b,i)=>values[i]==null?{time:b.date}:{time:b.date,value:values[i]})}
 function setVisible(range){
   if(!lwc||!lwc.data.length)return;
@@ -259,11 +266,11 @@ function setVisible(range){
   if(range!=='all'){const months=/m$/.test(range)?Number(range.slice(0,-1)):Math.round(Number(range)*12),d=new Date(all.at(-1).date+'T00:00:00Z');d.setUTCMonth(d.getUTCMonth()-months);const start=d.toISOString().slice(0,10);from=all.findIndex(b=>b.date>=start);if(from<0)from=0}
   // Set every pane directly: on first load the volume pane reports its own default range a frame later,
   // and the pane sync would otherwise copy that wider range back onto the price chart.
-  const r={from:Math.max(-0.5,from-0.5),to:n-1+3},apply=()=>{for(const c of [lwc.main,lwc.vol,lwc.osc])if(c!==lwc.osc||!$('oscChart').classList.contains('hidden'))c.timeScale().setVisibleLogicalRange(r)};
+  const r={from:Math.max(-0.5,from-0.5),to:n-1+3},apply=()=>{for(const c of visiblePanes())c.timeScale().setVisibleLogicalRange(r)};
   apply();requestAnimationFrame(()=>requestAnimationFrame(apply));
 }
 function setRange(range){chartRange=String(range);$('rangeSeg').querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.range===chartRange));if(lwc)setVisible(chartRange);else drawChart()}
-function applyOverlayButtons(){document.querySelectorAll('[data-overlay]').forEach(b=>b.setAttribute('aria-pressed',String(!!settings.overlays[b.dataset.overlay])));$('oscSeg').querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.osc===settings.osc))}
+function applyOverlayButtons(){document.querySelectorAll('[data-overlay]').forEach(b=>b.setAttribute('aria-pressed',String(!!settings.overlays[b.dataset.overlay])));$('oscSeg').querySelectorAll('button').forEach(b=>{const on=b.dataset.osc==='none'?!settings.oscs.length:oscOn(b.dataset.osc);b.classList.toggle('active',on);b.setAttribute('aria-pressed',String(on))})}
 drawChart=function(keepView=false){
   const last=bars.at(-1),provisional=liveQuote?.available&&last&&liveQuote.date>last.date;
   const quoteBar=provisional?{
@@ -274,7 +281,7 @@ drawChart=function(keepView=false){
   }:null;
   const all=aggregate(withVolumeBasis(quoteBar?[...bars,quoteBar]:bars),interval);
   if(!buildCharts())return drawSvgFallback(all);
-  const {main,osc,s}=lwc,tech=technical(all),ov=settings.overlays;
+  const {main,s}=lwc,tech=technical(all),ov=settings.overlays;
   const old=keepView?main.timeScale().getVisibleLogicalRange():null;
   lwc.data=all;lwc.tech=tech;
   s.candle.setData(all.map(b=>({time:b.date,open:b.open,high:b.high,low:b.low,close:b.close})));
@@ -283,17 +290,17 @@ drawChart=function(keepView=false){
   s.bollUp.setData(seriesData(all,tech.upper));s.bollLow.setData(seriesData(all,tech.lower));
   s.bollUp.applyOptions({visible:!!ov.boll});s.bollLow.applyOptions({visible:!!ov.boll});
   if(ov.boll&&!ov.ma20)s.ma20.applyOptions({visible:true,color:COLORS.boll,lineStyle:2});else s.ma20.applyOptions({color:COLORS.ma20,lineStyle:0});
-  // Oscillator pane.
-  const o=settings.osc;$('oscChart').classList.toggle('hidden',o==='none');$('oscLegend').classList.toggle('hidden',o==='none');
+  // Sub-chart panes (any combination of MACD, RSI, KD).
+  for(const k of OSC_KEYS)$('pane'+OSC_ID[k]).classList.toggle('hidden',!oscOn(k));
   for(const g of lwc.guides)g.series.removePriceLine(g.line);lwc.guides=[];
-  s.hist.setData(o==='macd'?all.map((b,i)=>tech.hist[i]==null?{time:b.date}:{time:b.date,value:tech.hist[i],color:tech.hist[i]>=0?'rgba(229,72,77,.6)':'rgba(18,160,107,.6)'}):[]);
-  s.dif.setData(o==='macd'?seriesData(all,tech.dif):[]);s.dea.setData(o==='macd'?seriesData(all,tech.dea):[]);
-  s.rsi.setData(o==='rsi'?seriesData(all,tech.rsi):[]);
-  s.k.setData(o==='kd'?seriesData(all,tech.k):[]);s.d.setData(o==='kd'?seriesData(all,tech.d):[]);
+  s.hist.setData(oscOn('macd')?all.map((b,i)=>tech.hist[i]==null?{time:b.date}:{time:b.date,value:tech.hist[i],color:tech.hist[i]>=0?'rgba(229,72,77,.6)':'rgba(18,160,107,.6)'}):[]);
+  s.dif.setData(oscOn('macd')?seriesData(all,tech.dif):[]);s.dea.setData(oscOn('macd')?seriesData(all,tech.dea):[]);
+  s.rsi.setData(oscOn('rsi')?seriesData(all,tech.rsi):[]);
+  s.k.setData(oscOn('kd')?seriesData(all,tech.k):[]);s.d.setData(oscOn('kd')?seriesData(all,tech.d):[]);
   const guide=(series,price,title)=>lwc.guides.push({series,line:series.createPriceLine({price,color:'#9fb3b6',lineWidth:1,lineStyle:2,axisLabelVisible:false,title})});
-  if(o==='rsi'){guide(s.rsi,70,'70');guide(s.rsi,30,'30')}
-  if(o==='kd'){guide(s.k,80,'80');guide(s.k,20,'20')}
-  if(o==='macd')guide(s.dif,0,'');
+  if(oscOn('rsi')){guide(s.rsi,70,'70');guide(s.rsi,30,'30')}
+  if(oscOn('kd')){guide(s.k,80,'80');guide(s.k,20,'20')}
+  if(oscOn('macd'))guide(s.dif,0,'');
   if(settings.showLevels&&position){
     const fractions=settings.method==='fib'?[0,.236,.382,.618,.786,1]:[0,.2,.4,.6,.8,1];
     for(const f of fractions){
@@ -302,7 +309,7 @@ drawChart=function(keepView=false){
     }
   }
   if(old)main.timeScale().setVisibleLogicalRange(old);else setVisible(chartRange);
-  requestAnimationFrame(()=>{const r=main.timeScale().getVisibleLogicalRange();if(!r)return;lwc.vol.timeScale().setVisibleLogicalRange(r);if(o!=='none')osc.timeScale().setVisibleLogicalRange(r)});
+  requestAnimationFrame(()=>{const r=main.timeScale().getVisibleLogicalRange();if(!r)return;for(const c of visiblePanes())if(c!==main)c.timeScale().setVisibleLogicalRange(r)});
   $('chartCaption').textContent=`紅漲綠跌 · 量：張${volumeAdjusted()?'（分割前已換算）':''}${provisional?' · 末根為盤中暫值':''} · 滾輪縮放、拖曳平移`;
   $('chart').setAttribute('aria-label',all.length?`${selected} ${ivName()} K，${all[0].date} 至 ${all.at(-1).date}`:'尚未取得 K 線資料');
   updateLegend(null);renderTechRead(provisional?all.slice(0,-1):all,provisional?technical(all.slice(0,-1)):tech);
@@ -316,11 +323,9 @@ function updateLegend(logical){
   for(const k of ['ma5','ma20','ma60'])if(settings.overlays[k]&&t[k][i]!=null)h+=item(k.toUpperCase(),fmt(t[k][i],2),COLORS[k]);
   if(settings.overlays.boll&&t.upper[i]!=null)h+=item('布林上／下',`${fmt(t.upper[i],2)}／${fmt(t.lower[i],2)}`,COLORS.boll);
   $('chartLegend').innerHTML=h;
-  const o=settings.osc;let oh='';
-  if(o==='macd')oh=item('DIF',fmt(t.dif[i],3),COLORS.dif)+item('DEA',fmt(t.dea[i],3),COLORS.dea)+item('柱',fmt(t.hist[i],3));
-  if(o==='rsi')oh=item('RSI14',fmt(t.rsi[i],1),COLORS.rsi);
-  if(o==='kd')oh=item('K9',fmt(t.k[i],1),COLORS.k)+item('D9',fmt(t.d[i],1),COLORS.d);
-  $('oscLegend').innerHTML=oh;
+  if(oscOn('macd'))$('legendMacd').innerHTML=item('MACD','')+item('DIF',fmt(t.dif[i],3),COLORS.dif)+item('DEA',fmt(t.dea[i],3),COLORS.dea)+item('柱',fmt(t.hist[i],3));
+  if(oscOn('rsi'))$('legendRsi').innerHTML=item('RSI14',fmt(t.rsi[i],1),COLORS.rsi);
+  if(oscOn('kd'))$('legendKd').innerHTML=item('KD','')+item('K9',fmt(t.k[i],1),COLORS.k)+item('D9',fmt(t.d[i],1),COLORS.d);
 }
 // Floating box at the cursor: the day's five price figures (open, high, low, close, change) and volume.
 function showTip(p){
@@ -352,9 +357,9 @@ function renderTechRead(all,t){
   const vr=all[n].volume/t.volMa20[n];rows.push(['量能',`${fmt(vr,2)} 倍`,`最新成交 ${lots(all[n].volume)}，為 20 ${u}均量的 ${fmt(vr,2)} 倍（${vr>=1.5?'明顯放量':vr<=.6?'明顯縮量':'接近均量'}）。`]);
   const active=new Set(['趨勢','量能']);
   if(settings.overlays.boll)active.add('布林通道');
-  if(settings.osc==='macd')active.add('MACD');
-  if(settings.osc==='rsi')active.add('RSI 14');
-  if(settings.osc==='kd')active.add('KD 9');
+  if(oscOn('macd'))active.add('MACD');
+  if(oscOn('rsi'))active.add('RSI 14');
+  if(oscOn('kd'))active.add('KD 9');
   box.innerHTML=`<div class="tech-head"><h4>技術面讀數</h4><span class="small">${all[n].date} · ${u} K</span></div><div class="tech-grid">${rows.filter(([k])=>active.has(k)).map(([k,v,d])=>`<div class="tech-item"><small>${k}</small><b>${v}</b><details><summary>判讀</summary><p>${d}</p></details></div>`).join('')}</div>`;
 }
 function drawSvgFallback(all){
@@ -389,13 +394,17 @@ function pan(dir){if(!lwc)return;const ts=lwc.main.timeScale(),r=ts.getVisibleLo
 $('zoomIn').addEventListener('click',()=>zoom(.6));$('zoomOut').addEventListener('click',()=>zoom(1.6));
 $('panLeft').addEventListener('click',()=>pan(-1));$('panRight').addEventListener('click',()=>pan(1));
 document.querySelectorAll('[data-overlay]').forEach(b=>b.addEventListener('click',()=>{const k=b.dataset.overlay;settings.overlays[k]=!settings.overlays[k];applyOverlayButtons();save();drawChart(true)}));
-$('oscSeg').addEventListener('click',e=>{const b=e.target.closest('button[data-osc]');if(!b)return;settings.osc=b.dataset.osc;applyOverlayButtons();save();drawChart(true)});
+$('oscSeg').addEventListener('click',e=>{
+  const b=e.target.closest('button[data-osc]');if(!b)return;const k=b.dataset.osc;
+  settings.oscs=k==='none'?[]:oscOn(k)?settings.oscs.filter(x=>x!==k):OSC_KEYS.filter(x=>x===k||oscOn(x));
+  settings.osc=settings.oscs[0]||'none';applyOverlayButtons();save();drawChart(true);
+});
 const originalPrefs=prefs;
-prefs=function(){originalPrefs();if(lwc){lwc.main.applyOptions({...chartOptions(),timeScale:{...chartOptions().timeScale,visible:false}});lwc.vol.applyOptions(chartOptions());lwc.osc.applyOptions(chartOptions())}};
+prefs=function(){originalPrefs();if(lwc){lwc.main.applyOptions({...chartOptions(),timeScale:{...chartOptions().timeScale,visible:false}});lwc.vol.applyOptions(chartOptions());for(const k of OSC_KEYS)lwc.oscCharts[k].applyOptions(chartOptions())}};
 
 /* ---------- Volume basis: exchange-reported lots, or converted across splits ---------- */
 // Bollinger bands are opt-in; earlier test builds may have saved them as on.
-if((settings.overlayRev||0)<3){settings.overlays={ma5:false,ma20:false,ma60:false,boll:false};settings.osc='none';settings.showLevels=false;settings.overlayRev=3;applyOverlayButtons();updateAnchorControls()}
+if((settings.overlayRev||0)<3){settings.overlays={ma5:false,ma20:false,ma60:false,boll:false};settings.osc='none';settings.oscs=[];settings.showLevels=false;settings.overlayRev=3;applyOverlayButtons();updateAnchorControls()}
 settings.volumeBasis=settings.volumeBasis==='adjusted'?'adjusted':'raw';
 $('volumeBasis').value=settings.volumeBasis;
 $('volumeBasis').addEventListener('change',function(){settings.volumeBasis=this.value==='adjusted'?'adjusted':'raw';save();drawChart(true)});
@@ -614,12 +623,12 @@ function labelLastBar(){
 /* ---------- One crosshair across price, volume and indicator panes ---------- */
 function syncCrosshair(){
   if(!lwc||lwc.crossSynced)return;lwc.crossSynced=true;
-  const {main,vol,osc,s}=lwc,panes=[main,vol,osc];
+  const {main,vol,oscCharts,s}=lwc,panes=[main,vol,...OSC_KEYS.map(k=>oscCharts[k])],seriesKey={macd:'dif',rsi:'rsi',kd:'k'};
   const target=chart=>{
     if(chart===main)return{series:s.candle,val:i=>lwc.data[i]?.close};
     if(chart===vol)return{series:s.volume,val:i=>lwc.data[i]?lwc.data[i].volume/1000:null};
-    const o=settings.osc;if(o==='none')return null;
-    const key=o==='macd'?'dif':o==='rsi'?'rsi':'k';return{series:s[key],val:i=>lwc.tech?.[key]?.[i]};
+    const o=OSC_KEYS.find(k=>oscCharts[k]===chart);if(!oscOn(o))return null;
+    const key=seriesKey[o];return{series:s[key],val:i=>lwc.tech?.[key]?.[i]};
   };
   for(const from of panes)from.subscribeCrosshairMove(p=>{
     for(const to of panes){
