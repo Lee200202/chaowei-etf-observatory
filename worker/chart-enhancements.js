@@ -59,8 +59,15 @@ loadBars=async function(){
     if(!res.ok)throw Error(data.error||'資料讀取失敗');
     bars=data.bars;loadedMonths=count;historyMissing=data.missingMonths||0;
     if(!bars.length)throw Error('證交所尚無可用的上市後日 K');
+    let autoWindow=null;
+    if(!shareView&&settings.window!=='all'&&bars.length-1<Number(settings.window)){
+      const old=settings.window,next=[600,400,200,120,60].find(n=>n<=bars.length-1);
+      settings.window=next?String(next):'all';$('window').value=settings.window;save();
+      autoWindow=`${code} 上市後只有 ${bars.length} 個交易日；觀察窗已由 ${old} 日改為 ${next||'已取得全部'}。`;
+    }
     computePosition();computeBrent();computeFx();renderPosition();setRange(chartRange);updateWeights();
-    if(historyMissing)notice(`近期資料有 ${historyMissing} 個月份讀取失敗，請稍後重試。`);
+    if(autoWindow)notice(autoWindow);
+    else if(historyMissing)notice(`近期資料有 ${historyMissing} 個月份讀取失敗，請稍後重試。`);
     else $('status').classList.add('hidden');
     if(listingMonths(code)>36)void ensureHistory(Math.max(60,requestedMonths),code,generation);
   }catch(e){if(code!==selected||generation!==historyGeneration)return;bars=[];position=null;renderPosition();drawChart();updateWeights();notice(`歷史行情暫時無法取得：${e.message}`)}
