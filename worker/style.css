@@ -90,3 +90,9 @@ body:not(.member) .member-only{max-height:560px}body:not(.member) .member-only .
 .fav-add{display:inline-flex;gap:6px;align-items:center}.fav-add input{width:130px;min-height:34px;border:1px solid var(--line);border-radius:999px;background:var(--paper);color:var(--ink);padding:4px 12px;font-size:12px}
 body:not(.member) .fav-add,body:not(.member) .fav-list{display:none}body.member .fav-login{display:none}
 @media(max-width:440px){.fav-add input{width:110px}}
+/* v4.4: the pinned bar shows only the ETF and its key numbers; conditions sit in their own card. */
+.toolbar{padding:12px 22px;gap:10px 20px}.toolbar h3{font-size:22px;margin:0 0 2px}.toolbar p{margin:0}
+.view-card{padding:16px 22px;display:grid;gap:12px}.view-card .controls{gap:10px}.view-card .fav-bar{margin:0}
+@media(max-width:760px){.toolbar{position:sticky;top:4px;padding:10px 14px;gap:6px 12px}.toolbar h3{font-size:18px}.toolbar #etfMeta{font-size:11px}
+.toolbar-stats{gap:10px;width:auto}.toolbar-stats small{font-size:10px}.toolbar-stats b{font-size:15px}.toolbar-stats .pill.mini{min-height:30px;padding:4px 10px}.view-card{padding:14px}}
+@media(max-width:440px){.view-card .controls{display:grid;grid-template-columns:1fr 1fr;gap:8px}.view-card .controls label{min-width:0}.view-card select{width:100%;min-width:0}}

@@ -79,13 +79,17 @@ function readSnapshot(path){
 function getLiveMarket(){
   const cache=CacheService.getScriptCache(),hit=cache.get('live-v1');
   if(hit)return JSON.parse(hit);
-  const out={generated:new Date().toISOString(),intraday:null,brent:null,fx:null,errors:[]};
+  const out={generated:new Date().toISOString(),intraday:null,brent:null,fx:null,store:false,errors:[]};
   const now=new Date(Date.now()+8*3600000),mins=now.getUTCHours()*60+now.getUTCMinutes(),day=now.getUTCDay();
-  if(day>=1&&day<=5&&mins>=9*60+1&&mins<=16*60){
+  // The cloud spreadsheet is the first source; a direct read covers a missing or stale record.
+  let stored=null;
+  try{stored=liveFromStore_()}catch(err){out.errors.push('潮位資料庫：'+err.message)}
+  if(stored){out.store=true;out.intraday=stored.intraday;out.brent=stored.brent;out.fx=stored.fx}
+  if(!out.intraday&&day>=1&&day<=5&&mins>=9*60+1&&mins<=16*60){
     try{out.intraday=twseIntraday_(now.toISOString().slice(0,10))}catch(err){out.errors.push('證交所盤中統計：'+err.message)}
   }
-  try{out.brent=eiaBrent_()}catch(err){out.errors.push('EIA：'+err.message)}
-  try{out.fx=cbcFx_()}catch(err){out.errors.push('央行：'+err.message)}
+  if(!out.brent)try{out.brent=eiaBrent_()}catch(err){out.errors.push('EIA：'+err.message)}
+  if(!out.fx)try{out.fx=cbcFx_()}catch(err){out.errors.push('央行：'+err.message)}
   cache.put('live-v1',JSON.stringify(out),240);
   return out;
 }

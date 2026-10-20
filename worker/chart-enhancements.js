@@ -1,11 +1,11 @@
 // Kept inside the client closure so the chart and data loaders share one state.
 // Chart: TradingView Lightweight Charts 4.1.3 (same version as the Stock site); SVG close line if the CDN fails.
-let chartRange='1',historyMeta=null,historyGeneration=0,lwc=null,liveQuote=null,quoteDisabled=false;
+let chartRange='1m',historyMeta=null,historyGeneration=0,lwc=null,liveQuote=null,quoteDisabled=false;
 settings.overlays=Object.assign({ma5:false,ma20:false,ma60:false,boll:false},settings.overlays||{});
 settings.osc=['none','macd','rsi','kd'].includes(settings.osc)?settings.osc:'none';
 settings.anchorMode=['wick','close','average'].includes(settings.anchorMode)?settings.anchorMode:'wick';
 settings.anchorCount=Math.max(1,Math.min(20,Math.round(Number(settings.anchorCount)||5)));
-settings.showLevels=settings.showLevels!==false;
+settings.showLevels=settings.showLevels===true;
 const RISE='#e5484d',FALL='#12a06b',COLORS={ma5:'#3b82f6',ma20:'#e6a23c',ma60:'#8b5cf6',boll:'#14b8a6',dif:'#e6a23c',dea:'#8b5cf6',rsi:'#0ea5b7',k:'#e6a23c',d:'#3b82f6'};
 const POPULAR=['0050','0056','00878','006208','00919','009816','00981A','00631L'];
 settings.watchlist=Array.isArray(settings.watchlist)?[...new Set(settings.watchlist.filter(x=>typeof x==='string'&&/^[0-9A-Z]{4,6}$/.test(x)))].slice(0,50):POPULAR.slice();
@@ -45,7 +45,7 @@ renderList=function(){
   const matches=catalog.filter(e=>(type==='all'||type==='watch'&&settings.watchlist.includes(e.code)||e.type===type)&&(!q||`${e.code} ${e.name} ${e.note||''}`.toLocaleLowerCase('zh-TW').includes(q)));
   // Exact code hits first, so typing 0050 does not bury 0050 under 00500-style codes.
   if(q)matches.sort((a,b)=>(b.code.toLowerCase()===q)-(a.code.toLowerCase()===q)||(b.code.toLowerCase().startsWith(q))-(a.code.toLowerCase().startsWith(q)));
-  $('catalogNote').textContent=`證交所上市 ETF 名錄共 ${catalog.length} 檔，含 009816 等新掛牌商品。按搜尋列或「/」鍵開啟全螢幕搜尋。`;
+  $('catalogNote').textContent=`證交所上市 ETF ${catalog.length} 檔 · 約十年日 K`;
   $('searchCount').textContent=`共 ${catalog.length} 檔，符合 ${matches.length} 檔${q?`「${$('search').value.trim()}」`:''}`;
   $('etfList').replaceChildren();
   const limit=q?150:catalog.length;
@@ -69,7 +69,7 @@ $('search').addEventListener('keydown',e=>{if(e.key==='Enter'){const first=$('et
 
 function openAccount(){closeDisplay();$('accountOverlay').classList.remove('hidden');document.body.classList.add('account-open');$('googleSignIn').focus()}
 function closeAccount(){$('accountOverlay').classList.add('hidden');document.body.classList.remove('account-open')}
-for(const id of ['accountTop','memberStart'])$(id).addEventListener('click',openAccount);
+for(const id of ['accountTop','memberStart'])$(id)?.addEventListener('click',openAccount);
 $('closeAccount').addEventListener('click',closeAccount);
 $('accountOverlay').addEventListener('click',e=>{if(e.target===$('accountOverlay'))closeAccount()});
 window.chaoweiApplyProfile=profile=>{if(!profile||typeof profile!=='object')return;
@@ -257,7 +257,10 @@ function setVisible(range){
   if(!lwc||!lwc.data.length)return;
   const all=lwc.data,n=all.length;let from=0;
   if(range!=='all'){const months=/m$/.test(range)?Number(range.slice(0,-1)):Math.round(Number(range)*12),d=new Date(all.at(-1).date+'T00:00:00Z');d.setUTCMonth(d.getUTCMonth()-months);const start=d.toISOString().slice(0,10);from=all.findIndex(b=>b.date>=start);if(from<0)from=0}
-  lwc.main.timeScale().setVisibleLogicalRange({from:Math.max(-0.5,from-0.5),to:n-1+3});
+  // Set every pane directly: on first load the volume pane reports its own default range a frame later,
+  // and the pane sync would otherwise copy that wider range back onto the price chart.
+  const r={from:Math.max(-0.5,from-0.5),to:n-1+3},apply=()=>{for(const c of [lwc.main,lwc.vol,lwc.osc])if(c!==lwc.osc||!$('oscChart').classList.contains('hidden'))c.timeScale().setVisibleLogicalRange(r)};
+  apply();requestAnimationFrame(()=>requestAnimationFrame(apply));
 }
 function setRange(range){chartRange=String(range);$('rangeSeg').querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.range===chartRange));if(lwc)setVisible(chartRange);else drawChart()}
 function applyOverlayButtons(){document.querySelectorAll('[data-overlay]').forEach(b=>b.setAttribute('aria-pressed',String(!!settings.overlays[b.dataset.overlay])));$('oscSeg').querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.osc===settings.osc))}
@@ -300,7 +303,7 @@ drawChart=function(keepView=false){
   }
   if(old)main.timeScale().setVisibleLogicalRange(old);else setVisible(chartRange);
   requestAnimationFrame(()=>{const r=main.timeScale().getVisibleLogicalRange();if(!r)return;lwc.vol.timeScale().setVisibleLogicalRange(r);if(o!=='none')osc.timeScale().setVisibleLogicalRange(r)});
-  $('chartCaption').textContent=`${ivName()} K · ${all.length.toLocaleString()} 根${provisional?' · 末根暫值':''} · 紅漲綠跌 · 量：張${volumeAdjusted()?'（分割前已換算）':(historyMeta?.adjustments||[]).length?'（分割前為原始張數）':''} · 滾輪縮放、拖曳平移 · 未含息`;
+  $('chartCaption').textContent=`紅漲綠跌 · 量：張${volumeAdjusted()?'（分割前已換算）':''}${provisional?' · 末根為盤中暫值':''} · 滾輪縮放、拖曳平移`;
   $('chart').setAttribute('aria-label',all.length?`${selected} ${ivName()} K，${all[0].date} 至 ${all.at(-1).date}`:'尚未取得 K 線資料');
   updateLegend(null);renderTechRead(provisional?all.slice(0,-1):all,provisional?technical(all.slice(0,-1)):tech);
 };
@@ -370,7 +373,7 @@ $('showLevels').addEventListener('click',function(){settings.showLevels=!setting
 function updateAnchorControls(){
   settings.anchorMode=['wick','close','average'].includes(settings.anchorMode)?settings.anchorMode:'wick';
   settings.anchorCount=Math.max(1,Math.min(20,Math.round(Number(settings.anchorCount)||5)));
-  settings.showLevels=settings.showLevels!==false;
+  settings.showLevels=settings.showLevels===true;
   $('anchorMode').value=settings.anchorMode;$('anchorCount').value=settings.anchorCount;
   $('anchorCountWrap').classList.toggle('hidden',settings.anchorMode!=='average');
   $('showLevels').setAttribute('aria-pressed',String(settings.showLevels));
@@ -392,7 +395,7 @@ prefs=function(){originalPrefs();if(lwc){lwc.main.applyOptions({...chartOptions(
 
 /* ---------- Volume basis: exchange-reported lots, or converted across splits ---------- */
 // Bollinger bands are opt-in; earlier test builds may have saved them as on.
-if(settings.overlayRev!==2){settings.overlays.boll=false;settings.overlayRev=2}
+if((settings.overlayRev||0)<3){settings.overlays={ma5:false,ma20:false,ma60:false,boll:false};settings.osc='none';settings.showLevels=false;settings.overlayRev=3;applyOverlayButtons();updateAnchorControls()}
 settings.volumeBasis=settings.volumeBasis==='adjusted'?'adjusted':'raw';
 $('volumeBasis').value=settings.volumeBasis;
 $('volumeBasis').addEventListener('change',function(){settings.volumeBasis=this.value==='adjusted'?'adjusted':'raw';save();drawChart(true)});
@@ -460,10 +463,12 @@ computeMarket=function(){
   $('volumeScore').textContent=grade+' / 5';
   $('volumeMeta').textContent='盤中 '+mark.slice(0,2)+':'+mark.slice(2)+' 累計 '+fmt(today*1000/1e8,2)+' 億股 · 與前 '+prior.length+' 日同時段比第 '+Math.round(rank*100)+' 百分位';
 };
+// Factor notes keep value and date only; the scoring direction and update time are stated once on the card.
+const tidyMeta=id=>{$(id).textContent=$(id).textContent.replace(/ · (低價分高|數值低分高|來源快照|每日快照)/g,'')};
 const baseComputeBrent=computeBrent;
-computeBrent=function(){baseComputeBrent();if(brentPosition&&live?.brent&&liveAt)$('brentMeta').textContent+=' · '+hhmm(liveAt)+' 讀取 EIA'};
+computeBrent=function(){baseComputeBrent();tidyMeta('brentMeta')};
 const liveComputeFx=computeFx;
-computeFx=function(){liveComputeFx();if(fxPosition&&live?.fx&&liveAt)$('fxMeta').textContent=$('fxMeta').textContent.replace(' · 每日快照','')+' · '+hhmm(liveAt)+' 讀取央行'};
+computeFx=function(){liveComputeFx();tidyMeta('fxMeta')};
 const baseUpdateWeights=updateWeights;
 updateWeights=function(){baseUpdateWeights();if(Number($('wVolume').value)>0&&settings.volumeDirection!=='off'&&marketPosition&&marketPosition.volumeGrade==null){$('combined').textContent='—';$('combinedExtra').textContent='盤中同時段量能資料不足，暫不計算綜合分'}};
 loadLive();

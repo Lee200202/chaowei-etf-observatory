@@ -12,5 +12,7 @@ const html=page.replace('__CSS__',()=>css).replace('__JS__',()=>shim+client.repl
 await mkdir(new URL('gas/',root),{recursive:true});
 await writeFile(new URL('gas/Index.html',root),html);
 await writeFile(new URL('gas/Code.gs',root),backend.replace('__PAGES_BASE__',PAGES_BASE));
-await writeFile(new URL('gas/appsscript.json',root),JSON.stringify({timeZone:'Asia/Taipei',exceptionLogging:'STACKDRIVER',runtimeVersion:'V8',webapp:{access:'ANYONE_ANONYMOUS',executeAs:'USER_DEPLOYING'},oauthScopes:['https://www.googleapis.com/auth/script.external_request']},null,2)+'\n');
+// Cloud spreadsheet store (潮位資料庫): needs Sheets and trigger scopes, granted once by the owner in the editor.
+await writeFile(new URL('gas/Store.gs',root),await read('gas-src/Store.gs'));
+await writeFile(new URL('gas/appsscript.json',root),JSON.stringify({timeZone:'Asia/Taipei',exceptionLogging:'STACKDRIVER',runtimeVersion:'V8',webapp:{access:'ANYONE_ANONYMOUS',executeAs:'USER_DEPLOYING'},oauthScopes:['https://www.googleapis.com/auth/script.external_request','https://www.googleapis.com/auth/spreadsheets','https://www.googleapis.com/auth/script.scriptapp']},null,2)+'\n');
 console.log('Built Google Apps Script web app');
