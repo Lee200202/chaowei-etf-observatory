@@ -83,3 +83,10 @@ body:not(.member) .member-only{max-height:560px}body:not(.member) .member-only .
 @media(max-width:440px){.topbar nav{gap:6px}.topbar nav .nav-label{display:none}.topbar nav .pill{min-width:40px;padding:8px 11px;font-size:13px}.brand{font-size:19px}
 .toolbar .controls{display:grid;grid-template-columns:1fr 1fr;gap:8px}.toolbar .controls label{min-width:0}
 .factor-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.factor{padding:12px;min-height:0}.factor strong{font-size:21px}.factor-icon{font-size:20px}.factor h4{font-size:12px}}
+/* v4.3: daily change, favourites bar. */
+.price-change{margin:-2px 0 6px;font-size:18px;font-weight:800;font-variant-numeric:tabular-nums}.price-change.up,#barChange.up{color:#d63a3f}.price-change.down,#barChange.down{color:#0f8a5c}
+.fav-bar{flex-basis:100%;display:flex;align-items:center;gap:8px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:10px;margin-top:2px}.fav-title{font-size:12px;font-weight:850;color:#b7791f}
+.fav-list{display:flex;gap:6px;flex-wrap:wrap}.fav-chip{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:999px;background:var(--mist);overflow:hidden}.fav-chip button{border:0;background:transparent;color:var(--ink);font:inherit;font-size:12px;font-weight:780;padding:7px 10px;min-height:32px;cursor:pointer}.fav-chip button.fav-del{padding:7px 9px 7px 2px;color:var(--muted)}.fav-chip.on{background:#173e48;border-color:#173e48}.fav-chip.on button{color:#fff}
+.fav-add{display:inline-flex;gap:6px;align-items:center}.fav-add input{width:130px;min-height:34px;border:1px solid var(--line);border-radius:999px;background:var(--paper);color:var(--ink);padding:4px 12px;font-size:12px}
+body:not(.member) .fav-add,body:not(.member) .fav-list{display:none}body.member .fav-login{display:none}
+@media(max-width:440px){.fav-add input{width:110px}}

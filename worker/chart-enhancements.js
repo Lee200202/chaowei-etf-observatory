@@ -581,3 +581,93 @@ for(const id of ['btDrop','btStep','btAdds','btSellMode','btRise','btFibWindow',
 document.querySelectorAll('.bt-levels input').forEach(x=>x.addEventListener('change',()=>{btConfigFromForm();btFillForm();renderBacktest()}));
 $('btMarkers').addEventListener('click',()=>{settings.bt.markers=!settings.bt.markers;save();btFillForm();applyMarkers()});
 btFillForm();
+
+/* ---------- Daily change next to the latest close, and on the chart's price label ---------- */
+function dayChange(){
+  const last=bars.at(-1);if(!last)return null;
+  const provisional=liveQuote?.available&&liveQuote.date>last.date;
+  const value=provisional?liveQuote.price:last.close,ref=provisional?(liveQuote.previousClose||last.close):bars.at(-2)?.close;
+  return Number.isFinite(value)&&ref>0?{chg:value-ref,pct:(value-ref)/ref*100}:null;
+}
+const changeText=d=>(d.chg>0?'+':'')+fmt(d.chg,2)+'（'+(d.pct>0?'+':'')+fmt(d.pct,2)+'%）';
+function renderChange(){
+  const d=dayChange();
+  for(const id of ['priceChange','barChange']){
+    const el=$(id);el.classList.remove('up','down');
+    if(!d){el.textContent=id==='barChange'?'—':'';continue}
+    if(d.chg)el.classList.add(d.chg>0?'up':'down');
+    el.textContent=(id==='priceChange'?(d.chg>0?'▲ ':d.chg<0?'▼ ':'')+'較前一交易日 ':'')+changeText(d);
+  }
+}
+const changeRenderPosition=renderPosition;
+renderPosition=function(){changeRenderPosition();renderChange()};
+function labelLastBar(){
+  if(!lwc)return;const all=lwc.data,b=all.at(-1),p=all.at(-2);
+  lwc.s.candle.applyOptions({title:b&&p&&p.close>0?(b.close>=p.close?'+':'')+fmt((b.close-p.close)/p.close*100,2)+'%':''});
+}
+
+/* ---------- One crosshair across price, volume and indicator panes ---------- */
+function syncCrosshair(){
+  if(!lwc||lwc.crossSynced)return;lwc.crossSynced=true;
+  const {main,vol,osc,s}=lwc,panes=[main,vol,osc];
+  const target=chart=>{
+    if(chart===main)return{series:s.candle,val:i=>lwc.data[i]?.close};
+    if(chart===vol)return{series:s.volume,val:i=>lwc.data[i]?lwc.data[i].volume/1000:null};
+    const o=settings.osc;if(o==='none')return null;
+    const key=o==='macd'?'dif':o==='rsi'?'rsi':'k';return{series:s[key],val:i=>lwc.tech?.[key]?.[i]};
+  };
+  for(const from of panes)from.subscribeCrosshairMove(p=>{
+    for(const to of panes){
+      if(to===from)continue;const t=target(to);if(!t)continue;
+      const i=p&&p.time&&Number.isFinite(p.logical)?Math.round(p.logical):-1,v=i>=0?t.val(i):null;
+      if(v==null||!Number.isFinite(v))to.clearCrosshairPosition();else to.setCrosshairPosition(v,p.time,t.series);
+    }
+  });
+}
+const crossDrawChart=drawChart;
+drawChart=function(keepView){crossDrawChart(keepView);syncCrosshair();labelLastBar()};
+
+/* ---------- Favourites: up to ten saved condition sets for members, one click to apply ---------- */
+settings.favorites=Array.isArray(settings.favorites)?settings.favorites.filter(f=>f&&typeof f.name==='string'&&f.s&&typeof f.s==='object').slice(0,10):[];
+function favSnapshot(){return{window:settings.window,preferredWindow:settings.preferredWindow||settings.window,method:settings.method,anchorMode:settings.anchorMode,anchorCount:settings.anchorCount,basis:$('basis').value,bt:{...settings.bt}}}
+function favLabel(s){
+  const a={wick:'最高最低',close:'收盤極值',average:'平均 '+s.anchorCount+' 筆'}[s.anchorMode]||'';
+  const bt=s.bt?.mode==='fib'?'黃金分割回測':'跌 '+s.bt?.drop+'% 買／漲 '+s.bt?.rise+'% 賣';
+  return (s.window==='all'?'全部':s.window+' 日')+' · '+(s.method==='fib'?'黃金分割':'等距')+' · '+a+' · '+bt;
+}
+const favSame=(a,b)=>JSON.stringify({...a,bt:{...a.bt,markers:0}})===JSON.stringify({...b,bt:{...b.bt,markers:0}});
+function renderFavs(){
+  const box=$('favList'),cur=favSnapshot();box.replaceChildren();
+  settings.favorites.forEach((f,i)=>{
+    const chip=document.createElement('span');chip.className='fav-chip'+(favSame(f.s,cur)?' on':'');
+    const go=document.createElement('button');go.type='button';go.textContent=f.name;go.title=favLabel(f.s);go.addEventListener('click',()=>applyFav(f));
+    const del=document.createElement('button');del.type='button';del.className='fav-del';del.textContent='×';del.setAttribute('aria-label','刪除收藏「'+f.name+'」');
+    del.addEventListener('click',()=>{settings.favorites.splice(i,1);save();renderFavs()});
+    chip.append(go,del);box.append(chip);
+  });
+  $('favAdd').disabled=settings.favorites.length>=10;
+  $('favAdd').textContent=settings.favorites.length>=10?'已達 10 組上限':'＋ 收藏目前條件';
+}
+function applyFav(f){
+  const s=f.s;
+  Object.assign(settings,{window:s.window,preferredWindow:s.preferredWindow||s.window,method:s.method,anchorMode:s.anchorMode,anchorCount:s.anchorCount});
+  if(s.bt)settings.bt=Object.assign({},BT_DEFAULT,s.bt);
+  $('window').value=settings.window;$('method').value=settings.method;if(s.basis&&!$('basis').querySelector(`option[value="${s.basis}"]`)?.disabled)$('basis').value=s.basis;
+  updateAnchorControls();btFillForm();
+  const auto=autoWindow(selected);
+  computePosition();renderPosition();computeMarket();computeBrent();computeFx();updateWeights();
+  btBarsRef=null;drawChart(true);save();renderFavs();
+  notice(auto||'已套用收藏「'+f.name+'」：'+favLabel(s));
+}
+$('favAdd').addEventListener('click',()=>{
+  if(!isMember){openAccount();return}
+  if(settings.favorites.length>=10){notice('我的最愛最多 10 組，請先刪除不用的條件。');return}
+  const s=favSnapshot(),name=$('favName').value.trim()||favLabel(s).split(' · ').slice(0,2).join(' · ');
+  settings.favorites.push({name,s,savedAt:new Date().toISOString()});$('favName').value='';save();renderFavs();
+});
+for(const id of ['window','method','anchorMode','anchorCount','basis'])$(id).addEventListener('change',()=>setTimeout(renderFavs,0));
+const favApplyProfile=window.chaoweiApplyProfile;
+window.chaoweiApplyProfile=profile=>{favApplyProfile(profile);
+  settings.favorites=Array.isArray(settings.favorites)?settings.favorites.filter(f=>f&&typeof f.name==='string'&&f.s).slice(0,10):[];
+  settings.bt=Object.assign({},BT_DEFAULT,settings.bt||{});btFillForm();btBarsRef=null;renderFavs();drawChart(true)};
+renderFavs();
