@@ -685,3 +685,22 @@ window.chaoweiApplyProfile=profile=>{favApplyProfile(profile);
   settings.favorites=Array.isArray(settings.favorites)?settings.favorites.filter(f=>f&&typeof f.name==='string'&&f.s).slice(0,10):[];
   settings.bt=Object.assign({},BT_DEFAULT,settings.bt||{});btFillForm();btBarsRef=null;renderFavs();drawChart(true)};
 renderFavs();
+
+/* ---------- Drag bars: each chart pane can be made taller or shorter, remembered per browser ---------- */
+const PANE_LIMITS={chart:[180,900],volChart:[60,400],chartMacd:[80,500],chartRsi:[80,500],chartKd:[80,500]};
+settings.paneHeights=settings.paneHeights&&typeof settings.paneHeights==='object'?settings.paneHeights:{};
+function setPaneHeight(id,h){
+  const [lo,hi]=PANE_LIMITS[id]||[60,900],v=Math.round(Math.max(lo,Math.min(hi,h)));
+  $(id).style.height=v+'px';settings.paneHeights[id]=v;return v;
+}
+for(const [id,h] of Object.entries(settings.paneHeights))if(PANE_LIMITS[id]&&Number.isFinite(h))setPaneHeight(id,h);
+document.querySelectorAll('.pane-resizer').forEach(bar=>{
+  const id=bar.dataset.resize;let startY=0,startH=0,dragging=false;
+  bar.addEventListener('pointerdown',e=>{dragging=true;startY=e.clientY;startH=$(id).getBoundingClientRect().height;bar.setPointerCapture(e.pointerId);bar.classList.add('dragging');e.preventDefault()});
+  bar.addEventListener('pointermove',e=>{if(dragging)setPaneHeight(id,startH+e.clientY-startY)});
+  const end=()=>{if(!dragging)return;dragging=false;bar.classList.remove('dragging');save()};
+  bar.addEventListener('pointerup',end);bar.addEventListener('pointercancel',end);
+  // Double-click returns the pane to its default height.
+  bar.addEventListener('dblclick',()=>{$(id).style.height='';delete settings.paneHeights[id];save()});
+  bar.addEventListener('keydown',e=>{if(e.key!=='ArrowUp'&&e.key!=='ArrowDown')return;e.preventDefault();setPaneHeight(id,$(id).getBoundingClientRect().height+(e.key==='ArrowDown'?20:-20));save()});
+});

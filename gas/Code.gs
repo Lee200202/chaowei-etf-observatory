@@ -13,6 +13,10 @@ function doGet(e){
     return ContentService.createTextOutput(JSON.stringify(result))
       .setMimeType(ContentService.MimeType.JSON);
   }
+  if(e&&e.parameter&&e.parameter.api==='store'){
+    let status;try{status=storeStatus()}catch(err){status={ready:false,error:err.message}}
+    return ContentService.createTextOutput(JSON.stringify(status)).setMimeType(ContentService.MimeType.JSON);
+  }
   if(e&&e.parameter&&e.parameter.api==='live'){
     const result=getLiveMarket();
     const callback=String(e.parameter.callback||'');

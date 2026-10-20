@@ -98,3 +98,6 @@ body:not(.member) .fav-add,body:not(.member) .fav-list{display:none}body.member 
 @media(max-width:440px){.view-card .controls{display:grid;grid-template-columns:1fr 1fr;gap:8px}.view-card .controls label{min-width:0}.view-card select{width:100%;min-width:0}}
 .osc-pane{border-top:1px dashed var(--line);margin-top:6px;padding-top:4px}.osc-pane .osc-legend{margin-top:4px}.osc-pane .osc-chart{height:150px}
 @media(max-width:760px){.osc-pane .osc-chart{height:120px}}
+/* v4.5: drag bars under each chart pane. */
+.pane-resizer{height:14px;margin:2px 0;display:grid;place-items:center;cursor:ns-resize;touch-action:none;border-radius:8px}.pane-resizer span{width:44px;height:4px;border-radius:4px;background:var(--line);transition:background .15s,width .15s}
+.pane-resizer:hover span,.pane-resizer:focus-visible span,.pane-resizer.dragging span{background:#19a7aa;width:72px}.pane-resizer:focus-visible{outline:2px solid #16b6b9;outline-offset:1px}

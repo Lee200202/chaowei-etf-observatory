@@ -240,6 +240,17 @@ function appendDaily(){
   finally{lock.releaseLock()}
 }
 
+/** 公開的唯讀狀態：各分頁列數、最新日期與匯入進度（不含試算表網址）。 */
+function storeStatus(){
+  const ss=store_();if(!ss)return{ready:false};
+  const raw=storeProps_().getProperty('STORE_IMPORT');let progress=raw;
+  try{const s=JSON.parse(raw);progress={phase:s.phase,next:s.next}}catch(err){}
+  const tabs={};
+  Object.keys(STORE_TABS).forEach(k=>{const name=STORE_TABS[k][0],sh=ss.getSheetByName(name);if(!sh)return;const last=sh.getLastRow();
+    tabs[name]={rows:Math.max(0,last-1),latest:last>1&&k!=='readme'?sh.getRange(last,1).getDisplayValue():null}});
+  return{ready:true,import:progress,triggers:ScriptApp.getProjectTriggers().map(t=>t.getHandlerFunction()),tabs};
+}
+
 /** 網站的即時刻度：從試算表讀最新盤中、原油與匯率；資料不新時回傳 null 交由直接讀取。 */
 function liveFromStore_(){
   const ss=store_();if(!ss)return null;
