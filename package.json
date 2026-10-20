@@ -1,0 +1,10 @@
+{
+  "name": "chaowei-etf-observatory",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "validate": "node scripts/validate-artifact.mjs",
+    "dev": "node scripts/dev.mjs"
+  }
+}
