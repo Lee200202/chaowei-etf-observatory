@@ -62,7 +62,7 @@ async function fxDaily(){
   return fxCache.days;
 }
 export default {async fetch(request){const url=new URL(request.url),path=url.pathname;
-  if(path==='/')return new Response(PAGE,{headers:{'content-type':'text/html; charset=utf-8','cache-control':'public, max-age=600','x-content-type-options':'nosniff','referrer-policy':'strict-origin-when-cross-origin'}});
+  if(path==='/')return new Response(PAGE,{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-cache','x-content-type-options':'nosniff','referrer-policy':'strict-origin-when-cross-origin'}});
   if(path==='/api/etfs')return json({etfs:ETF});
   if(path==='/api/brent'){try{const data=await brentDaily();return json({days:data.days,latest:data.days.at(-1).date,source:data.source,snapshot:data.snapshot,unit:'USD/barrel'})}catch(e){return json({error:e.message},503)}}
   if(path==='/api/fx'){try{const days=await fxDaily();return json({days,latest:days.at(-1).date,source:'CBC FTDOpenData_Day',unit:'TWD/USD'})}catch(e){return json({error:e.message},503)}}
