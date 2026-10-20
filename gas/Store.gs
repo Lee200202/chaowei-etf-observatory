@@ -15,7 +15,8 @@ const STORE_TABS={
   splits:['ETF分割紀錄',['代號','生效日','比例','說明'],[1,2,4]],
   brent:['布蘭特原油',['日期','美元／桶'],[1]],
   fx:['美元新台幣',['日期','新台幣／美元'],[1]],
-  log:['更新紀錄',['時間','工作','結果'],[1,2,3]]
+  log:['更新紀錄',['時間','工作','結果'],[1,2,3]],
+  usage:['使用紀錄',['時間','訪客','工作階段','事件','代號','搜尋字詞','停留秒數','裝置','網站','會員'],[1,2,3,4,5,6,8,9,10]]
 };
 const STORE_JOBS=['captureIntraday','appendDaily','importStep'];
 const storeProps_=()=>PropertiesService.getScriptProperties();
@@ -238,6 +239,41 @@ function appendDaily(){
     storeReadme_(ss);storeLog_(ss,'appendDaily',notes.join('；'));
   }catch(err){storeLog_(ss,'appendDaily','錯誤：'+err.message)}
   finally{lock.releaseLock()}
+}
+
+/* ---------- 匿名使用紀錄：一個事件一列；不收姓名、email 或 IP ---------- */
+const USAGE_EVENTS=['visit','search','select','view','leave'];
+function usageClean_(e){
+  if(!e||typeof e!=='object')return null;
+  const id=v=>/^[A-Za-z0-9-]{8,40}$/.test(String(v||''))?String(v):'';
+  const type=String(e.type||'');if(USAGE_EVENTS.indexOf(type)<0||!id(e.sid)||!id(e.vid))return null;
+  // Free text is trimmed, stripped of control characters and kept from starting a spreadsheet formula.
+  let q=String(e.query||'').replace(/[\u0000-\u001f\u007f]/g,'').trim().slice(0,40);if(/^[=+\-@]/.test(q))q="'"+q;
+  const code=/^[0-9A-Z]{4,6}$/.test(String(e.code||''))?String(e.code):'';
+  const sec=Math.max(0,Math.min(86400,Math.round(Number(e.seconds)||0)));
+  return[stamp_(),id(e.vid),id(e.sid),type,code,q,sec,e.device==='mobile'?'mobile':'desktop',e.host==='gas'?'gas':'pages',e.member?'Y':''];
+}
+function logEvent(e){
+  const row=usageClean_(e);if(!row)return{ok:false};
+  // At most 60 events a minute per browsing session.
+  const cache=CacheService.getScriptCache(),key='usage-rate-'+row[2],n=Number(cache.get(key)||0);if(n>=60)return{ok:false,limited:true};cache.put(key,String(n+1),60);
+  const ss=store_();if(!ss)return{ok:false};
+  storeTab_(ss,'usage').appendRow(row);
+  return{ok:true};
+}
+function doPost(e){
+  let body=null;try{body=JSON.parse(e&&e.postData&&e.postData.contents||'')}catch(err){}
+  const list=Array.isArray(body)?body.slice(0,20):[body];list.forEach(x=>logEvent(x));
+  return ContentService.createTextOutput('ok').setMimeType(ContentService.MimeType.TEXT);
+}
+/** 近 30 天最常被查看的 ETF（選取與停留事件），快取 10 分鐘。 */
+function getPopular(){
+  const cache=CacheService.getScriptCache(),hit=cache.get('popular-v1');if(hit)return JSON.parse(hit);
+  const ss=store_();if(!ss)return{codes:[]};
+  const since=new Date(Date.now()+8*3600000-30*86400000).toISOString().slice(0,10),count={};
+  storeTail_(storeTab_(ss,'usage'),8000).forEach(r=>{if(r[0].slice(0,10)<since||!r[4])return;if(r[3]==='select')count[r[4]]=(count[r[4]]||0)+3;else if(r[3]==='view'&&Number(r[6])>=10)count[r[4]]=(count[r[4]]||0)+1});
+  const out={since,codes:Object.keys(count).sort((a,b)=>count[b]-count[a]).slice(0,10)};
+  cache.put('popular-v1',JSON.stringify(out),600);return out;
 }
 
 /** 公開的唯讀狀態：各分頁列數、最新日期與匯入進度（不含試算表網址）。 */

@@ -1,6 +1,21 @@
 // Live market factors (intraday TAIEX and turnover, EIA Brent, CBC USD/TWD) through the Apps Script deployment.
 // Apps Script caches one bundle for all visitors; the page asks every five minutes.
 function installChaoweiLive(appsScriptUrl){
+  // Anonymous usage events (one row each) and the popular-search list, via the same Apps Script.
+  const jsonp=(api,prefix)=>new Promise((resolve,reject)=>{
+    const callback=prefix+Date.now().toString(36)+Math.random().toString(36).slice(2,10),script=document.createElement('script'),url=new URL(appsScriptUrl);
+    url.searchParams.set('api',api);url.searchParams.set('callback',callback);let done=false;
+    const finish=(error,data)=>{if(done)return;done=true;clearTimeout(timer);delete window[callback];script.remove();error?reject(error):resolve(data)};
+    window[callback]=data=>finish(null,data);script.onerror=()=>finish(Error('連線失敗'));const timer=setTimeout(()=>finish(Error('逾時')),15000);script.src=url.toString();document.head.append(script);
+  });
+  if(window.google?.script?.run){
+    window.CHAOWEI_LOG=events=>events.forEach(e=>google.script.run.withFailureHandler(()=>{}).logEvent(e));
+    window.CHAOWEI_POPULAR=()=>new Promise((resolve,reject)=>google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getPopular());
+  }else if(appsScriptUrl){
+    // sendBeacon survives page unload; text/plain avoids a CORS preflight. Apps Script runs doPost before its redirect.
+    window.CHAOWEI_LOG=events=>{try{navigator.sendBeacon(appsScriptUrl,new Blob([JSON.stringify(events)],{type:'text/plain'}))}catch{}};
+    window.CHAOWEI_POPULAR=()=>jsonp('popular','__cwp_');
+  }
   if(window.google?.script?.run){
     window.CHAOWEI_LIVE=()=>new Promise((resolve,reject)=>
       google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getLiveMarket());

@@ -182,13 +182,17 @@ body.touring{overflow:hidden}.tour-shade{position:fixed;inset:0;z-index:200}
 body.intl-colors .chart-legend .up,body.intl-colors .chart-tip .up,body.intl-colors .price-change.up,body.intl-colors #barChange.up,body.intl-colors .bt-big .up,body.intl-colors .bt-grid .up,body.intl-colors .bt-trades .up,body.intl-colors .price-up{color:#0f8a5c!important}
 body.intl-colors .chart-legend .down,body.intl-colors .chart-tip .down,body.intl-colors .price-change.down,body.intl-colors #barChange.down,body.intl-colors .bt-big .down,body.intl-colors .bt-grid .down,body.intl-colors .bt-trades .down,body.intl-colors .price-down{color:#d63a3f!important}
 @media(max-width:440px){.weight{grid-template-columns:80px 1fr 56px 0;gap:6px}.w-num{width:56px}}
+/* v6.3: the homepage search is a real field; hot searches; usage opt-out. */
+.search-launch{cursor:text}.search-launch input{flex:1;min-width:0;border:0;background:transparent;color:var(--ink);font:inherit;font-size:clamp(16px,1.8vw,20px);font-weight:600;padding:6px 0;outline:none}
+.search-launch input::placeholder{color:var(--muted);opacity:.7;font-weight:500}.search-launch:focus-within{border-color:#19a7aa;box-shadow:0 0 0 3px rgba(25,167,170,.15)}
+.hot-searches{display:grid;gap:6px;margin:12px 0 4px}.hot-searches small{color:var(--muted);font-size:11px}.usage-opt{font-size:12px!important;margin-top:4px}
 </style>
 </head>
 <body>
   <div class="shell" id="top">
     <header class="topbar">
       <a class="brand" href="#top" aria-label="潮位 ETF 觀測所首頁"><span class="logo" aria-hidden="true"><i></i></span><span>潮位 <small>ETF 觀測所</small></span></a>
-      <nav><button class="pill search-top" id="openSearchTop" type="button" aria-haspopup="dialog" aria-label="搜尋 ETF">⌕<span class="nav-label"> 搜尋</span></button><div class="display-wrap"><button class="pill" id="themeTop" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="displayMenu" aria-label="外觀設定">◐<span class="nav-label"> 外觀</span></button><div class="display-menu card hidden" id="displayMenu" role="dialog" aria-label="畫面設定"><h3>把畫面調成你習慣的樣子</h3><label class="label" for="fontSize">字體大小</label><select id="fontSize"><option value="normal">標準</option><option value="large">大</option><option value="xlarge">特大</option></select><label class="label">深淺色</label><button class="pill wide" id="theme" type="button">切換深淺色</button><button class="pill wide" id="startTour" type="button">使用教學</button><p class="small" id="displaySyncNote">外觀與權重目前存在此瀏覽器；登入連線完成後可跨裝置同步。</p></div></div><button class="pill account-top" id="accountTop" type="button" aria-haspopup="dialog" aria-label="Google 登入"><svg class="nav-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span class="nav-label">登入</span></button></nav>
+      <nav><button class="pill search-top" id="openSearchTop" type="button" aria-haspopup="dialog" aria-label="搜尋 ETF">⌕<span class="nav-label"> 搜尋</span></button><div class="display-wrap"><button class="pill" id="themeTop" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="displayMenu" aria-label="外觀設定">◐<span class="nav-label"> 外觀</span></button><div class="display-menu card hidden" id="displayMenu" role="dialog" aria-label="畫面設定"><h3>把畫面調成你習慣的樣子</h3><label class="label" for="fontSize">字體大小</label><select id="fontSize"><option value="normal">標準</option><option value="large">大</option><option value="xlarge">特大</option></select><label class="label">深淺色</label><button class="pill wide" id="theme" type="button">切換深淺色</button><button class="pill wide" id="startTour" type="button">使用教學</button><label class="bt-check usage-opt"><input type="checkbox" id="usageOptIn" checked>提供匿名使用統計</label><p class="small" id="displaySyncNote">外觀與權重目前存在此瀏覽器；登入連線完成後可跨裝置同步。</p></div></div><button class="pill account-top" id="accountTop" type="button" aria-haspopup="dialog" aria-label="Google 登入"><svg class="nav-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span class="nav-label">登入</span></button></nav>
     </header>
     <main>
       <section class="hero" aria-labelledby="heroTitle">
@@ -199,8 +203,8 @@ body.intl-colors .chart-legend .down,body.intl-colors .chart-tip .down,body.intl
       <div class="account-overlay hidden" id="accountOverlay" role="dialog" aria-modal="true" aria-labelledby="accountTitle"><div class="account-dialog card"><button class="pill close-account" id="closeAccount" type="button" aria-label="關閉登入視窗">✕</button><p class="kicker teal">YOUR OBSERVATORY</p><h2 id="accountTitle">登入，保存你的觀測方式。</h2><p>Google 登入可同步追蹤 ETF、權重與外觀；市場行情和基本評分可直接使用。</p><div class="account-status" id="accountStatus" role="status">正在檢查登入服務…</div><button class="action" id="googleSignIn" type="button">使用 Google 登入</button><button class="pill hidden" id="googleSignOut" type="button">登出</button><a class="small hidden" id="accountMainLink" href="https://lee200202.github.io/chaowei-etf-observatory/">前往主網站登入 ↗</a><div class="account-plans hidden" id="accountPlans"><label for="planName">儲存目前權重方案</label><div><input id="planName" maxlength="20" placeholder="例如：保守進場"><button class="pill" id="savePlan" type="button">儲存方案</button></div><label for="planList">選擇已存方案</label><div><select id="planList"><option value="">選擇方案</option></select><button class="pill" id="applyPlan" type="button">套用</button></div></div><p class="small">未登入時的偏好仍保存在這台裝置；登入後會與你的帳號同步。</p></div></div>
       <section class="section" id="explore">
         <div class="section-heading"><div><p class="kicker teal">EXPLORE</p><h2>選一檔 ETF，讀懂水位。</h2><p class="sub" id="catalogNote">讀取證交所 ETF 名錄中；資料以官方已公布日 K 為準。</p></div></div>
-        <button class="search-launch card" id="openSearch" type="button" aria-haspopup="dialog"><span class="launch-icon" aria-hidden="true">⌕</span><span class="launch-text">搜尋名稱、代號或追蹤指數<small>例如 009816、台灣50、高股息、主動</small></span><kbd>/</kbd></button><div class="quick inline" id="quickInline" aria-label="我的候選 ETF"></div>
-        <div class="search-overlay hidden" id="searchOverlay" role="dialog" aria-modal="true" aria-labelledby="searchTitle"><div class="search-sheet"><div class="search-head"><h2 id="searchTitle">搜尋 ETF</h2><button class="pill" id="closeSearch" type="button" aria-label="關閉搜尋">✕ 關閉</button></div><input id="search" type="search" placeholder="輸入名稱或代號，例如 009816、台灣50、統一…" autocomplete="off" aria-controls="etfList"><div class="quick" id="quickPicks" aria-label="我的候選 ETF"></div><div class="filter" id="typeChips"><button type="button" data-type="all" class="active">全部</button><button type="button" data-type="passive">被動型</button><button type="button" data-type="active">主動型</button><button type="button" data-type="watch">我的追蹤</button></div><div class="filter radar-chips" id="radarChips" aria-label="今日潮位雷達"><span class="radar-title">今日潮位雷達</span><button type="button" data-radar="all" class="active">不篩選</button><button type="button" data-radar="low">水位達門檻</button><label class="radar-th">≥<input type="number" id="radarMin" value="4.5" min="0" max="5" step="0.1" aria-label="水位門檻">分</label><button type="button" data-radar="bias">MA60 負乖離 &gt;10%</button><button type="button" data-radar="rsi">RSI 低於 30</button><button type="button" data-radar="squeeze">布林壓縮突破</button></div><p class="small" id="searchCount"></p><div class="etflist" id="etfList" aria-label="ETF 候選清單"></div><p class="sidebar-note">點候選卡片旁的星號加入或移出追蹤。未登入時只保存在目前瀏覽器。收錄證交所上市 ETF；上櫃 ETF 待官方來源接入。按 Enter 選第一筆，Esc 關閉。</p></div></div>
+        <div class="search-launch card" id="openSearch" role="search"><span class="launch-icon" aria-hidden="true">⌕</span><input id="homeSearch" type="search" placeholder="搜尋名稱、代號或追蹤指數，例如 009816、台灣50、高股息" autocomplete="off" aria-label="搜尋 ETF" aria-haspopup="dialog"><kbd>/</kbd></div><div class="quick inline" id="quickInline" aria-label="我的候選 ETF"></div>
+        <div class="search-overlay hidden" id="searchOverlay" role="dialog" aria-modal="true" aria-labelledby="searchTitle"><div class="search-sheet"><div class="search-head"><h2 id="searchTitle">搜尋 ETF</h2><button class="pill" id="closeSearch" type="button" aria-label="關閉搜尋">✕ 關閉</button></div><input id="search" type="search" placeholder="輸入名稱或代號，例如 009816、台灣50、統一…" autocomplete="off" aria-controls="etfList"><div class="quick" id="quickPicks" aria-label="我的候選 ETF"></div><div class="filter" id="typeChips"><button type="button" data-type="all" class="active">全部</button><button type="button" data-type="passive">被動型</button><button type="button" data-type="active">主動型</button><button type="button" data-type="watch">我的追蹤</button></div><div class="hot-searches hidden" id="hotSearches"><span class="radar-title">🔥 熱門搜尋</span><div class="quick" id="hotList"></div><small id="hotNote"></small></div><div class="filter radar-chips" id="radarChips" aria-label="今日潮位雷達"><span class="radar-title">今日潮位雷達</span><button type="button" data-radar="all" class="active">不篩選</button><button type="button" data-radar="low">水位達門檻</button><label class="radar-th">≥<input type="number" id="radarMin" value="4.5" min="0" max="5" step="0.1" aria-label="水位門檻">分</label><button type="button" data-radar="bias">MA60 負乖離 &gt;10%</button><button type="button" data-radar="rsi">RSI 低於 30</button><button type="button" data-radar="squeeze">布林壓縮突破</button></div><p class="small" id="searchCount"></p><div class="etflist" id="etfList" aria-label="ETF 候選清單"></div><p class="sidebar-note">點候選卡片旁的星號加入或移出追蹤。未登入時只保存在目前瀏覽器。收錄證交所上市 ETF；上櫃 ETF 待官方來源接入。按 Enter 選第一筆，Esc 關閉。</p></div></div>
         <div class="workspace">
           <div class="content">
             <div class="toolbar card"><div><span class="tag hidden" id="kind">被動型 ETF</span><h3 id="etfName">元大台灣50</h3><p class="muted" id="etfMeta">0050 · 證交所上市</p></div><div class="toolbar-stats" aria-live="polite"><span><small>收盤</small><b id="barPrice">—</b></span><span><small>漲跌</small><b id="barChange">—</b></span><span><small>水位</small><b id="barGrade">—</b></span><span><small>資料日</small><b id="barDate">—</b></span><a class="pill mini" href="#explore" id="backToSearch">換一檔</a></div></div>
@@ -248,7 +252,7 @@ body.intl-colors .chart-legend .down,body.intl-colors .chart-tip .down,body.intl
       </section>
       
     <div class="bt-sheet hidden" id="btOptSheet" role="dialog" aria-modal="true" aria-labelledby="btOptTitle"><div class="bt-sheet-card card"><div class="search-head"><h2 id="btOptTitle">最佳策略排行</h2><button class="pill" id="btOptClose" type="button">✕ 關閉</button></div><p class="small" id="btOptNote"></p><div id="btOptBody"></div></div></div></main>
-    <footer><div>潮位 ETF 觀測所 · ETF 與大盤資料來自<a href="https://www.twse.com.tw/zh/ETFortune/products" target="_blank" rel="noopener noreferrer">臺灣證券交易所</a>；布蘭特原油資料來自<a href="https://www.eia.gov/dnav/pet/hist/rbrteD.htm" target="_blank" rel="noopener noreferrer">美國 EIA 日表</a>；匯率來自<a href="https://data.gov.tw/dataset/7232" target="_blank" rel="noopener noreferrer">中央銀行開放資料</a>。<br>本站是位置觀測工具，非投資建議。</div><div>歷史日 K 為每日盤後快照（約十年）· 圖表使用 <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer">TradingView</a> Lightweight Charts™ · 2026</div></footer>
+    <footer><div>潮位 ETF 觀測所 · ETF 與大盤資料來自<a href="https://www.twse.com.tw/zh/ETFortune/products" target="_blank" rel="noopener noreferrer">臺灣證券交易所</a>；布蘭特原油資料來自<a href="https://www.eia.gov/dnav/pet/hist/rbrteD.htm" target="_blank" rel="noopener noreferrer">美國 EIA 日表</a>；匯率來自<a href="https://data.gov.tw/dataset/7232" target="_blank" rel="noopener noreferrer">中央銀行開放資料</a>。<br>本站是位置觀測工具，非投資建議。本站記錄匿名使用統計（搜尋字詞、查看的 ETF、停留時間），不含姓名或 email，可在「外觀」關閉。</div><div>歷史日 K 為每日盤後快照（約十年）· 圖表使用 <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer">TradingView</a> Lightweight Charts™ · 2026</div></footer>
   </div>
   <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
   <script>// Shared by GitHub Pages and Apps Script.
@@ -391,6 +395,21 @@ function installChaoweiIdentity(host){
 // Live market factors (intraday TAIEX and turnover, EIA Brent, CBC USD/TWD) through the Apps Script deployment.
 // Apps Script caches one bundle for all visitors; the page asks every five minutes.
 function installChaoweiLive(appsScriptUrl){
+  // Anonymous usage events (one row each) and the popular-search list, via the same Apps Script.
+  const jsonp=(api,prefix)=>new Promise((resolve,reject)=>{
+    const callback=prefix+Date.now().toString(36)+Math.random().toString(36).slice(2,10),script=document.createElement('script'),url=new URL(appsScriptUrl);
+    url.searchParams.set('api',api);url.searchParams.set('callback',callback);let done=false;
+    const finish=(error,data)=>{if(done)return;done=true;clearTimeout(timer);delete window[callback];script.remove();error?reject(error):resolve(data)};
+    window[callback]=data=>finish(null,data);script.onerror=()=>finish(Error('連線失敗'));const timer=setTimeout(()=>finish(Error('逾時')),15000);script.src=url.toString();document.head.append(script);
+  });
+  if(window.google?.script?.run){
+    window.CHAOWEI_LOG=events=>events.forEach(e=>google.script.run.withFailureHandler(()=>{}).logEvent(e));
+    window.CHAOWEI_POPULAR=()=>new Promise((resolve,reject)=>google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getPopular());
+  }else if(appsScriptUrl){
+    // sendBeacon survives page unload; text/plain avoids a CORS preflight. Apps Script runs doPost before its redirect.
+    window.CHAOWEI_LOG=events=>{try{navigator.sendBeacon(appsScriptUrl,new Blob([JSON.stringify(events)],{type:'text/plain'}))}catch{}};
+    window.CHAOWEI_POPULAR=()=>jsonp('popular','__cwp_');
+  }
   if(window.google?.script?.run){
     window.CHAOWEI_LIVE=()=>new Promise((resolve,reject)=>
       google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getLiveMarket());
@@ -1844,6 +1863,61 @@ syncWeightNumbers();
 /* Tide radar: adjustable water-score threshold. */
 RADAR_TESTS.low=x=>x.score>=clampNum($('radarMin').value,0,5,4.5);
 $('radarMin').addEventListener('change',()=>{if(radarFilter==='low')renderList()});
+
+/* ---------- Homepage search field and popular searches ---------- */
+// Typing in the homepage field opens the full search with the same text.
+$('homeSearch').addEventListener('focus',()=>{openSearch();setTimeout(()=>{if($('homeSearch').value){$('search').value=$('homeSearch').value;$('homeSearch').value='';renderList()}},40)});
+$('homeSearch').addEventListener('input',()=>{$('search').value=$('homeSearch').value;$('homeSearch').value='';openSearch();renderList()});
+let popular=null;
+async function loadPopular(){
+  if(popular||!window.CHAOWEI_POPULAR)return popular;
+  try{const d=await window.CHAOWEI_POPULAR();popular=(d&&Array.isArray(d.codes)?d.codes:[]).filter(c=>catalog.some(x=>x.code===c))}catch{popular=[]}
+  return popular;
+}
+function renderHot(){
+  // Shown while the search box is empty: what visitors looked at most in the last 30 days.
+  const q=$('search').value.trim(),list=(popular&&popular.length>=3?popular:POPULAR).slice(0,8);
+  $('hotSearches').classList.toggle('hidden',!!q);
+  $('hotList').innerHTML=list.map(c=>{const e=catalog.find(x=>x.code===c);return e?`<button class="pill mini" type="button" data-hot="${c}">${c} ${e.name}</button>`:''}).join('');
+  $('hotNote').textContent=popular&&popular.length>=3?'近 30 天最多人查看':'常用 ETF（熱門資料累積中）';
+}
+$('hotList').addEventListener('click',e=>{const b=e.target.closest('[data-hot]');if(b){$('search').value='';pick(b.dataset.hot)}});
+const hotRenderList=renderList;
+renderList=function(){hotRenderList();renderHot()};
+const hotOpenSearch=openSearch;
+openSearch=function(){hotOpenSearch();renderHot();loadPopular().then(renderHot)};
+for(const id of ['openSearch','openSearchTop'])$(id).addEventListener('click',()=>{renderHot();loadPopular().then(renderHot)});
+
+/* ---------- Anonymous usage events: one row per event in the cloud spreadsheet ---------- */
+settings.usage=settings.usage!==false;$('usageOptIn').checked=settings.usage;
+$('usageOptIn').addEventListener('change',function(){settings.usage=this.checked;save()});
+const rid=()=>(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2)).replace(/[^A-Za-z0-9-]/g,'').slice(0,36);
+let visitorId,sessionId;
+try{visitorId=localStorage.getItem('chaowei-vid')||rid();localStorage.setItem('chaowei-vid',visitorId)}catch{visitorId=rid()}
+try{sessionId=sessionStorage.getItem('chaowei-sid')||rid();sessionStorage.setItem('chaowei-sid',sessionId)}catch{sessionId=rid()}
+let sentCount=0;const queue=[];let flushTimer=0;
+function track(type,data={}){
+  if(!settings.usage||!window.CHAOWEI_LOG||sentCount>=300)return;
+  queue.push({type,vid:visitorId,sid:sessionId,device:matchMedia('(max-width: 760px)').matches?'mobile':'desktop',host:window.CHAOWEI_HOST==='apps-script'?'gas':'pages',member:typeof isMember!=='undefined'&&isMember,...data});sentCount++;
+  clearTimeout(flushTimer);flushTimer=setTimeout(flushEvents,1500);
+}
+function flushEvents(){if(!queue.length)return;window.CHAOWEI_LOG(queue.splice(0,20));if(queue.length)flushTimer=setTimeout(flushEvents,500)}
+// Searches: the settled query after typing stops, not every keystroke.
+let searchTimer=0,lastQuery='';
+$('search').addEventListener('input',()=>{clearTimeout(searchTimer);searchTimer=setTimeout(()=>{const q=$('search').value.trim();if(q&&q!==lastQuery){lastQuery=q;track('search',{query:q})}},1200)});
+// Selections and time spent on each ETF.
+let viewing=null,viewStart=0,visibleSince=Date.now(),activeMs=0;
+const pickTracked=pick;
+pick=function(code){track('select',{code,query:$('search').value.trim()});pickTracked(code)};
+function endView(){if(viewing&&viewStart){const s=(Date.now()-viewStart)/1000;if(s>=3)track('view',{code:viewing,seconds:s})}viewing=null;viewStart=0}
+const trackLoadBars=loadBars;
+loadBars=async function(keepView){if(!keepView&&viewing!==selected){endView();viewing=selected;viewStart=Date.now()}return trackLoadBars(keepView)};
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden){activeMs+=Date.now()-visibleSince;endView();track('leave',{seconds:activeMs/1000,code:selected});flushEvents()}
+  else{visibleSince=Date.now();if(selected){viewing=selected;viewStart=Date.now()}}
+});
+window.addEventListener('pagehide',()=>{if(!document.hidden){activeMs+=Date.now()-visibleSince;endView();track('leave',{seconds:activeMs/1000,code:selected})}flushEvents()});
+track('visit',{code:selected});
 
 })();
 </script>

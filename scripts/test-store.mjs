@@ -11,6 +11,7 @@ function fakeSheet(name){
     getMaxRows:()=>sh.maxRows,getMaxColumns:()=>sh.maxCols,
     insertRowsAfter:(_,n)=>{sh.maxRows+=n},insertColumnsAfter:(_,n)=>{sh.maxCols+=n},deleteColumns:(from,n)=>{sh.maxCols-=n},
     setFrozenRows:n=>{sh.frozen=n},setColumnWidth:()=>{},getName:()=>name,
+    appendRow:row=>{const r=sh.getLastRow();if(r+1>sh.maxRows)sh.maxRows++;sh.rows[r]=row.slice()},
     getLastRow:()=>{let n=sh.rows.length;while(n&&!sh.rows[n-1]?.some(v=>v!==''&&v!=null))n--;return n},
     getLastColumn:()=>Math.max(0,...sh.rows.map(r=>r.length)),
     getRange:(r,c,nr=1,nc=1)=>{
@@ -124,4 +125,20 @@ assert.equal(tab('同時段量能').rows.at(-1)[0],'2026-10-20');
 box.appendDaily();
 assert.equal(tab('ETF日K').rows.length,7,'running twice on the same day adds nothing');
 assert.ok(tab('更新紀錄').rows.length>3);
-console.log('Spreadsheet store: setup, ten-year import, split restore, intraday capture, live read with fallback and daily append passed');
+/* ---------- anonymous usage events ---------- */
+const ev=(type,extra={})=>({type,vid:'visitor-0001',sid:'session-0001',device:'mobile',host:'pages',...extra});
+assert.equal(box.logEvent(ev('select',{code:'0050',query:'台灣50'})).ok,true);
+assert.equal(box.logEvent(ev('hack')).ok,false,'unknown event type rejected');
+assert.equal(box.logEvent({...ev('search'),sid:'bad id!'}).ok,false,'malformed session id rejected');
+box.logEvent(ev('search',{query:'=HYPERLINK("x")'}));
+box.doPost({postData:{contents:JSON.stringify([ev('view',{code:'0050',seconds:42.6}),ev('view',{code:'009816',seconds:5}),ev('select',{code:'009816'}),ev('leave',{seconds:999999})])}});
+const usage=tab('使用紀錄').rows;
+assert.deepEqual(usage[0],['時間','訪客','工作階段','事件','代號','搜尋字詞','停留秒數','裝置','網站','會員']);
+assert.equal(JSON.stringify(usage[1].slice(1)),JSON.stringify(['visitor-0001','session-0001','select','0050','台灣50',0,'mobile','pages','']));
+assert.equal(usage[2][5],"'=HYPERLINK(\"x\")",'formula text is neutralised');
+assert.equal(usage[3][6],43);assert.equal(usage.at(-1)[6],86400,'seconds are capped');
+for(let k=0;k<70;k++)box.logEvent(ev('search',{query:'x'+k}));
+assert.ok(tab('使用紀錄').rows.length<=1+60+0,'at most 60 events a minute per session');
+cache.clear();const pop=box.getPopular();
+assert.equal(JSON.stringify(pop.codes.slice(0,2)),JSON.stringify(['0050','009816']),'popular list weights selections and long views');
+console.log('Spreadsheet store: setup, ten-year import, split restore, intraday capture, live read with fallback, daily append and usage logging passed');

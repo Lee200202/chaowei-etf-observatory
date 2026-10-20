@@ -174,3 +174,7 @@ body.touring{overflow:hidden}.tour-shade{position:fixed;inset:0;z-index:200}
 body.intl-colors .chart-legend .up,body.intl-colors .chart-tip .up,body.intl-colors .price-change.up,body.intl-colors #barChange.up,body.intl-colors .bt-big .up,body.intl-colors .bt-grid .up,body.intl-colors .bt-trades .up,body.intl-colors .price-up{color:#0f8a5c!important}
 body.intl-colors .chart-legend .down,body.intl-colors .chart-tip .down,body.intl-colors .price-change.down,body.intl-colors #barChange.down,body.intl-colors .bt-big .down,body.intl-colors .bt-grid .down,body.intl-colors .bt-trades .down,body.intl-colors .price-down{color:#d63a3f!important}
 @media(max-width:440px){.weight{grid-template-columns:80px 1fr 56px 0;gap:6px}.w-num{width:56px}}
+/* v6.3: the homepage search is a real field; hot searches; usage opt-out. */
+.search-launch{cursor:text}.search-launch input{flex:1;min-width:0;border:0;background:transparent;color:var(--ink);font:inherit;font-size:clamp(16px,1.8vw,20px);font-weight:600;padding:6px 0;outline:none}
+.search-launch input::placeholder{color:var(--muted);opacity:.7;font-weight:500}.search-launch:focus-within{border-color:#19a7aa;box-shadow:0 0 0 3px rgba(25,167,170,.15)}
+.hot-searches{display:grid;gap:6px;margin:12px 0 4px}.hot-searches small{color:var(--muted);font-size:11px}.usage-opt{font-size:12px!important;margin-top:4px}
