@@ -123,3 +123,9 @@ body:not(.member) .fav-add,body:not(.member) .fav-list{display:none}body.member 
 @media(max-width:1100px){.bt-steps{grid-template-columns:repeat(2,minmax(0,1fr))}.bt-big{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.bt-steps{grid-template-columns:1fr}.bt-big b{font-size:20px}.bt-equity{height:180px}}
 .factor-dir{display:block;margin:2px 0 4px;min-height:30px;padding:2px 8px;font-size:11px;border-radius:10px;max-width:100%}
+/* v5.1: guided tour. */
+body.touring{overflow:hidden}.tour-shade{position:fixed;inset:0;z-index:200}
+.tour-spot{position:fixed;border-radius:22px;box-shadow:0 0 0 9999px rgba(8,28,35,.62);outline:3px solid #6fe3d8;transition:all .25s ease;pointer-events:none}
+.tour-card{position:fixed;padding:16px 18px;box-shadow:0 24px 60px #0008;z-index:201}.tour-card small{color:#128e95;font-weight:850;font-size:12px}.tour-card h4{margin:4px 0 6px;font-size:18px;letter-spacing:-.02em}.tour-card p{margin:0 0 14px;font-size:14px;line-height:1.7;color:var(--ink)}
+.tour-actions{display:flex;justify-content:space-between;align-items:center;gap:8px}.tour-actions span{display:flex;gap:6px}.tour-actions .action{min-height:38px;padding:8px 18px;border:0;cursor:pointer;font-size:14px}
+@media(prefers-reduced-motion:reduce){.tour-spot{transition:none}}
