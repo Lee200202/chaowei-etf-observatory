@@ -2,7 +2,7 @@ import {mkdir,readFile,writeFile} from 'node:fs/promises';
 const root=new URL('../',import.meta.url),read=p=>readFile(new URL(p,root),'utf8');
 const PAGES_BASE='https://lee200202.github.io/chaowei-etf-observatory/';
 const [page,css,client,enhancements,dataLayer,quoteLayer,identityLayer,liveLayer,backend]=await Promise.all([
-  read('worker/page.html'),read('worker/style.css'),read('worker/client.js'),read('worker/chart-enhancements.js'),
+  read('worker/page.html'),read('worker/style.css'),read('worker/client.js'),read('worker/chart-enhancements.js').then(async s=>s+'\n'+await read('worker/backtest.js')),
   read('pages-src/data-layer.js'),read('pages-src/quote-layer.js'),read('pages-src/identity-layer.js'),read('pages-src/live-layer.js'),read('gas-src/Code.template.gs')
 ]);
 // The page reads the Pages snapshots directly (CORS is open); google.script.run is only the fallback.

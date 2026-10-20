@@ -483,89 +483,6 @@ updateWeights=function(){baseUpdateWeights();if(Number($('wVolume').value)>0&&se
 loadLive();
 setInterval(()=>{if(!document.hidden)loadLive()},300000);
 
-/* ---------- Pullback backtest: buy on drawdowns, sell on gains, markers on the chart ---------- */
-const BT_DEFAULT={mode:'pct',drop:20,step:10,adds:3,sellMode:'cost',rise:20,fibWindow:240,levels:[0.382,0.5,0.618],fibSell:1,amount:100000,period:'5',markers:true};
-settings.bt=Object.assign({},BT_DEFAULT,settings.bt||{});
-let btResult=null,btBarsRef=null;
-const clampNum=(v,lo,hi,d)=>{const n=Number(v);return Number.isFinite(n)?Math.max(lo,Math.min(hi,n)):d};
-function btConfigFromForm(){
-  const levels=[...document.querySelectorAll('.bt-levels input:checked')].map(x=>Number(x.value)).sort((a,b)=>a-b);
-  settings.bt={mode:settings.bt.mode,drop:clampNum($('btDrop').value,1,90,20),step:clampNum($('btStep').value,1,50,10),adds:Math.round(clampNum($('btAdds').value,0,10,3)),
-    sellMode:$('btSellMode').value==='high'?'high':'cost',rise:clampNum($('btRise').value,1,300,20),fibWindow:Math.round(clampNum($('btFibWindow').value,20,2400,240)),
-    levels:levels.length?levels:[0.382],fibSell:[1,1.272,1.618].includes(Number($('btFibSell').value))?Number($('btFibSell').value):1,
-    amount:Math.round(clampNum($('btAmount').value,1000,1e9,100000)),period:$('btPeriod').value,markers:settings.bt.markers};
-  save();
-}
-function btFillForm(){
-  const c=settings.bt;
-  $('btDrop').value=c.drop;$('btStep').value=c.step;$('btAdds').value=c.adds;$('btSellMode').value=c.sellMode;$('btRise').value=c.rise;
-  $('btFibWindow').value=c.fibWindow;$('btFibSell').value=String(c.fibSell);$('btAmount').value=c.amount;$('btPeriod').value=c.period;
-  document.querySelectorAll('.bt-levels input').forEach(x=>{x.checked=c.levels.includes(Number(x.value))});
-  $('btModeSeg').querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.mode===c.mode));
-  $('btPct').classList.toggle('hidden',c.mode!=='pct');$('btFib').classList.toggle('hidden',c.mode!=='fib');
-  $('btMarkers').setAttribute('aria-pressed',String(!!c.markers));
-}
-function btStartIndex(period){
-  if(period==='all'||!bars.length)return 0;
-  const d=new Date(bars.at(-1).date+'T00:00:00Z');d.setUTCFullYear(d.getUTCFullYear()-Number(period));
-  const start=d.toISOString().slice(0,10),i=bars.findIndex(b=>b.date>=start);return i<0?0:i;
-}
-// Trades fill at the signal day's close; fractional shares, no fees, taxes or dividends.
-function backtest(cfg,start){
-  const trades=[];let shares=0,cost=0,buys=0,spent=0,proceeds=0,peakCapital=0,refHigh=null,anchorHi=null,anchorLo=null,best=0,mdd=0;
-  const buy=(b,reason)=>{const sh=cfg.amount/b.close;shares+=sh;cost+=cfg.amount;spent+=cfg.amount;buys++;peakCapital=Math.max(peakCapital,cost);trades.push({date:b.date,type:'buy',price:b.close,shares:sh,amount:cfg.amount,reason})};
-  const sell=(b,reason)=>{const amt=shares*b.close,pnl=amt-cost;proceeds+=amt;trades.push({date:b.date,type:'sell',price:b.close,shares,amount:amt,pnl,ret:pnl/cost,reason});shares=0;cost=0;buys=0};
-  for(let i=start;i<bars.length;i++){
-    const b=bars[i],c=b.close;
-    if(cfg.mode==='pct'){
-      if(!buys){
-        refHigh=refHigh==null?c:Math.max(refHigh,c);
-        if(c<=refHigh*(1-cfg.drop/100)){anchorHi=refHigh;buy(b,'自高點 '+fmt(anchorHi,2)+' 下跌 '+fmt((1-c/anchorHi)*100,1)+'%')}
-      }else{
-        while(buys<=cfg.adds&&c<=anchorHi*(1-(cfg.drop+buys*cfg.step)/100))buy(b,'再跌至 −'+fmt(cfg.drop+(buys)*cfg.step,0)+'% 加碼');
-        const target=cfg.sellMode==='cost'?cost/shares*(1+cfg.rise/100):anchorHi*(1+cfg.rise/100);
-        if(c>=target){sell(b,cfg.sellMode==='cost'?'高於平均成本 '+fmt(cfg.rise,0)+'%':'突破前高 '+fmt(anchorHi,2)+' 的 '+fmt(cfg.rise,0)+'%');refHigh=c}
-      }
-    }else{
-      if(!buys){
-        if(i-start<20&&i<cfg.fibWindow)continue;
-        let hi=-Infinity,lo=Infinity;for(let j=Math.max(0,i-cfg.fibWindow);j<i;j++){hi=Math.max(hi,bars[j].high);lo=Math.min(lo,bars[j].low)}
-        if(hi>lo&&c<=hi-cfg.levels[0]*(hi-lo)){anchorHi=hi;anchorLo=lo;buy(b,'回檔至 '+fmt(cfg.levels[0]*100,1)+'% 位階')}
-      }else{
-        while(buys<cfg.levels.length&&c<=anchorHi-cfg.levels[buys]*(anchorHi-anchorLo))buy(b,'回檔至 '+fmt(cfg.levels[buys]*100,1)+'% 位階加碼');
-        if(c>=anchorLo+cfg.fibSell*(anchorHi-anchorLo))sell(b,cfg.fibSell===1?'回到區間高點':'突破 '+fmt(cfg.fibSell*100,1)+'% 擴展位');
-      }
-    }
-    const pnl=proceeds+shares*c-spent;best=Math.max(best,pnl);if(peakCapital>0)mdd=Math.max(mdd,(best-pnl)/peakCapital);
-  }
-  const last=bars.at(-1),first=bars[start],pnl=proceeds+shares*last.close-spent,years=Math.max(1/365,(Date.parse(last.date)-Date.parse(first.date))/31557600000);
-  const ret=peakCapital?pnl/peakCapital:0,sells=trades.filter(t=>t.type==='sell');
-  return{trades,spent,proceeds,shares,openCost:cost,openValue:shares*last.close,pnl,peakCapital,ret,annual:peakCapital&&ret>-1?Math.pow(1+ret,1/years)-1:0,mdd,
-    hold:last.close/first.close-1,start:first.date,end:last.date,wins:sells.filter(t=>t.pnl>0).length,sells:sells.length,buys:trades.length-sells.length};
-}
-const pctText=v=>(v>0?'+':'')+fmt(v*100,1)+'%';
-function renderBacktest(){
-  if(!bars.length||bars.length<30){$('btResult').innerHTML='<p class="small">需要至少 30 個交易日才能回測。</p>';$('btGrid').innerHTML='';$('btTrades').innerHTML='';btResult=null;return}
-  const cfg=settings.bt,start=btStartIndex(cfg.period),r=backtest(cfg,start);btResult=r;btBarsRef=bars;
-  const cls=v=>v>0?'up':v<0?'down':'';
-  const tiles=[['回測期間',r.start+' 至 '+r.end],['買進／賣出',r.buys+' 次／'+r.sells+' 次'+(r.sells?'（獲利 '+r.wins+' 次）':'')],
-    ['最高同時投入',fmt(r.peakCapital,0)+' 元'],['損益',`<span class="${cls(r.pnl)}">${(r.pnl>0?'+':'')+fmt(r.pnl,0)} 元</span>`],
-    ['報酬率（以最高投入計）',`<span class="${cls(r.ret)}">${pctText(r.ret)}</span>`],['年化報酬',`<span class="${cls(r.annual)}">${pctText(r.annual)}</span>`],
-    ['最大回落（占投入）','−'+fmt(r.mdd*100,1)+'%'],['同期間買進持有',`<span class="${cls(r.hold)}">${pctText(r.hold)}</span>`]];
-  const openNote=r.shares>0?`<p class="small">期末仍持有 ${fmt(r.shares,0)} 股（成本 ${fmt(r.openCost,0)} 元、市值 ${fmt(r.openValue,0)} 元），已計入損益。</p>`:'';
-  $('btResult').innerHTML=(r.buys?'':'<p class="small">回測期間沒有觸發買進條件，可放寬下跌幅度或拉長期間。</p>')+`<div class="bt-tiles">${tiles.map(([k,v])=>`<div class="bt-tile"><small>${k}</small><b>${v}</b></div>`).join('')}</div>${openNote}`;
-  // Sensitivity grid: how the return changes with the entry drop and the exit gain.
-  let rows,cols,label,make;
-  if(cfg.mode==='pct'){rows=[10,15,20,25,30];cols=[10,20,30,50];label=['首次買進：下跌','賣出：上漲'];make=(a,b)=>({...cfg,drop:a,rise:b})}
-  else{rows=[0.236,0.382,0.5,0.618];cols=[1,1.272,1.618];label=['首次買進位階','賣出位置'];make=(a,b)=>({...cfg,levels:[a,...cfg.levels.filter(x=>x>a)],fibSell:b})}
-  const fmtRow=v=>cfg.mode==='pct'?v+'%':fmt(v*100,1)+'%',fmtCol=v=>cfg.mode==='pct'?v+'%':fmt(v*100,1)+'%';
-  const isCur=(a,b)=>cfg.mode==='pct'?a===cfg.drop&&b===cfg.rise:a===cfg.levels[0]&&b===cfg.fibSell;
-  let g=`<table><thead><tr><th>${label[0]} ＼ ${label[1]}</th>${cols.map(c=>`<th>${fmtCol(c)}</th>`).join('')}</tr></thead><tbody>`;
-  for(const a of rows){g+=`<tr><th>${fmtRow(a)}</th>`;for(const b of cols){const x=backtest(make(a,b),start);g+=`<td class="${cls(x.ret)}${isCur(a,b)?' current':''}" title="買 ${x.buys} 次、賣 ${x.sells} 次">${x.buys?pctText(x.ret):'未觸發'}</td>`}g+='</tr>'}
-  $('btGrid').innerHTML=g+'</tbody></table><p class="small">報酬率以「最高同時投入資金」計算，其他設定（加碼、投入金額、期間）沿用上方。框起來的是目前設定。</p>';
-  $('btTrades').innerHTML=r.trades.length?`<table><thead><tr><th>日期</th><th>動作</th><th>價格</th><th>股數</th><th>金額</th><th>原因</th><th>損益</th></tr></thead><tbody>${r.trades.map(t=>`<tr><td>${t.date}</td><td class="${t.type==='buy'?'buy':'sell'}">${t.type==='buy'?'買進':'賣出'}</td><td>${fmt(t.price,2)}</td><td>${fmt(t.shares,0)}</td><td>${fmt(t.amount,0)}</td><td>${t.reason}</td><td class="${t.pnl?cls(t.pnl):''}">${t.type==='sell'?(t.pnl>0?'+':'')+fmt(t.pnl,0)+'（'+pctText(t.ret)+'）':''}</td></tr>`).join('')}</tbody></table>`:'<p class="small">沒有交易。</p>';
-  applyMarkers();
-}
 /* ---------- Member-only cards: backtest and weight plans unlock with Google sign-in ---------- */
 let isMember=false;
 window.chaoweiSetMember=signedIn=>{
@@ -576,26 +493,6 @@ window.chaoweiSetMember=signedIn=>{
 };
 document.querySelectorAll('[data-open-account]').forEach(b=>b.addEventListener('click',openAccount));
 window.chaoweiSetMember(false);
-function applyMarkers(){
-  if(!lwc)return;
-  if(!isMember||!btResult||!settings.bt.markers||!lwc.data.length){lwc.s.candle.setMarkers([]);return}
-  const dates=lwc.data.map(b=>b.date),markers=[];
-  for(const t of btResult.trades){
-    let lo=0,hi=dates.length-1,at=-1;while(lo<=hi){const mid=(lo+hi)>>1;if(dates[mid]<=t.date){at=mid;lo=mid+1}else hi=mid-1}
-    if(at<0)continue;
-    markers.push(t.type==='buy'?{time:dates[at],position:'belowBar',color:'#0e7490',shape:'arrowUp',text:'買'}:{time:dates[at],position:'aboveBar',color:'#c2410c',shape:'arrowDown',text:'賣'});
-  }
-  markers.sort((a,b)=>a.time.localeCompare(b.time));
-  lwc.s.candle.setMarkers(markers);
-}
-const btDrawChart=drawChart;
-drawChart=function(keepView){btDrawChart(keepView);if(bars.length&&btBarsRef!==bars)renderBacktest();else applyMarkers()};
-$('btModeSeg').addEventListener('click',e=>{const b=e.target.closest('button[data-mode]');if(!b)return;settings.bt.mode=b.dataset.mode;btFillForm();btConfigFromForm();renderBacktest()});
-for(const id of ['btDrop','btStep','btAdds','btSellMode','btRise','btFibWindow','btFibSell','btAmount','btPeriod'])$(id).addEventListener('change',()=>{btConfigFromForm();btFillForm();renderBacktest()});
-document.querySelectorAll('.bt-levels input').forEach(x=>x.addEventListener('change',()=>{btConfigFromForm();btFillForm();renderBacktest()}));
-$('btMarkers').addEventListener('click',()=>{settings.bt.markers=!settings.bt.markers;save();btFillForm();applyMarkers()});
-btFillForm();
-
 /* ---------- Daily change next to the latest close, and on the chart's price label ---------- */
 function dayChange(){
   const last=bars.at(-1);if(!last)return null;
@@ -610,8 +507,12 @@ function renderChange(){
     const el=$(id);el.classList.remove('up','down');
     if(!d){el.textContent=id==='barChange'?'—':'';continue}
     if(d.chg)el.classList.add(d.chg>0?'up':'down');
-    el.textContent=(id==='priceChange'?(d.chg>0?'▲ ':d.chg<0?'▼ ':'')+'較前一交易日 ':'')+changeText(d);
+    el.textContent=(id==='priceChange'?(d.chg>0?'▲ ':d.chg<0?'▼ ':''):'')+changeText(d);
   }
+  // One status label instead of three: the data date and whether it is a close or an intraday price.
+  const last=bars.at(-1),provisional=liveQuote?.available&&last&&liveQuote.date>last.date;
+  $('asof').classList.add('hidden');
+  $('quoteStatus').textContent=!last?'—':provisional?'盤中 '+(liveQuote.time?new Date(liveQuote.time).toLocaleTimeString('zh-TW',{timeZone:'Asia/Taipei',hour:'2-digit',minute:'2-digit',hour12:false}):''):last.date.slice(5)+' 收盤';
 }
 const changeRenderPosition=renderPosition;
 renderPosition=function(){changeRenderPosition();renderChange()};
@@ -646,7 +547,7 @@ settings.favorites=Array.isArray(settings.favorites)?settings.favorites.filter(f
 function favSnapshot(){return{window:settings.window,preferredWindow:settings.preferredWindow||settings.window,method:settings.method,anchorMode:settings.anchorMode,anchorCount:settings.anchorCount,basis:$('basis').value,bt:{...settings.bt}}}
 function favLabel(s){
   const a={wick:'最高最低',close:'收盤極值',average:'平均 '+s.anchorCount+' 筆'}[s.anchorMode]||'';
-  const bt=s.bt?.mode==='fib'?'黃金分割回測':'跌 '+s.bt?.drop+'% 買／漲 '+s.bt?.rise+'% 賣';
+  const b=s.bt?.v===2?s.bt:null,bt=!b?'':b.entry==='fib'?'黃金分割回測':b.entry==='grade'?'水位 '+b.buyGrade+' 分買':'跌 '+b.drop+'% 買';
   return (s.window==='all'?'全部':s.window+' 日')+' · '+(s.method==='fib'?'黃金分割':'等距')+' · '+a+' · '+bt;
 }
 const favSame=(a,b)=>JSON.stringify({...a,bt:{...a.bt,markers:0}})===JSON.stringify({...b,bt:{...b.bt,markers:0}});
@@ -665,7 +566,7 @@ function renderFavs(){
 function applyFav(f){
   const s=f.s;
   Object.assign(settings,{window:s.window,preferredWindow:s.preferredWindow||s.window,method:s.method,anchorMode:s.anchorMode,anchorCount:s.anchorCount});
-  if(s.bt)settings.bt=Object.assign({},BT_DEFAULT,s.bt);
+  if(s.bt)settings.bt=btMigrate(s.bt);
   $('window').value=settings.window;$('method').value=settings.method;if(s.basis&&!$('basis').querySelector(`option[value="${s.basis}"]`)?.disabled)$('basis').value=s.basis;
   updateAnchorControls();btFillForm();
   const auto=autoWindow(selected);
@@ -683,7 +584,7 @@ for(const id of ['window','method','anchorMode','anchorCount','basis'])$(id).add
 const favApplyProfile=window.chaoweiApplyProfile;
 window.chaoweiApplyProfile=profile=>{favApplyProfile(profile);
   settings.favorites=Array.isArray(settings.favorites)?settings.favorites.filter(f=>f&&typeof f.name==='string'&&f.s).slice(0,10):[];
-  settings.bt=Object.assign({},BT_DEFAULT,settings.bt||{});btFillForm();btBarsRef=null;renderFavs();drawChart(true)};
+  settings.bt=btMigrate(settings.bt);btFillForm();btBarsRef=null;renderFavs();drawChart(true)};
 renderFavs();
 
 /* ---------- Drag bars: each chart pane can be made taller or shorter, remembered per browser ---------- */
