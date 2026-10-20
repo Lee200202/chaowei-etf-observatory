@@ -15,6 +15,9 @@ settings.watchlist=Array.isArray(settings.watchlist)?[...new Set(settings.watchl
 const ivName=()=>({D:'日',W:'週',M:'月'})[interval];
 const lots=v=>fmt(v/1000,0)+' 張';
 
+// Adds (or reuses) an option for a user-typed value so a select can display it.
+function customOption(select,value,label){value=String(value);if(!select||[...select.options].some(o=>o.value===value))return;const o=new Option(label,value);o.dataset.custom='1';const c=[...select.options].find(x=>x.value==='custom');select.insertBefore(o,c||null)}
+
 /* ---------- ETF search ---------- */
 const sortKey=e=>[e.type==='active'?1:0,parseInt(e.code.replace(/\D/g,''),10)||0,e.code];
 function sortCatalog(){catalog.sort((a,b)=>{const x=sortKey(a),y=sortKey(b);return x[0]-y[0]||x[1]-y[1]||x[2].localeCompare(y[2])})}
@@ -206,15 +209,25 @@ loadBars=async function(keepView=false){
 /* ---------- Indicators ---------- */
 function sma(values,n){const out=Array(values.length).fill(null);let sum=0;for(let i=0;i<values.length;i++){sum+=values[i];if(i>=n)sum-=values[i-n];if(i>=n-1)out[i]=sum/n}return out}
 function ema(values,period){const a=2/(period+1),out=[];let prior=null;for(const v of values){if(v==null){out.push(null);continue}prior=prior===null?v:prior+a*(v-prior);out.push(prior)}return out}
+// User-defined indicator parameters. The series keep their slot names (ma5/ma20/ma60 = short/mid/long).
+const IND_DEFAULT={ma:[5,20,60],bb:[20,2],macd:[12,26,9],rsi:14,kd:9};
+function normInd(x){
+  x=x&&typeof x==='object'?x:{};const int=(v,lo,hi,d)=>{v=Math.round(Number(v));return Number.isFinite(v)?Math.max(lo,Math.min(hi,v)):d};
+  const f=int(x.macd?.[0],2,60,12);let s=int(x.macd?.[1],3,120,26);if(s<=f)s=f+1;
+  return{ma:[0,1,2].map(i=>int(x.ma?.[i],2,400,IND_DEFAULT.ma[i])),bb:[int(x.bb?.[0],5,100,20),Math.max(0.5,Math.min(4,Number(x.bb?.[1])||2))],macd:[f,s,int(x.macd?.[2],2,60,9)],rsi:int(x.rsi,2,60,14),kd:int(x.kd,3,60,9)};
+}
+settings.ind=normInd(settings.ind);
+const indName={ma:i=>'MA'+settings.ind.ma[i],rsi:()=>'RSI '+settings.ind.rsi,kd:()=>'KD '+settings.ind.kd};
 function technical(all){
-  const close=all.map(x=>x.close),len=all.length,ma5=sma(close,5),ma20=sma(close,20),ma60=sma(close,60),upper=Array(len).fill(null),lower=Array(len).fill(null);
-  for(let i=19;i<len;i++){let s=0;for(let j=i-19;j<=i;j++)s+=(close[j]-ma20[i])**2;const sd=Math.sqrt(s/20);upper[i]=ma20[i]+2*sd;lower[i]=ma20[i]-2*sd}
-  const e12=ema(close,12),e26=ema(close,26),dif=close.map((_,i)=>i<25?null:e12[i]-e26[i]),dea=ema(dif,9),hist=dif.map((v,i)=>v==null||dea[i]==null?null:(v-dea[i])*2);
-  const rsi=Array(len).fill(null);let gain=0,loss=0;
-  for(let i=1;i<len;i++){const ch=close[i]-close[i-1],g=Math.max(ch,0),l=Math.max(-ch,0);if(i<=14){gain+=g/14;loss+=l/14}else{gain=(gain*13+g)/14;loss=(loss*13+l)/14}if(i>=14)rsi[i]=gain===0&&loss===0?50:loss===0?100:100-100/(1+gain/loss)}
-  const kk=Array(len).fill(null),dd=Array(len).fill(null);let k=50,d=50;
-  for(let i=8;i<len;i++){let hi=-Infinity,lo=Infinity;for(let j=i-8;j<=i;j++){hi=Math.max(hi,all[j].high);lo=Math.min(lo,all[j].low)}const rsv=hi===lo?50:(close[i]-lo)/(hi-lo)*100;k=k*2/3+rsv/3;d=d*2/3+k/3;kk[i]=k;dd[i]=d}
-  return{ma5,ma20,ma60,upper,lower,dif,dea,hist,rsi,k:kk,d:dd,volMa20:sma(all.map(x=>x.volume),20)};
+  const P=settings.ind,close=all.map(x=>x.close),len=all.length,ma5=sma(close,P.ma[0]),ma20=sma(close,P.ma[1]),ma60=sma(close,P.ma[2]);
+  const [bn,bk]=P.bb,mid=sma(close,bn),upper=Array(len).fill(null),lower=Array(len).fill(null);
+  for(let i=bn-1;i<len;i++){let s=0;for(let j=i-bn+1;j<=i;j++)s+=(close[j]-mid[i])**2;const sd=Math.sqrt(s/bn);upper[i]=mid[i]+bk*sd;lower[i]=mid[i]-bk*sd}
+  const [mf,ms,mg]=P.macd,ef=ema(close,mf),es=ema(close,ms),dif=close.map((_,i)=>i<ms-1?null:ef[i]-es[i]),dea=ema(dif,mg),hist=dif.map((v,i)=>v==null||dea[i]==null?null:(v-dea[i])*2);
+  const R=P.rsi,rsi=Array(len).fill(null);let gain=0,loss=0;
+  for(let i=1;i<len;i++){const ch=close[i]-close[i-1],g=Math.max(ch,0),l=Math.max(-ch,0);if(i<=R){gain+=g/R;loss+=l/R}else{gain=(gain*(R-1)+g)/R;loss=(loss*(R-1)+l)/R}if(i>=R)rsi[i]=gain===0&&loss===0?50:loss===0?100:100-100/(1+gain/loss)}
+  const K=P.kd,kk=Array(len).fill(null),dd=Array(len).fill(null);let k=50,d=50;
+  for(let i=K-1;i<len;i++){let hi=-Infinity,lo=Infinity;for(let j=i-K+1;j<=i;j++){hi=Math.max(hi,all[j].high);lo=Math.min(lo,all[j].low)}const rsv=hi===lo?50:(close[i]-lo)/(hi-lo)*100;k=k*2/3+rsv/3;d=d*2/3+k/3;kk[i]=k;dd[i]=d}
+  return{ma5,ma20,ma60,mid,upper,lower,dif,dea,hist,rsi,k:kk,d:dd,volMa20:sma(all.map(x=>x.volume),20)};
 }
 
 /* ---------- Chart ---------- */
@@ -263,6 +276,11 @@ function seriesData(all,values){return all.map((b,i)=>values[i]==null?{time:b.da
 function setVisible(range){
   if(!lwc||!lwc.data.length)return;
   const all=lwc.data,n=all.length;let from=0;
+  if(range==='custom'){
+    // A user-picked date span: first bar on/after the start, last bar on/before the end.
+    const from=settings.chartFrom||all[0].date,to=settings.chartTo||all.at(-1).date;let a=all.findIndex(b=>b.date>=from),z=-1;for(let k=0;k<n;k++)if(all[k].date<=to)z=k;
+    if(a<0)a=0;if(z<a)z=Math.min(n-1,a+20);const r={from:a-0.5,to:z+0.5},apply=()=>{for(const c of visiblePanes())c.timeScale().setVisibleLogicalRange(r)};apply();requestAnimationFrame(()=>requestAnimationFrame(apply));return;
+  }
   if(range!=='all'){const months=/m$/.test(range)?Number(range.slice(0,-1)):Math.round(Number(range)*12),d=new Date(all.at(-1).date+'T00:00:00Z');d.setUTCMonth(d.getUTCMonth()-months);const start=d.toISOString().slice(0,10);from=all.findIndex(b=>b.date>=start);if(from<0)from=0}
   // Set every pane directly: on first load the volume pane reports its own default range a frame later,
   // and the pane sync would otherwise copy that wider range back onto the price chart.
@@ -285,15 +303,15 @@ drawChart=function(keepView=false){
   const old=keepView?main.timeScale().getVisibleLogicalRange():null;
   lwc.data=all;lwc.tech=tech;
   s.candle.setData(all.map(b=>({time:b.date,open:b.open,high:b.high,low:b.low,close:b.close})));
-  s.volume.setData(all.map(b=>({time:b.date,value:b.volume/1000,color:b.close>=b.open?'rgba(229,72,77,.45)':'rgba(18,160,107,.45)'})));
+  s.volume.setData(all.map(b=>({time:b.date,value:b.volume/1000,color:(b.close>=b.open)!==(settings.colorScheme==='intl')?'rgba(229,72,77,.45)':'rgba(18,160,107,.45)'})));
   for(const k of ['ma5','ma20','ma60']){s[k].setData(seriesData(all,tech[k]));s[k].applyOptions({visible:!!ov[k]})}
   s.bollUp.setData(seriesData(all,tech.upper));s.bollLow.setData(seriesData(all,tech.lower));
   s.bollUp.applyOptions({visible:!!ov.boll});s.bollLow.applyOptions({visible:!!ov.boll});
-  if(ov.boll&&!ov.ma20)s.ma20.applyOptions({visible:true,color:COLORS.boll,lineStyle:2});else s.ma20.applyOptions({color:COLORS.ma20,lineStyle:0});
+  if(ov.boll&&!ov.ma20&&settings.ind.bb[0]===settings.ind.ma[1])s.ma20.applyOptions({visible:true,color:COLORS.boll,lineStyle:2});else s.ma20.applyOptions({color:COLORS.ma20,lineStyle:0});
   // Sub-chart panes (any combination of MACD, RSI, KD).
   for(const k of OSC_KEYS)$('pane'+OSC_ID[k]).classList.toggle('hidden',!oscOn(k));
   for(const g of lwc.guides)g.series.removePriceLine(g.line);lwc.guides=[];
-  s.hist.setData(oscOn('macd')?all.map((b,i)=>tech.hist[i]==null?{time:b.date}:{time:b.date,value:tech.hist[i],color:tech.hist[i]>=0?'rgba(229,72,77,.6)':'rgba(18,160,107,.6)'}):[]);
+  s.hist.setData(oscOn('macd')?all.map((b,i)=>tech.hist[i]==null?{time:b.date}:{time:b.date,value:tech.hist[i],color:(tech.hist[i]>=0)!==(settings.colorScheme==='intl')?'rgba(229,72,77,.6)':'rgba(18,160,107,.6)'}):[]);
   s.dif.setData(oscOn('macd')?seriesData(all,tech.dif):[]);s.dea.setData(oscOn('macd')?seriesData(all,tech.dea):[]);
   s.rsi.setData(oscOn('rsi')?seriesData(all,tech.rsi):[]);
   s.k.setData(oscOn('kd')?seriesData(all,tech.k):[]);s.d.setData(oscOn('kd')?seriesData(all,tech.d):[]);
@@ -320,12 +338,12 @@ function updateLegend(logical){
   const chg=prev?b.close-prev.close:null,pct=prev?chg/prev.close*100:null,cls=chg>0?'up':chg<0?'down':'';
   const item=(label,val,color)=>`<span${color?` style="--c:${color}"`:''} class="${color?'dot':''}"><small>${label}</small>${val}</span>`;
   let h=item('日期',b.date)+item('開',fmt(b.open,2))+item('高',fmt(b.high,2))+item('低',fmt(b.low,2))+`<span class="${cls}"><small>收</small>${fmt(b.close,2)}${chg==null?'':` <em>${chg>=0?'+':''}${fmt(chg,2)}（${chg>=0?'+':''}${fmt(pct,2)}%）</em>`}</span>`+item('量',lots(b.volume));
-  for(const k of ['ma5','ma20','ma60'])if(settings.overlays[k]&&t[k][i]!=null)h+=item(k.toUpperCase(),fmt(t[k][i],2),COLORS[k]);
+  ['ma5','ma20','ma60'].forEach((k,j)=>{if(settings.overlays[k]&&t[k][i]!=null)h+=item(indName.ma(j),fmt(t[k][i],2),COLORS[k])});
   if(settings.overlays.boll&&t.upper[i]!=null)h+=item('布林上／下',`${fmt(t.upper[i],2)}／${fmt(t.lower[i],2)}`,COLORS.boll);
   $('chartLegend').innerHTML=h;
   if(oscOn('macd'))$('legendMacd').innerHTML=item('MACD','')+item('DIF',fmt(t.dif[i],3),COLORS.dif)+item('DEA',fmt(t.dea[i],3),COLORS.dea)+item('柱',fmt(t.hist[i],3));
-  if(oscOn('rsi'))$('legendRsi').innerHTML=item('RSI14',fmt(t.rsi[i],1),COLORS.rsi);
-  if(oscOn('kd'))$('legendKd').innerHTML=item('KD','')+item('K9',fmt(t.k[i],1),COLORS.k)+item('D9',fmt(t.d[i],1),COLORS.d);
+  if(oscOn('rsi'))$('legendRsi').innerHTML=item('RSI'+settings.ind.rsi,fmt(t.rsi[i],1),COLORS.rsi);
+  if(oscOn('kd'))$('legendKd').innerHTML=item('KD','')+item('K'+settings.ind.kd,fmt(t.k[i],1),COLORS.k)+item('D'+settings.ind.kd,fmt(t.d[i],1),COLORS.d);
 }
 // Floating box at the cursor: the day's five price figures (open, high, low, close, change) and volume.
 function showTip(p){
@@ -345,21 +363,21 @@ function renderTechRead(all,t){
   const box=$('techRead'),n=all.length-1;
   if(n<60){box.innerHTML=all.length?`<p class="small">資料少於 60 根${ivName()} K，技術面讀數待資料累積後顯示。</p>`:'';return}
   const c=all[n].close,u=ivName(),rows=[];
-  const slope=t.ma20[n]-t.ma20[n-5],trend=c>t.ma20[n]&&c>t.ma60[n]?'收盤在 MA20 與 MA60 之上':c<t.ma20[n]&&c<t.ma60[n]?'收盤在 MA20 與 MA60 之下':'收盤介於 MA20 與 MA60 之間';
-  rows.push(['趨勢',slope>0?'均線上彎':'均線下彎',`${trend}；MA20 較 5 ${u}前${slope>0?'上升':'下降'} ${fmt(Math.abs(slope/t.ma20[n-5]*100),2)}%。`]);
-  const pb=(c-t.lower[n])/(t.upper[n]-t.lower[n]),bw=(t.upper[n]-t.lower[n])/t.ma20[n],past=[];for(let i=Math.max(19,n-119);i<=n;i++)past.push((t.upper[i]-t.lower[i])/t.ma20[i]);
+  const slope=t.ma20[n]-t.ma20[n-5],M2=indName.ma(1),M3=indName.ma(2),trend=c>t.ma20[n]&&c>t.ma60[n]?`收盤在 ${M2} 與 ${M3} 之上`:c<t.ma20[n]&&c<t.ma60[n]?`收盤在 ${M2} 與 ${M3} 之下`:`收盤介於 ${M2} 與 ${M3} 之間`;
+  rows.push(['趨勢',slope>0?'均線上彎':'均線下彎',`${trend}；${M2} 較 5 ${u}前${slope>0?'上升':'下降'} ${fmt(Math.abs(slope/t.ma20[n-5]*100),2)}%。`]);
+  const pb=(c-t.lower[n])/(t.upper[n]-t.lower[n]),bw=(t.upper[n]-t.lower[n])/t.mid[n],past=[];for(let i=Math.max(settings.ind.bb[0]-1,n-119);i<=n;i++)past.push((t.upper[i]-t.lower[i])/t.mid[i]);
   const bwRank=past.filter(x=>x<=bw).length/past.length;
   rows.push(['布林通道',`%B ${fmt(pb,2)}`,`收盤位於通道${pb>1?'上軌之外':pb<0?'下軌之外':pb>=.8?'上緣附近':pb<=.2?'下緣附近':'中段'}；通道寬度 ${fmt(bw*100,1)}%，在近 ${past.length} ${u}中屬${bwRank<=.2?'偏窄（波動收斂）':bwRank>=.8?'偏寬（波動擴大）':'一般'}。`]);
   const mc=lastCross(t.dif,t.dea);
   rows.push(['MACD',t.hist[n]>=0?'柱狀體為正':'柱狀體為負',`DIF ${fmt(t.dif[n],3)}、DEA ${fmt(t.dea[n],3)}；${mc?`${mc.ago===0?'本':mc.ago+' '}${u}${mc.ago===0?'':'前'}出現${mc.up?'黃金交叉':'死亡交叉'}`:'近期無交叉'}；DIF 位於零軸${t.dif[n]>=0?'之上':'之下'}。`]);
-  const r=t.rsi[n];rows.push(['RSI 14',fmt(r,1),r>=70?'位於 70 以上的偏熱區。':r<=30?'位於 30 以下的偏冷區。':`位於 30–70 中性區，${r>=50?'漲幅略占上風':'跌幅略占上風'}。`]);
-  const kc=lastCross(t.k,t.d);rows.push(['KD 9',`K ${fmt(t.k[n],1)}／D ${fmt(t.d[n],1)}`,`${t.k[n]>=80?'K 值在 80 以上高檔':t.k[n]<=20?'K 值在 20 以下低檔':'K 值在中段'}；${kc?`${kc.ago===0?'本'+u:kc.ago+' '+u+'前'} K ${kc.up?'向上':'向下'}穿越 D`:'近期無交叉'}。`]);
+  const r=t.rsi[n];rows.push([indName.rsi(),fmt(r,1),r>=70?'位於 70 以上的偏熱區。':r<=30?'位於 30 以下的偏冷區。':`位於 30–70 中性區，${r>=50?'漲幅略占上風':'跌幅略占上風'}。`]);
+  const kc=lastCross(t.k,t.d);rows.push([indName.kd(),`K ${fmt(t.k[n],1)}／D ${fmt(t.d[n],1)}`,`${t.k[n]>=80?'K 值在 80 以上高檔':t.k[n]<=20?'K 值在 20 以下低檔':'K 值在中段'}；${kc?`${kc.ago===0?'本'+u:kc.ago+' '+u+'前'} K ${kc.up?'向上':'向下'}穿越 D`:'近期無交叉'}。`]);
   const vr=all[n].volume/t.volMa20[n];rows.push(['量能',`${fmt(vr,2)} 倍`,`最新成交 ${lots(all[n].volume)}，為 20 ${u}均量的 ${fmt(vr,2)} 倍（${vr>=1.5?'明顯放量':vr<=.6?'明顯縮量':'接近均量'}）。`]);
   const active=new Set(['趨勢','量能']);
   if(settings.overlays.boll)active.add('布林通道');
   if(oscOn('macd'))active.add('MACD');
-  if(oscOn('rsi'))active.add('RSI 14');
-  if(oscOn('kd'))active.add('KD 9');
+  if(oscOn('rsi'))active.add(indName.rsi());
+  if(oscOn('kd'))active.add(indName.kd());
   box.innerHTML=`<div class="tech-head"><h4>技術面讀數</h4><span class="small">${all[n].date} · ${u} K</span></div><div class="tech-grid">${rows.filter(([k])=>active.has(k)).map(([k,v,d])=>`<div class="tech-item"><small>${k}</small><b>${v}</b><details><summary>判讀</summary><p>${d}</p></details></div>`).join('')}</div>`;
 }
 function drawSvgFallback(all){
@@ -523,7 +541,7 @@ const changeRenderPosition=renderPosition;
 renderPosition=function(){changeRenderPosition();renderChange()};
 function labelLastBar(){
   if(!lwc)return;const all=lwc.data,b=all.at(-1),p=all.at(-2);
-  lwc.s.candle.applyOptions({title:b&&p&&p.close>0?(b.close>=p.close?'+':'')+fmt((b.close-p.close)/p.close*100,2)+'%':''});
+  lwc.s.candle.applyOptions({title:chartRange!=='custom'&&b&&p&&p.close>0?(b.close>=p.close?'+':'')+fmt((b.close-p.close)/p.close*100,2)+'%':''});
 }
 
 /* ---------- One crosshair across price, volume and indicator panes ---------- */

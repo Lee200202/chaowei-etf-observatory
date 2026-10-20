@@ -170,6 +170,18 @@ body.touring{overflow:hidden}.tour-shade{position:fixed;inset:0;z-index:200}
 @keyframes tide{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 .radar-chips{align-items:center}.radar-title{font-size:12px;font-weight:850;color:#128e95;margin-right:2px}
 .radar-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:850;border-radius:999px;padding:2px 8px;background:var(--pale);color:#18656c;width:max-content}.radar-badge.hot{background:#e3f7ee;color:#0b6b48}.radar-badge.cold{background:#fdeceb;color:#a33a32}
+/* v6.2: user-defined inputs. */
+.custom-entry{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px}.custom-entry input{width:96px;min-height:36px;border:1px solid #8bcfce;border-radius:10px;background:var(--paper);color:var(--ink);padding:4px 10px;font:inherit;font-size:13px;font-weight:750}.custom-entry em{font-style:normal;font-size:12px;color:var(--muted)}
+.range-custom{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}.range-custom input,.bt-dates input{min-height:36px;border:1px solid var(--line);border-radius:10px;background:var(--paper);color:var(--ink);padding:4px 8px;font:inherit;font-size:13px}.bt-dates{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.ind-settings{margin:0 0 10px;border:1px solid var(--line);border-radius:14px;padding:8px 12px}.ind-settings summary{cursor:pointer;font-size:13px;font-weight:800}
+.ind-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:10px 0}.ind-grid fieldset{border:1px solid var(--line);border-radius:12px;padding:8px 10px;margin:0;display:flex;gap:8px;flex-wrap:wrap}.ind-grid legend{font-size:11px;font-weight:850;color:var(--muted);padding:0 4px}
+.ind-grid label{display:grid;gap:3px;font-size:11px;font-weight:800;color:var(--muted)}.ind-grid input{width:64px;min-height:34px;border:1px solid var(--line);border-radius:9px;background:var(--paper);color:var(--ink);padding:3px 8px;font:inherit;font-size:13px}.ind-grid select{min-height:34px;font-size:12px;min-width:0}
+.weight{grid-template-columns:140px 1fr 64px 0}.weight output{display:none}.w-num{width:64px;min-height:34px;border:1px solid var(--line);border-radius:9px;background:var(--paper);color:var(--ink);padding:3px 8px;font:inherit;font-size:13px;font-weight:800;text-align:right}
+.radar-th{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:800;color:var(--muted)}.radar-th input{width:56px;min-height:30px;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink);padding:2px 6px;font:inherit;font-size:12px}
+/* International colours: green up, red down. */
+body.intl-colors .chart-legend .up,body.intl-colors .chart-tip .up,body.intl-colors .price-change.up,body.intl-colors #barChange.up,body.intl-colors .bt-big .up,body.intl-colors .bt-grid .up,body.intl-colors .bt-trades .up,body.intl-colors .price-up{color:#0f8a5c!important}
+body.intl-colors .chart-legend .down,body.intl-colors .chart-tip .down,body.intl-colors .price-change.down,body.intl-colors #barChange.down,body.intl-colors .bt-big .down,body.intl-colors .bt-grid .down,body.intl-colors .bt-trades .down,body.intl-colors .price-down{color:#d63a3f!important}
+@media(max-width:440px){.weight{grid-template-columns:80px 1fr 56px 0;gap:6px}.w-num{width:56px}}
 </style>
 </head>
 <body>
@@ -188,24 +200,30 @@ body.touring{overflow:hidden}.tour-shade{position:fixed;inset:0;z-index:200}
       <section class="section" id="explore">
         <div class="section-heading"><div><p class="kicker teal">EXPLORE</p><h2>選一檔 ETF，讀懂水位。</h2><p class="sub" id="catalogNote">讀取證交所 ETF 名錄中；資料以官方已公布日 K 為準。</p></div></div>
         <button class="search-launch card" id="openSearch" type="button" aria-haspopup="dialog"><span class="launch-icon" aria-hidden="true">⌕</span><span class="launch-text">搜尋名稱、代號或追蹤指數<small>例如 009816、台灣50、高股息、主動</small></span><kbd>/</kbd></button><div class="quick inline" id="quickInline" aria-label="我的候選 ETF"></div>
-        <div class="search-overlay hidden" id="searchOverlay" role="dialog" aria-modal="true" aria-labelledby="searchTitle"><div class="search-sheet"><div class="search-head"><h2 id="searchTitle">搜尋 ETF</h2><button class="pill" id="closeSearch" type="button" aria-label="關閉搜尋">✕ 關閉</button></div><input id="search" type="search" placeholder="輸入名稱或代號，例如 009816、台灣50、統一…" autocomplete="off" aria-controls="etfList"><div class="quick" id="quickPicks" aria-label="我的候選 ETF"></div><div class="filter" id="typeChips"><button type="button" data-type="all" class="active">全部</button><button type="button" data-type="passive">被動型</button><button type="button" data-type="active">主動型</button><button type="button" data-type="watch">我的追蹤</button></div><div class="filter radar-chips" id="radarChips" aria-label="今日潮位雷達"><span class="radar-title">今日潮位雷達</span><button type="button" data-radar="all" class="active">不篩選</button><button type="button" data-radar="low">水位 4.5 分以上</button><button type="button" data-radar="bias">MA60 負乖離 &gt;10%</button><button type="button" data-radar="rsi">RSI 低於 30</button><button type="button" data-radar="squeeze">布林壓縮突破</button></div><p class="small" id="searchCount"></p><div class="etflist" id="etfList" aria-label="ETF 候選清單"></div><p class="sidebar-note">點候選卡片旁的星號加入或移出追蹤。未登入時只保存在目前瀏覽器。收錄證交所上市 ETF；上櫃 ETF 待官方來源接入。按 Enter 選第一筆，Esc 關閉。</p></div></div>
+        <div class="search-overlay hidden" id="searchOverlay" role="dialog" aria-modal="true" aria-labelledby="searchTitle"><div class="search-sheet"><div class="search-head"><h2 id="searchTitle">搜尋 ETF</h2><button class="pill" id="closeSearch" type="button" aria-label="關閉搜尋">✕ 關閉</button></div><input id="search" type="search" placeholder="輸入名稱或代號，例如 009816、台灣50、統一…" autocomplete="off" aria-controls="etfList"><div class="quick" id="quickPicks" aria-label="我的候選 ETF"></div><div class="filter" id="typeChips"><button type="button" data-type="all" class="active">全部</button><button type="button" data-type="passive">被動型</button><button type="button" data-type="active">主動型</button><button type="button" data-type="watch">我的追蹤</button></div><div class="filter radar-chips" id="radarChips" aria-label="今日潮位雷達"><span class="radar-title">今日潮位雷達</span><button type="button" data-radar="all" class="active">不篩選</button><button type="button" data-radar="low">水位達門檻</button><label class="radar-th">≥<input type="number" id="radarMin" value="4.5" min="0" max="5" step="0.1" aria-label="水位門檻">分</label><button type="button" data-radar="bias">MA60 負乖離 &gt;10%</button><button type="button" data-radar="rsi">RSI 低於 30</button><button type="button" data-radar="squeeze">布林壓縮突破</button></div><p class="small" id="searchCount"></p><div class="etflist" id="etfList" aria-label="ETF 候選清單"></div><p class="sidebar-note">點候選卡片旁的星號加入或移出追蹤。未登入時只保存在目前瀏覽器。收錄證交所上市 ETF；上櫃 ETF 待官方來源接入。按 Enter 選第一筆，Esc 關閉。</p></div></div>
         <div class="workspace">
           <div class="content">
             <div class="toolbar card"><div><span class="tag hidden" id="kind">被動型 ETF</span><h3 id="etfName">元大台灣50</h3><p class="muted" id="etfMeta">0050 · 證交所上市</p></div><div class="toolbar-stats" aria-live="polite"><span><small>收盤</small><b id="barPrice">—</b></span><span><small>漲跌</small><b id="barChange">—</b></span><span><small>水位</small><b id="barGrade">—</b></span><span><small>資料日</small><b id="barDate">—</b></span><a class="pill mini" href="#explore" id="backToSearch">換一檔</a></div></div>
-            <div class="view-card card" aria-label="觀察條件"><div class="controls"><label>觀察窗<select id="window"><option value="60">60 交易日</option><option value="120">120 交易日</option><option value="200">200 交易日</option><option value="240">240 交易日（約 1 年）</option><option value="400">400 交易日</option><option value="600">600 交易日</option><option value="1200">1200 交易日（約 5 年）</option><option value="2400">2400 交易日（約 10 年）</option><option value="all">已取得全部</option></select></label><label>刻度方式<select id="method"><option value="equal">等距五段</option><option value="fib">黃金分割</option></select></label><label>高低點算法<select id="anchorMode"><option value="wick">最高／最低價</option><option value="close">收盤極值</option><option value="average">高低價平均</option></select></label><label id="anchorCountWrap" class="hidden">各取幾筆平均<input id="anchorCount" type="number" min="1" max="20" step="1" value="5" inputmode="numeric"></label><label>價格口徑<select id="basis"><option value="price">不含息</option><option value="total" disabled>含息 · 待校驗</option></select></label></div><div class="fav-bar" id="favBar"><span class="fav-title">★ 我的最愛</span><div class="fav-list" id="favList" aria-label="收藏的篩選條件"></div><span class="fav-add member-feature"><input id="favName" type="text" maxlength="20" placeholder="名稱（選填）" aria-label="收藏名稱"><button class="pill mini" id="favAdd" type="button">＋ 收藏目前條件</button></span><button class="pill mini fav-login" type="button" data-open-account>登入後可收藏 10 組常用條件</button></div></div>
+            <div class="view-card card" aria-label="觀察條件"><div class="controls"><label>觀察窗<select id="window"><option value="60">60 交易日</option><option value="120">120 交易日</option><option value="200">200 交易日</option><option value="240">240 交易日（約 1 年）</option><option value="400">400 交易日</option><option value="600">600 交易日</option><option value="1200">1200 交易日（約 5 年）</option><option value="2400">2400 交易日（約 10 年）</option><option value="all">已取得全部</option><option value="custom">自訂…</option></select></label><label>刻度方式<select id="method"><option value="equal">等距五段</option><option value="fib">黃金分割</option></select></label><label>高低點算法<select id="anchorMode"><option value="wick">最高／最低價</option><option value="close">收盤極值</option><option value="average">高低價平均</option></select></label><label id="anchorCountWrap" class="hidden">各取幾筆平均<input id="anchorCount" type="number" min="1" max="20" step="1" value="5" inputmode="numeric"></label><label>價格口徑<select id="basis"><option value="price">不含息</option><option value="total" disabled>含息 · 待校驗</option></select></label></div><div class="fav-bar" id="favBar"><span class="fav-title">★ 我的最愛</span><div class="fav-list" id="favList" aria-label="收藏的篩選條件"></div><span class="fav-add member-feature"><input id="favName" type="text" maxlength="20" placeholder="名稱（選填）" aria-label="收藏名稱"><button class="pill mini" id="favAdd" type="button">＋ 收藏目前條件</button></span><button class="pill mini fav-login" type="button" data-open-account>登入後可收藏 10 組常用條件</button></div></div>
             <div class="notice" id="status" role="status">正在讀取證交所資料…</div>
             <div class="score-grid">
               <div class="water-card card"><div class="cup" aria-hidden="true"><div class="ticks"><span>1.0</span><span>0.8</span><span>0.6</span><span>0.4</span><span>0.2</span><span>0.0</span></div><div class="cup-water" id="cupWater"><svg class="wave w2" viewBox="0 0 240 20" preserveAspectRatio="none" aria-hidden="true"><path d="M0 10 Q15 2 30 10 T60 10 T90 10 T120 10 T150 10 T180 10 T210 10 T240 10 V20 H0 Z"/></svg><svg class="wave w1" viewBox="0 0 240 20" preserveAspectRatio="none" aria-hidden="true"><path d="M0 10 Q15 2 30 10 T60 10 T90 10 T120 10 T150 10 T180 10 T210 10 T240 10 V20 H0 Z"/></svg></div></div><div class="water-copy"><p class="overline">價格水位</p><div class="grade" id="grade">—<small>/5</small></div><p id="waterText">正在計算位置…</p><p class="small" id="extended">連續分與越界位置將顯示於此</p></div></div>
               <div class="price-card card"><div class="price-head"><span class="overline" id="priceLabel">最近收盤價</span><span class="tag" id="quoteStatus">盤後</span></div><div><strong class="price" id="price">—</strong><p class="price-change" id="priceChange"></p><p class="small" id="asof">資料日期：—</p><p class="small live-source hidden" id="liveSource"></p><div class="range-label"><span id="low">區間低點 —</span><span id="high">區間高點 —</span></div><div class="range-bar"><i id="rangeDot"></i></div><p class="small hidden" id="anchorSummary"></p></div><div class="meta"><span id="sample">樣本 —</span><span id="source">來源：證交所</span></div></div>
             </div>
-            <div class="chart-card card" id="chartCard"><div class="card-heading"><div><h3>價格走勢與技術面</h3><p class="small" id="historyNote">讀取歷史日 K 中…</p></div><div class="segment" id="intervalSeg" aria-label="K 線週期"><button type="button" data-interval="D" class="active">日 K</button><button type="button" data-interval="W">週 K</button><button type="button" data-interval="M">月 K</button></div></div><div class="chart-tools"><div class="segment" id="rangeSeg" aria-label="顯示範圍"><button type="button" data-range="1m" class="active">1 個月</button><button type="button" data-range="3m">3 個月</button><button type="button" data-range="6m">6 個月</button><button type="button" data-range="1">1 年</button><button type="button" data-range="3">3 年</button><button type="button" data-range="5">5 年</button><button type="button" data-range="10">10 年</button><button type="button" data-range="all">全部</button></div><div class="zoom-controls"><button class="pill" id="panLeft" type="button" aria-label="向較早日期移動">←</button><button class="pill" id="zoomOut" type="button" aria-label="縮小走勢圖">−</button><button class="pill" id="zoomIn" type="button" aria-label="放大走勢圖">＋</button><button class="pill" id="panRight" type="button" aria-label="向較近日期移動">→</button></div></div><div class="indicator-tools"><div class="overlay-tools" aria-label="主圖指標"><span class="tool-label">主圖</span><button class="pill chip" type="button" data-overlay="ma5" aria-pressed="false"><i class="swatch ma5"></i>MA5</button><button class="pill chip" type="button" data-overlay="ma20" aria-pressed="false"><i class="swatch ma20"></i>MA20</button><button class="pill chip" type="button" data-overlay="ma60" aria-pressed="false"><i class="swatch ma60"></i>MA60</button><button class="pill chip" type="button" data-overlay="boll" aria-pressed="false"><i class="swatch boll"></i>布林通道</button></div><div class="segment" id="oscSeg" aria-label="副圖指標（可複選）"><button type="button" data-osc="none" class="active">無副圖</button><button type="button" data-osc="macd">MACD</button><button type="button" data-osc="rsi">RSI</button><button type="button" data-osc="kd">KD</button></div><label class="mini-select" title="0050 等 ETF 分割前的成交量要顯示原始張數，還是依分割比例換算成今天的單位">成交量<select id="volumeBasis"><option value="raw">原始張數</option><option value="adjusted">拆分換算</option></select></label></div><div class="level-tools"><button class="pill chip" id="showLevels" type="button" aria-pressed="true">顯示價格水位線</button></div><div class="chart-legend" id="chartLegend" aria-live="off">—</div><div class="chart-wrap"><div class="chart" id="chart" role="img" aria-label="ETF K 線圖"></div><div class="chart-tip hidden" id="chartTip" aria-hidden="true"></div></div><div class="pane-resizer" data-resize="chart" role="separator" aria-orientation="horizontal" aria-label="拖曳調整價格圖高度" tabindex="0"><span></span></div><div class="vol-wrap"><span class="vol-label">成交量（張）</span><div class="vol-chart" id="volChart" role="img" aria-label="成交量柱狀圖"></div></div><div class="pane-resizer" data-resize="volChart" role="separator" aria-orientation="horizontal" aria-label="拖曳調整成交量圖高度" tabindex="0"><span></span></div><div class="osc-pane hidden" id="paneMacd"><div class="osc-legend" id="legendMacd"></div><div class="osc-chart" id="chartMacd" role="img" aria-label="MACD 副圖"></div><div class="pane-resizer" data-resize="chartMacd" role="separator" aria-orientation="horizontal" aria-label="拖曳調整MACD 副圖高度" tabindex="0"><span></span></div></div><div class="osc-pane hidden" id="paneRsi"><div class="osc-legend" id="legendRsi"></div><div class="osc-chart" id="chartRsi" role="img" aria-label="RSI 副圖"></div><div class="pane-resizer" data-resize="chartRsi" role="separator" aria-orientation="horizontal" aria-label="拖曳調整RSI 副圖高度" tabindex="0"><span></span></div></div><div class="osc-pane hidden" id="paneKd"><div class="osc-legend" id="legendKd"></div><div class="osc-chart" id="chartKd" role="img" aria-label="KD 副圖"></div><div class="pane-resizer" data-resize="chartKd" role="separator" aria-orientation="horizontal" aria-label="拖曳調整KD 副圖高度" tabindex="0"><span></span></div></div><div class="chart-foot"><span class="small" id="chartCaption">滑鼠滾輪或雙指縮放、拖曳平移；游標停在 K 棒上可看當日數值。</span></div><div class="tech-read" id="techRead" aria-live="polite"></div><details class="indicator-help"><summary>技術指標怎麼看？</summary><dl><dt>K 線與成交量</dt><dd>台股慣例紅漲綠跌：收盤高於開盤為紅 K，反之為綠 K。下方柱狀為成交股數；週、月 K 由日 K 聚合。</dd><dt>MA 移動平均</dt><dd>最近 N 根收盤價的平均。MA5 約一週、MA20 約一個月、MA60 約一季。價格在均線上方且均線上彎，代表該期間的平均成本正在墊高；反之則在下降。</dd><dt>布林通道（20, 2）</dt><dd>中線是 MA20，上下軌為中線 ± 2 倍標準差。通道收窄代表波動降低、擴張代表波動加大；%B 表示收盤落在通道中的位置（0 為下軌、1 為上軌）。觸及上下軌本身不是買賣訊號。</dd><dt>MACD（12, 26, 9）</dt><dd>DIF＝EMA12 − EMA26；訊號線 DEA＝DIF 的 9 期 EMA；柱狀體＝(DIF − DEA) × 2。DIF 由下往上穿越 DEA 稱黃金交叉，反之為死亡交叉；柱狀體由負轉正表示短期動能轉強。</dd><dt>RSI（14）</dt><dd>14 期內平均漲幅占平均漲跌幅的比例（Wilder 平滑），介於 0–100。習慣上 70 以上視為偏熱、30 以下視為偏冷；強勢趨勢中可長時間停留在高檔。</dd><dt>KD（9, 3, 3）</dt><dd>RSV＝(收盤 − 9 期最低) ÷ (9 期最高 − 9 期最低) × 100；K＝前 K × 2/3 + RSV × 1/3，D＝前 D × 2/3 + K × 1/3，首日以 50 起算。80 以上為高檔、20 以下為低檔。</dd></dl><p>所有指標依目前選的日、週、月 K 重新計算，只描述價格已發生的狀態，不納入水位分數，也不是買賣建議。</p></details></div>
+            <div class="chart-card card" id="chartCard"><div class="card-heading"><div><h3>價格走勢與技術面</h3><p class="small" id="historyNote">讀取歷史日 K 中…</p></div><div class="segment" id="intervalSeg" aria-label="K 線週期"><button type="button" data-interval="D" class="active">日 K</button><button type="button" data-interval="W">週 K</button><button type="button" data-interval="M">月 K</button></div></div><div class="chart-tools"><div class="segment" id="rangeSeg" aria-label="顯示範圍"><button type="button" data-range="1m" class="active">1 個月</button><button type="button" data-range="3m">3 個月</button><button type="button" data-range="6m">6 個月</button><button type="button" data-range="1">1 年</button><button type="button" data-range="3">3 年</button><button type="button" data-range="5">5 年</button><button type="button" data-range="10">10 年</button><button type="button" data-range="all">全部</button><button type="button" data-range="custom">自訂</button></div><span class="range-custom hidden" id="rangeCustom"><input type="date" id="rangeFrom" aria-label="起始日"><span>至</span><input type="date" id="rangeTo" aria-label="結束日"><button class="pill mini" id="rangeApply" type="button">套用</button></span><div class="zoom-controls"><button class="pill" id="panLeft" type="button" aria-label="向較早日期移動">←</button><button class="pill" id="zoomOut" type="button" aria-label="縮小走勢圖">−</button><button class="pill" id="zoomIn" type="button" aria-label="放大走勢圖">＋</button><button class="pill" id="panRight" type="button" aria-label="向較近日期移動">→</button></div></div><div class="indicator-tools"><div class="overlay-tools" aria-label="主圖指標"><span class="tool-label">主圖</span><button class="pill chip" type="button" data-overlay="ma5" aria-pressed="false"><i class="swatch ma5"></i>MA5</button><button class="pill chip" type="button" data-overlay="ma20" aria-pressed="false"><i class="swatch ma20"></i>MA20</button><button class="pill chip" type="button" data-overlay="ma60" aria-pressed="false"><i class="swatch ma60"></i>MA60</button><button class="pill chip" type="button" data-overlay="boll" aria-pressed="false"><i class="swatch boll"></i>布林通道</button></div><div class="segment" id="oscSeg" aria-label="副圖指標（可複選）"><button type="button" data-osc="none" class="active">無副圖</button><button type="button" data-osc="macd">MACD</button><button type="button" data-osc="rsi">RSI</button><button type="button" data-osc="kd">KD</button></div><label class="mini-select" title="0050 等 ETF 分割前的成交量要顯示原始張數，還是依分割比例換算成今天的單位">成交量<select id="volumeBasis"><option value="raw">原始張數</option><option value="adjusted">拆分換算</option></select></label></div><div class="level-tools"><button class="pill chip" id="showLevels" type="button" aria-pressed="true">顯示價格水位線</button></div><details class="ind-settings" id="indSettings"><summary>指標參數與 K 線樣式</summary><div class="ind-grid">
+<fieldset><legend>均線（3 條）</legend><label>短<input type="number" id="indMa1" min="2" max="400" step="1" inputmode="decimal"></label><label>中<input type="number" id="indMa2" min="2" max="400" step="1" inputmode="decimal"></label><label>長<input type="number" id="indMa3" min="2" max="400" step="1" inputmode="decimal"></label></fieldset>
+<fieldset><legend>布林通道</legend><label>期數<input type="number" id="indBbN" min="5" max="100" step="1" inputmode="decimal"></label><label>標準差倍數<input type="number" id="indBbK" min="0.5" max="4" step="0.1" inputmode="decimal"></label></fieldset>
+<fieldset><legend>MACD</legend><label>快線<input type="number" id="indMacdF" min="2" max="60" step="1" inputmode="decimal"></label><label>慢線<input type="number" id="indMacdS" min="3" max="120" step="1" inputmode="decimal"></label><label>訊號<input type="number" id="indMacdG" min="2" max="60" step="1" inputmode="decimal"></label></fieldset>
+<fieldset><legend>RSI／KD</legend><label>RSI 期數<input type="number" id="indRsi" min="2" max="60" step="1" inputmode="decimal"></label><label>KD 期數<input type="number" id="indKd" min="3" max="60" step="1" inputmode="decimal"></label></fieldset>
+<fieldset><legend>K 線樣式</legend><label>圖表<select id="chartType"><option value="candle">K 棒</option><option value="ohlc">美國線</option><option value="line">收盤線</option></select></label><label>漲跌顏色<select id="colorScheme"><option value="tw">紅漲綠跌（台股）</option><option value="intl">綠漲紅跌（國際）</option></select></label></fieldset>
+</div><button class="pill mini" id="indReset" type="button">恢復預設</button></details><div class="chart-legend" id="chartLegend" aria-live="off">—</div><div class="chart-wrap"><div class="chart" id="chart" role="img" aria-label="ETF K 線圖"></div><div class="chart-tip hidden" id="chartTip" aria-hidden="true"></div></div><div class="pane-resizer" data-resize="chart" role="separator" aria-orientation="horizontal" aria-label="拖曳調整價格圖高度" tabindex="0"><span></span></div><div class="vol-wrap"><span class="vol-label">成交量（張）</span><div class="vol-chart" id="volChart" role="img" aria-label="成交量柱狀圖"></div></div><div class="pane-resizer" data-resize="volChart" role="separator" aria-orientation="horizontal" aria-label="拖曳調整成交量圖高度" tabindex="0"><span></span></div><div class="osc-pane hidden" id="paneMacd"><div class="osc-legend" id="legendMacd"></div><div class="osc-chart" id="chartMacd" role="img" aria-label="MACD 副圖"></div><div class="pane-resizer" data-resize="chartMacd" role="separator" aria-orientation="horizontal" aria-label="拖曳調整MACD 副圖高度" tabindex="0"><span></span></div></div><div class="osc-pane hidden" id="paneRsi"><div class="osc-legend" id="legendRsi"></div><div class="osc-chart" id="chartRsi" role="img" aria-label="RSI 副圖"></div><div class="pane-resizer" data-resize="chartRsi" role="separator" aria-orientation="horizontal" aria-label="拖曳調整RSI 副圖高度" tabindex="0"><span></span></div></div><div class="osc-pane hidden" id="paneKd"><div class="osc-legend" id="legendKd"></div><div class="osc-chart" id="chartKd" role="img" aria-label="KD 副圖"></div><div class="pane-resizer" data-resize="chartKd" role="separator" aria-orientation="horizontal" aria-label="拖曳調整KD 副圖高度" tabindex="0"><span></span></div></div><div class="chart-foot"><span class="small" id="chartCaption">滑鼠滾輪或雙指縮放、拖曳平移；游標停在 K 棒上可看當日數值。</span></div><div class="tech-read" id="techRead" aria-live="polite"></div><details class="indicator-help"><summary>技術指標怎麼看？</summary><dl><dt>K 線與成交量</dt><dd>台股慣例紅漲綠跌：收盤高於開盤為紅 K，反之為綠 K。下方柱狀為成交股數；週、月 K 由日 K 聚合。</dd><dt>MA 移動平均</dt><dd>最近 N 根收盤價的平均。MA5 約一週、MA20 約一個月、MA60 約一季。價格在均線上方且均線上彎，代表該期間的平均成本正在墊高；反之則在下降。</dd><dt>布林通道（20, 2）</dt><dd>中線是 MA20，上下軌為中線 ± 2 倍標準差。通道收窄代表波動降低、擴張代表波動加大；%B 表示收盤落在通道中的位置（0 為下軌、1 為上軌）。觸及上下軌本身不是買賣訊號。</dd><dt>MACD（12, 26, 9）</dt><dd>DIF＝EMA12 − EMA26；訊號線 DEA＝DIF 的 9 期 EMA；柱狀體＝(DIF − DEA) × 2。DIF 由下往上穿越 DEA 稱黃金交叉，反之為死亡交叉；柱狀體由負轉正表示短期動能轉強。</dd><dt>RSI（14）</dt><dd>14 期內平均漲幅占平均漲跌幅的比例（Wilder 平滑），介於 0–100。習慣上 70 以上視為偏熱、30 以下視為偏冷；強勢趨勢中可長時間停留在高檔。</dd><dt>KD（9, 3, 3）</dt><dd>RSV＝(收盤 − 9 期最低) ÷ (9 期最高 − 9 期最低) × 100；K＝前 K × 2/3 + RSV × 1/3，D＝前 D × 2/3 + K × 1/3，首日以 50 起算。80 以上為高檔、20 以下為低檔。</dd></dl><p>所有指標依目前選的日、週、月 K 重新計算，只描述價格已發生的狀態，不納入水位分數，也不是買賣建議。</p></details></div>
             <div class="factor-card card"><div class="card-heading"><h3>市場的其他刻度</h3><span class="small" id="factorNote">每 5 分鐘更新 · 分數 0–5，越高越適合加碼</span></div><div class="factor-grid"><div class="factor"><span class="factor-icon">▥</span><h4>台灣加權指數</h4><strong id="indexScore">—</strong><p id="indexMeta">讀取大盤盤後資料中</p></div><div class="factor"><span class="factor-icon">▦</span><h4>大盤成交股數 · 活躍度</h4><strong id="volumeScore">—</strong><p id="volumeMeta">同口徑歷史百分位</p></div><div class="factor"><span class="factor-icon">◉</span><h4>布蘭特原油 · EIA 最新公布</h4><strong id="brentScore">—</strong><p id="brentMeta">讀取 EIA 公布的日資料中</p></div><div class="factor"><span class="factor-icon">↗</span><h4>美元／新台幣 · 央行最新收盤</h4><select id="fxDirection" class="factor-dir" aria-label="匯率計分方向"><option value="high">台幣升值分數低（預設）</option><option value="low">台幣升值分數高</option></select><strong id="fxScore">—</strong><p id="fxMeta">讀取中央銀行日收盤資料中</p></div><div class="factor"><span class="factor-icon">◷</span><h4>最近一次更新</h4><strong id="refreshClock">—</strong><p id="liveMeta">每 5 分鐘自動更新市場刻度</p></div></div></div>
             <div class="backtest-card card member-only" id="backtestCard"><div class="member-lock" role="group" aria-label="策略回測：會員專屬"><div class="member-lock-box"><span class="member-badge">會員專屬</span><h4>策略回測與比較</h4><p>18 種策略、同樣入金，和定期定額比報酬與風險。</p><button class="action" type="button" data-open-account>用 Google 登入解鎖</button><p class="small">免費登入，設定會同步到你的 Google 帳號。</p></div></div>
 <div class="card-heading"><div><h3>策略回測與比較</h3><p class="small">每種策略拿到同樣的入金，和定期定額比報酬與風險</p></div><button class="action bt-opt-btn" id="btOptimize" type="button">✨ 為此 ETF 找最佳策略</button></div>
 <div class="segment bt-families" id="btFamilies" role="tablist" aria-label="策略類型"></div>
 <div class="bt-presets" id="btPresets" aria-label="策略"></div>
 <div class="bt-steps">
-<section class="bt-step"><h4><b>1</b>資金</h4><label>資金基數 C<span class="bt-num"><input id="btCapital" type="number" min="10000" step="10000" inputmode="numeric"><em>元</em></span></label><label>定期定額分幾期<select id="btDcaPeriods"><option value="6">6 期（半年）</option><option value="12">12 期（1 年）</option><option value="24">24 期（2 年）</option><option value="36">36 期（3 年）</option><option value="60">60 期（5 年）</option></select></label><label>回測期間<select id="btPeriod"><option value="1">近 1 年</option><option value="3">近 3 年</option><option value="5">近 5 年</option><option value="10">近 10 年</option><option value="all">全部資料</option></select></label><p class="bt-split" id="btSplit"></p></section>
+<section class="bt-step"><h4><b>1</b>資金</h4><label>資金基數 C<span class="bt-num"><input id="btCapital" type="number" min="10000" step="10000" inputmode="numeric"><em>元</em></span></label><label>定期定額分幾期<select id="btDcaPeriods"><option value="6">6 期（半年）</option><option value="12">12 期（1 年）</option><option value="24">24 期（2 年）</option><option value="36">36 期（3 年）</option><option value="60">60 期（5 年）</option><option value="custom">自訂…</option></select></label><label>回測期間<select id="btPeriod"><option value="1">近 1 年</option><option value="3">近 3 年</option><option value="5">近 5 年</option><option value="10">近 10 年</option><option value="all">全部資料</option><option value="custom">自訂日期…</option></select></label><span class="bt-dates hidden" id="btDates"><input type="date" id="btFrom" aria-label="回測起始日"><span>至</span><input type="date" id="btTo" aria-label="回測結束日"></span><p class="bt-split" id="btSplit"></p></section>
 <section class="bt-step bt-params"><h4><b>2</b>策略設定</h4><div id="btParams"></div></section>
 <section class="bt-step"><h4><b>3</b>水位區間</h4><label>觀察窗<select id="btWindow"></select></label><label>高低點算法<select id="btAnchorMode"></select></label><label class="bt-if-average">各取幾筆<span class="bt-num"><input id="btAnchorCount" type="number" min="1" max="20" step="1"><em>筆</em></span></label><label>刻度方式<select id="btMethod"></select></label><button class="pill mini" id="btSyncView" type="button">沿用上方觀察條件</button></section>
 </div>
@@ -224,7 +242,7 @@ body.touring{overflow:hidden}.tour-shade{position:fixed;inset:0;z-index:200}
 <p class="small bt-note">以收盤價成交、價格已還原分割；配息依證交所除息資料入帳。為歷史模擬，不代表未來報酬。</p>
 </div>
 
-            <div class="weights-card card member-only" id="method"><div class="member-lock" role="group" aria-label="我的權重方案：會員專屬"><div class="member-lock-box"><span class="member-badge">會員專屬</span><h4>我的權重方案</h4><p>自訂 ETF、大盤、量能、原油與匯率的權重，算出你的綜合分數，並儲存多組方案。</p><button class="action" type="button" data-open-account>用 Google 登入解鎖</button><p class="small">免費登入，設定會同步到你的 Google 帳號。</p></div></div><div class="card-heading"><h3>我的權重方案</h3><span class="small">本機儲存 · 可複製檢視連結</span></div><div class="weights"><div class="weight"><label for="wEtf">本檔 ETF</label><input id="wEtf" type="range" min="0" max="100" step="5" value="100"><output id="oEtf">100%</output></div><div class="weight"><label for="wIndex">大盤價格</label><input id="wIndex" type="range" min="0" max="100" step="5" value="0"><output id="oIndex">0%</output></div><div class="weight"><label for="wVolume">大盤量能</label><input id="wVolume" type="range" min="0" max="100" step="5" value="0"><output id="oVolume">0%</output></div><div class="weight"><label for="wBrent">布蘭特原油</label><input id="wBrent" type="range" min="0" max="100" step="5" value="0"><output id="oBrent">0%</output></div><div class="weight"><label for="wFx">美元／新台幣</label><input id="wFx" type="range" min="0" max="100" step="5" value="0"><output id="oFx">0%</output></div></div><div class="controls"><label>量能解讀<select id="volumeDirection"><option value="off">不納入綜合分</option><option value="low">低量分高</option><option value="high">高量分高</option></select></label></div><div class="summary"><div><p class="small" id="weightStatus">權重合計 100%</p><strong id="combined">—</strong><p class="small" id="combinedExtra">連續分：—</p></div><div class="summary-actions"><button class="pill" id="normalize" type="button">平均分配</button><button class="pill" id="share" type="button">複製方案連結</button></div></div><p class="small">低水位 5 分、高水位 1 分；原油越便宜分越高，台幣越升值（美元兌台幣數字越小）分越低。分數是歷史相對位置，不是預測。</p></div>
+            <div class="weights-card card member-only" id="method"><div class="member-lock" role="group" aria-label="我的權重方案：會員專屬"><div class="member-lock-box"><span class="member-badge">會員專屬</span><h4>我的權重方案</h4><p>自訂 ETF、大盤、量能、原油與匯率的權重，算出你的綜合分數，並儲存多組方案。</p><button class="action" type="button" data-open-account>用 Google 登入解鎖</button><p class="small">免費登入，設定會同步到你的 Google 帳號。</p></div></div><div class="card-heading"><h3>我的權重方案</h3><span class="small">本機儲存 · 可複製檢視連結</span></div><div class="weights"><div class="weight"><label for="wEtf">本檔 ETF</label><input id="wEtf" type="range" min="0" max="100" step="1" value="100"><input class="w-num" type="number" min="0" max="100" step="1" data-for="wEtf" aria-label="權重數值"><output id="oEtf">100%</output></div><div class="weight"><label for="wIndex">大盤價格</label><input id="wIndex" type="range" min="0" max="100" step="1" value="0"><input class="w-num" type="number" min="0" max="100" step="1" data-for="wIndex" aria-label="權重數值"><output id="oIndex">0%</output></div><div class="weight"><label for="wVolume">大盤量能</label><input id="wVolume" type="range" min="0" max="100" step="1" value="0"><input class="w-num" type="number" min="0" max="100" step="1" data-for="wVolume" aria-label="權重數值"><output id="oVolume">0%</output></div><div class="weight"><label for="wBrent">布蘭特原油</label><input id="wBrent" type="range" min="0" max="100" step="1" value="0"><input class="w-num" type="number" min="0" max="100" step="1" data-for="wBrent" aria-label="權重數值"><output id="oBrent">0%</output></div><div class="weight"><label for="wFx">美元／新台幣</label><input id="wFx" type="range" min="0" max="100" step="1" value="0"><input class="w-num" type="number" min="0" max="100" step="1" data-for="wFx" aria-label="權重數值"><output id="oFx">0%</output></div></div><div class="controls"><label>量能解讀<select id="volumeDirection"><option value="off">不納入綜合分</option><option value="low">低量分高</option><option value="high">高量分高</option></select></label></div><div class="summary"><div><p class="small" id="weightStatus">權重合計 100%</p><strong id="combined">—</strong><p class="small" id="combinedExtra">連續分：—</p></div><div class="summary-actions"><button class="pill" id="normalize" type="button">平均分配</button><button class="pill" id="share" type="button">複製方案連結</button></div></div><p class="small">低水位 5 分、高水位 1 分；原油越便宜分越高，台幣越升值（美元兌台幣數字越小）分越低。分數是歷史相對位置，不是預測。</p></div>
             </div>
         </div>
       </section>
@@ -348,7 +366,7 @@ function installChaoweiIdentity(host){
   const base='https://www.gstatic.com/firebasejs/13.0.0/';
   let auth,db,user=null,api,plans=[],saveTimer=0,applying=false,ready=false;
   const profileRef=()=>api.doc(db,'users',user.uid);
-  const safeSettings=s=>({window:s.window,method:s.method,anchorMode:s.anchorMode,anchorCount:s.anchorCount,showLevels:s.showLevels!==false,font:s.font,dark:!!s.dark,weights:s.weights,volumeDirection:s.volumeDirection,watchlist:s.watchlist,overlays:s.overlays,osc:s.osc,oscs:s.oscs,tourDone:s.tourDone,fxDirection:s.fxDirection,paneHeights:s.paneHeights,volumeBasis:s.volumeBasis,bt:s.bt,favorites:s.favorites,preferredWindow:s.preferredWindow});
+  const safeSettings=s=>({window:s.window,method:s.method,anchorMode:s.anchorMode,anchorCount:s.anchorCount,showLevels:s.showLevels!==false,font:s.font,dark:!!s.dark,weights:s.weights,volumeDirection:s.volumeDirection,watchlist:s.watchlist,overlays:s.overlays,osc:s.osc,oscs:s.oscs,ind:s.ind,chartType:s.chartType,colorScheme:s.colorScheme,tourDone:s.tourDone,fxDirection:s.fxDirection,paneHeights:s.paneHeights,volumeBasis:s.volumeBasis,bt:s.bt,favorites:s.favorites,preferredWindow:s.preferredWindow});
   const getLocal=()=>{try{return safeSettings(JSON.parse(localStorage.getItem('chaowei-settings')||'{}'))}catch{return {}}};
   const showPlans=()=>{const list=$('planList');list.replaceChildren(new Option('選擇方案',''));plans.forEach((p,i)=>list.add(new Option(p.name,String(i))))};
   const write=async settings=>{if(!user||!db)return;try{await api.setDoc(profileRef(),{settings:safeSettings(settings),plans,updatedAt:api.serverTimestamp()},{merge:true});status(`已登入 ${user.email} · 設定已同步`)}catch(e){status(`已登入 ${user.email} · 雲端同步失敗：${e.code||e.message}`)}};
@@ -437,6 +455,9 @@ const POPULAR=['0050','0056','00878','006208','00919','009816','00981A','00631L'
 settings.watchlist=Array.isArray(settings.watchlist)?[...new Set(settings.watchlist.filter(x=>typeof x==='string'&&/^[0-9A-Z]{4,6}$/.test(x)))].slice(0,50):POPULAR.slice();
 const ivName=()=>({D:'日',W:'週',M:'月'})[interval];
 const lots=v=>fmt(v/1000,0)+' 張';
+
+// Adds (or reuses) an option for a user-typed value so a select can display it.
+function customOption(select,value,label){value=String(value);if(!select||[...select.options].some(o=>o.value===value))return;const o=new Option(label,value);o.dataset.custom='1';const c=[...select.options].find(x=>x.value==='custom');select.insertBefore(o,c||null)}
 
 /* ---------- ETF search ---------- */
 const sortKey=e=>[e.type==='active'?1:0,parseInt(e.code.replace(/\D/g,''),10)||0,e.code];
@@ -629,15 +650,25 @@ loadBars=async function(keepView=false){
 /* ---------- Indicators ---------- */
 function sma(values,n){const out=Array(values.length).fill(null);let sum=0;for(let i=0;i<values.length;i++){sum+=values[i];if(i>=n)sum-=values[i-n];if(i>=n-1)out[i]=sum/n}return out}
 function ema(values,period){const a=2/(period+1),out=[];let prior=null;for(const v of values){if(v==null){out.push(null);continue}prior=prior===null?v:prior+a*(v-prior);out.push(prior)}return out}
+// User-defined indicator parameters. The series keep their slot names (ma5/ma20/ma60 = short/mid/long).
+const IND_DEFAULT={ma:[5,20,60],bb:[20,2],macd:[12,26,9],rsi:14,kd:9};
+function normInd(x){
+  x=x&&typeof x==='object'?x:{};const int=(v,lo,hi,d)=>{v=Math.round(Number(v));return Number.isFinite(v)?Math.max(lo,Math.min(hi,v)):d};
+  const f=int(x.macd?.[0],2,60,12);let s=int(x.macd?.[1],3,120,26);if(s<=f)s=f+1;
+  return{ma:[0,1,2].map(i=>int(x.ma?.[i],2,400,IND_DEFAULT.ma[i])),bb:[int(x.bb?.[0],5,100,20),Math.max(0.5,Math.min(4,Number(x.bb?.[1])||2))],macd:[f,s,int(x.macd?.[2],2,60,9)],rsi:int(x.rsi,2,60,14),kd:int(x.kd,3,60,9)};
+}
+settings.ind=normInd(settings.ind);
+const indName={ma:i=>'MA'+settings.ind.ma[i],rsi:()=>'RSI '+settings.ind.rsi,kd:()=>'KD '+settings.ind.kd};
 function technical(all){
-  const close=all.map(x=>x.close),len=all.length,ma5=sma(close,5),ma20=sma(close,20),ma60=sma(close,60),upper=Array(len).fill(null),lower=Array(len).fill(null);
-  for(let i=19;i<len;i++){let s=0;for(let j=i-19;j<=i;j++)s+=(close[j]-ma20[i])**2;const sd=Math.sqrt(s/20);upper[i]=ma20[i]+2*sd;lower[i]=ma20[i]-2*sd}
-  const e12=ema(close,12),e26=ema(close,26),dif=close.map((_,i)=>i<25?null:e12[i]-e26[i]),dea=ema(dif,9),hist=dif.map((v,i)=>v==null||dea[i]==null?null:(v-dea[i])*2);
-  const rsi=Array(len).fill(null);let gain=0,loss=0;
-  for(let i=1;i<len;i++){const ch=close[i]-close[i-1],g=Math.max(ch,0),l=Math.max(-ch,0);if(i<=14){gain+=g/14;loss+=l/14}else{gain=(gain*13+g)/14;loss=(loss*13+l)/14}if(i>=14)rsi[i]=gain===0&&loss===0?50:loss===0?100:100-100/(1+gain/loss)}
-  const kk=Array(len).fill(null),dd=Array(len).fill(null);let k=50,d=50;
-  for(let i=8;i<len;i++){let hi=-Infinity,lo=Infinity;for(let j=i-8;j<=i;j++){hi=Math.max(hi,all[j].high);lo=Math.min(lo,all[j].low)}const rsv=hi===lo?50:(close[i]-lo)/(hi-lo)*100;k=k*2/3+rsv/3;d=d*2/3+k/3;kk[i]=k;dd[i]=d}
-  return{ma5,ma20,ma60,upper,lower,dif,dea,hist,rsi,k:kk,d:dd,volMa20:sma(all.map(x=>x.volume),20)};
+  const P=settings.ind,close=all.map(x=>x.close),len=all.length,ma5=sma(close,P.ma[0]),ma20=sma(close,P.ma[1]),ma60=sma(close,P.ma[2]);
+  const [bn,bk]=P.bb,mid=sma(close,bn),upper=Array(len).fill(null),lower=Array(len).fill(null);
+  for(let i=bn-1;i<len;i++){let s=0;for(let j=i-bn+1;j<=i;j++)s+=(close[j]-mid[i])**2;const sd=Math.sqrt(s/bn);upper[i]=mid[i]+bk*sd;lower[i]=mid[i]-bk*sd}
+  const [mf,ms,mg]=P.macd,ef=ema(close,mf),es=ema(close,ms),dif=close.map((_,i)=>i<ms-1?null:ef[i]-es[i]),dea=ema(dif,mg),hist=dif.map((v,i)=>v==null||dea[i]==null?null:(v-dea[i])*2);
+  const R=P.rsi,rsi=Array(len).fill(null);let gain=0,loss=0;
+  for(let i=1;i<len;i++){const ch=close[i]-close[i-1],g=Math.max(ch,0),l=Math.max(-ch,0);if(i<=R){gain+=g/R;loss+=l/R}else{gain=(gain*(R-1)+g)/R;loss=(loss*(R-1)+l)/R}if(i>=R)rsi[i]=gain===0&&loss===0?50:loss===0?100:100-100/(1+gain/loss)}
+  const K=P.kd,kk=Array(len).fill(null),dd=Array(len).fill(null);let k=50,d=50;
+  for(let i=K-1;i<len;i++){let hi=-Infinity,lo=Infinity;for(let j=i-K+1;j<=i;j++){hi=Math.max(hi,all[j].high);lo=Math.min(lo,all[j].low)}const rsv=hi===lo?50:(close[i]-lo)/(hi-lo)*100;k=k*2/3+rsv/3;d=d*2/3+k/3;kk[i]=k;dd[i]=d}
+  return{ma5,ma20,ma60,mid,upper,lower,dif,dea,hist,rsi,k:kk,d:dd,volMa20:sma(all.map(x=>x.volume),20)};
 }
 
 /* ---------- Chart ---------- */
@@ -686,6 +717,11 @@ function seriesData(all,values){return all.map((b,i)=>values[i]==null?{time:b.da
 function setVisible(range){
   if(!lwc||!lwc.data.length)return;
   const all=lwc.data,n=all.length;let from=0;
+  if(range==='custom'){
+    // A user-picked date span: first bar on/after the start, last bar on/before the end.
+    const from=settings.chartFrom||all[0].date,to=settings.chartTo||all.at(-1).date;let a=all.findIndex(b=>b.date>=from),z=-1;for(let k=0;k<n;k++)if(all[k].date<=to)z=k;
+    if(a<0)a=0;if(z<a)z=Math.min(n-1,a+20);const r={from:a-0.5,to:z+0.5},apply=()=>{for(const c of visiblePanes())c.timeScale().setVisibleLogicalRange(r)};apply();requestAnimationFrame(()=>requestAnimationFrame(apply));return;
+  }
   if(range!=='all'){const months=/m$/.test(range)?Number(range.slice(0,-1)):Math.round(Number(range)*12),d=new Date(all.at(-1).date+'T00:00:00Z');d.setUTCMonth(d.getUTCMonth()-months);const start=d.toISOString().slice(0,10);from=all.findIndex(b=>b.date>=start);if(from<0)from=0}
   // Set every pane directly: on first load the volume pane reports its own default range a frame later,
   // and the pane sync would otherwise copy that wider range back onto the price chart.
@@ -708,15 +744,15 @@ drawChart=function(keepView=false){
   const old=keepView?main.timeScale().getVisibleLogicalRange():null;
   lwc.data=all;lwc.tech=tech;
   s.candle.setData(all.map(b=>({time:b.date,open:b.open,high:b.high,low:b.low,close:b.close})));
-  s.volume.setData(all.map(b=>({time:b.date,value:b.volume/1000,color:b.close>=b.open?'rgba(229,72,77,.45)':'rgba(18,160,107,.45)'})));
+  s.volume.setData(all.map(b=>({time:b.date,value:b.volume/1000,color:(b.close>=b.open)!==(settings.colorScheme==='intl')?'rgba(229,72,77,.45)':'rgba(18,160,107,.45)'})));
   for(const k of ['ma5','ma20','ma60']){s[k].setData(seriesData(all,tech[k]));s[k].applyOptions({visible:!!ov[k]})}
   s.bollUp.setData(seriesData(all,tech.upper));s.bollLow.setData(seriesData(all,tech.lower));
   s.bollUp.applyOptions({visible:!!ov.boll});s.bollLow.applyOptions({visible:!!ov.boll});
-  if(ov.boll&&!ov.ma20)s.ma20.applyOptions({visible:true,color:COLORS.boll,lineStyle:2});else s.ma20.applyOptions({color:COLORS.ma20,lineStyle:0});
+  if(ov.boll&&!ov.ma20&&settings.ind.bb[0]===settings.ind.ma[1])s.ma20.applyOptions({visible:true,color:COLORS.boll,lineStyle:2});else s.ma20.applyOptions({color:COLORS.ma20,lineStyle:0});
   // Sub-chart panes (any combination of MACD, RSI, KD).
   for(const k of OSC_KEYS)$('pane'+OSC_ID[k]).classList.toggle('hidden',!oscOn(k));
   for(const g of lwc.guides)g.series.removePriceLine(g.line);lwc.guides=[];
-  s.hist.setData(oscOn('macd')?all.map((b,i)=>tech.hist[i]==null?{time:b.date}:{time:b.date,value:tech.hist[i],color:tech.hist[i]>=0?'rgba(229,72,77,.6)':'rgba(18,160,107,.6)'}):[]);
+  s.hist.setData(oscOn('macd')?all.map((b,i)=>tech.hist[i]==null?{time:b.date}:{time:b.date,value:tech.hist[i],color:(tech.hist[i]>=0)!==(settings.colorScheme==='intl')?'rgba(229,72,77,.6)':'rgba(18,160,107,.6)'}):[]);
   s.dif.setData(oscOn('macd')?seriesData(all,tech.dif):[]);s.dea.setData(oscOn('macd')?seriesData(all,tech.dea):[]);
   s.rsi.setData(oscOn('rsi')?seriesData(all,tech.rsi):[]);
   s.k.setData(oscOn('kd')?seriesData(all,tech.k):[]);s.d.setData(oscOn('kd')?seriesData(all,tech.d):[]);
@@ -743,12 +779,12 @@ function updateLegend(logical){
   const chg=prev?b.close-prev.close:null,pct=prev?chg/prev.close*100:null,cls=chg>0?'up':chg<0?'down':'';
   const item=(label,val,color)=>`<span${color?` style="--c:${color}"`:''} class="${color?'dot':''}"><small>${label}</small>${val}</span>`;
   let h=item('日期',b.date)+item('開',fmt(b.open,2))+item('高',fmt(b.high,2))+item('低',fmt(b.low,2))+`<span class="${cls}"><small>收</small>${fmt(b.close,2)}${chg==null?'':` <em>${chg>=0?'+':''}${fmt(chg,2)}（${chg>=0?'+':''}${fmt(pct,2)}%）</em>`}</span>`+item('量',lots(b.volume));
-  for(const k of ['ma5','ma20','ma60'])if(settings.overlays[k]&&t[k][i]!=null)h+=item(k.toUpperCase(),fmt(t[k][i],2),COLORS[k]);
+  ['ma5','ma20','ma60'].forEach((k,j)=>{if(settings.overlays[k]&&t[k][i]!=null)h+=item(indName.ma(j),fmt(t[k][i],2),COLORS[k])});
   if(settings.overlays.boll&&t.upper[i]!=null)h+=item('布林上／下',`${fmt(t.upper[i],2)}／${fmt(t.lower[i],2)}`,COLORS.boll);
   $('chartLegend').innerHTML=h;
   if(oscOn('macd'))$('legendMacd').innerHTML=item('MACD','')+item('DIF',fmt(t.dif[i],3),COLORS.dif)+item('DEA',fmt(t.dea[i],3),COLORS.dea)+item('柱',fmt(t.hist[i],3));
-  if(oscOn('rsi'))$('legendRsi').innerHTML=item('RSI14',fmt(t.rsi[i],1),COLORS.rsi);
-  if(oscOn('kd'))$('legendKd').innerHTML=item('KD','')+item('K9',fmt(t.k[i],1),COLORS.k)+item('D9',fmt(t.d[i],1),COLORS.d);
+  if(oscOn('rsi'))$('legendRsi').innerHTML=item('RSI'+settings.ind.rsi,fmt(t.rsi[i],1),COLORS.rsi);
+  if(oscOn('kd'))$('legendKd').innerHTML=item('KD','')+item('K'+settings.ind.kd,fmt(t.k[i],1),COLORS.k)+item('D'+settings.ind.kd,fmt(t.d[i],1),COLORS.d);
 }
 // Floating box at the cursor: the day's five price figures (open, high, low, close, change) and volume.
 function showTip(p){
@@ -768,21 +804,21 @@ function renderTechRead(all,t){
   const box=$('techRead'),n=all.length-1;
   if(n<60){box.innerHTML=all.length?`<p class="small">資料少於 60 根${ivName()} K，技術面讀數待資料累積後顯示。</p>`:'';return}
   const c=all[n].close,u=ivName(),rows=[];
-  const slope=t.ma20[n]-t.ma20[n-5],trend=c>t.ma20[n]&&c>t.ma60[n]?'收盤在 MA20 與 MA60 之上':c<t.ma20[n]&&c<t.ma60[n]?'收盤在 MA20 與 MA60 之下':'收盤介於 MA20 與 MA60 之間';
-  rows.push(['趨勢',slope>0?'均線上彎':'均線下彎',`${trend}；MA20 較 5 ${u}前${slope>0?'上升':'下降'} ${fmt(Math.abs(slope/t.ma20[n-5]*100),2)}%。`]);
-  const pb=(c-t.lower[n])/(t.upper[n]-t.lower[n]),bw=(t.upper[n]-t.lower[n])/t.ma20[n],past=[];for(let i=Math.max(19,n-119);i<=n;i++)past.push((t.upper[i]-t.lower[i])/t.ma20[i]);
+  const slope=t.ma20[n]-t.ma20[n-5],M2=indName.ma(1),M3=indName.ma(2),trend=c>t.ma20[n]&&c>t.ma60[n]?`收盤在 ${M2} 與 ${M3} 之上`:c<t.ma20[n]&&c<t.ma60[n]?`收盤在 ${M2} 與 ${M3} 之下`:`收盤介於 ${M2} 與 ${M3} 之間`;
+  rows.push(['趨勢',slope>0?'均線上彎':'均線下彎',`${trend}；${M2} 較 5 ${u}前${slope>0?'上升':'下降'} ${fmt(Math.abs(slope/t.ma20[n-5]*100),2)}%。`]);
+  const pb=(c-t.lower[n])/(t.upper[n]-t.lower[n]),bw=(t.upper[n]-t.lower[n])/t.mid[n],past=[];for(let i=Math.max(settings.ind.bb[0]-1,n-119);i<=n;i++)past.push((t.upper[i]-t.lower[i])/t.mid[i]);
   const bwRank=past.filter(x=>x<=bw).length/past.length;
   rows.push(['布林通道',`%B ${fmt(pb,2)}`,`收盤位於通道${pb>1?'上軌之外':pb<0?'下軌之外':pb>=.8?'上緣附近':pb<=.2?'下緣附近':'中段'}；通道寬度 ${fmt(bw*100,1)}%，在近 ${past.length} ${u}中屬${bwRank<=.2?'偏窄（波動收斂）':bwRank>=.8?'偏寬（波動擴大）':'一般'}。`]);
   const mc=lastCross(t.dif,t.dea);
   rows.push(['MACD',t.hist[n]>=0?'柱狀體為正':'柱狀體為負',`DIF ${fmt(t.dif[n],3)}、DEA ${fmt(t.dea[n],3)}；${mc?`${mc.ago===0?'本':mc.ago+' '}${u}${mc.ago===0?'':'前'}出現${mc.up?'黃金交叉':'死亡交叉'}`:'近期無交叉'}；DIF 位於零軸${t.dif[n]>=0?'之上':'之下'}。`]);
-  const r=t.rsi[n];rows.push(['RSI 14',fmt(r,1),r>=70?'位於 70 以上的偏熱區。':r<=30?'位於 30 以下的偏冷區。':`位於 30–70 中性區，${r>=50?'漲幅略占上風':'跌幅略占上風'}。`]);
-  const kc=lastCross(t.k,t.d);rows.push(['KD 9',`K ${fmt(t.k[n],1)}／D ${fmt(t.d[n],1)}`,`${t.k[n]>=80?'K 值在 80 以上高檔':t.k[n]<=20?'K 值在 20 以下低檔':'K 值在中段'}；${kc?`${kc.ago===0?'本'+u:kc.ago+' '+u+'前'} K ${kc.up?'向上':'向下'}穿越 D`:'近期無交叉'}。`]);
+  const r=t.rsi[n];rows.push([indName.rsi(),fmt(r,1),r>=70?'位於 70 以上的偏熱區。':r<=30?'位於 30 以下的偏冷區。':`位於 30–70 中性區，${r>=50?'漲幅略占上風':'跌幅略占上風'}。`]);
+  const kc=lastCross(t.k,t.d);rows.push([indName.kd(),`K ${fmt(t.k[n],1)}／D ${fmt(t.d[n],1)}`,`${t.k[n]>=80?'K 值在 80 以上高檔':t.k[n]<=20?'K 值在 20 以下低檔':'K 值在中段'}；${kc?`${kc.ago===0?'本'+u:kc.ago+' '+u+'前'} K ${kc.up?'向上':'向下'}穿越 D`:'近期無交叉'}。`]);
   const vr=all[n].volume/t.volMa20[n];rows.push(['量能',`${fmt(vr,2)} 倍`,`最新成交 ${lots(all[n].volume)}，為 20 ${u}均量的 ${fmt(vr,2)} 倍（${vr>=1.5?'明顯放量':vr<=.6?'明顯縮量':'接近均量'}）。`]);
   const active=new Set(['趨勢','量能']);
   if(settings.overlays.boll)active.add('布林通道');
   if(oscOn('macd'))active.add('MACD');
-  if(oscOn('rsi'))active.add('RSI 14');
-  if(oscOn('kd'))active.add('KD 9');
+  if(oscOn('rsi'))active.add(indName.rsi());
+  if(oscOn('kd'))active.add(indName.kd());
   box.innerHTML=`<div class="tech-head"><h4>技術面讀數</h4><span class="small">${all[n].date} · ${u} K</span></div><div class="tech-grid">${rows.filter(([k])=>active.has(k)).map(([k,v,d])=>`<div class="tech-item"><small>${k}</small><b>${v}</b><details><summary>判讀</summary><p>${d}</p></details></div>`).join('')}</div>`;
 }
 function drawSvgFallback(all){
@@ -946,7 +982,7 @@ const changeRenderPosition=renderPosition;
 renderPosition=function(){changeRenderPosition();renderChange()};
 function labelLastBar(){
   if(!lwc)return;const all=lwc.data,b=all.at(-1),p=all.at(-2);
-  lwc.s.candle.applyOptions({title:b&&p&&p.close>0?(b.close>=p.close?'+':'')+fmt((b.close-p.close)/p.close*100,2)+'%':''});
+  lwc.s.candle.applyOptions({title:chartRange!=='custom'&&b&&p&&p.close>0?(b.close>=p.close?'+':'')+fmt((b.close-p.close)/p.close*100,2)+'%':''});
 }
 
 /* ---------- One crosshair across price, volume and indicator panes ---------- */
@@ -1397,7 +1433,9 @@ function btContext(){
   const adj=historyMeta?.adjustments||[],div=(btDivs?.[selected]||[]).map(([date,v])=>{let f=1;for(const a of adj)if(date<a.date)f*=a.factor;return[date,v/f]});
   btCtx=E.prepare(bars,div,btMacro());btCtx.bars=bars;return btCtx;
 }
-function btStart(period){if(period==='all')return 0;const d=new Date(bars.at(-1).date+'T00:00:00Z');d.setUTCFullYear(d.getUTCFullYear()-Number(period));const i=bars.findIndex(b=>b.date>=d.toISOString().slice(0,10));return i<0?0:i}
+// Custom dates use the first bar on or after the start and the last bar on or before the end.
+function btEnd(){const b=settings.bt;if(b.period!=='custom'||!b.to)return bars.length-1;let j=-1;for(let i=0;i<bars.length;i++)if(bars[i].date<=b.to)j=i;return Math.max(0,j)}
+function btStart(period){if(period==='all')return 0;if(period==='custom'){const b=settings.bt,i=b.from?bars.findIndex(x=>x.date>=b.from):0;return Math.max(0,Math.min(i<0?0:i,btEnd()-40))}const d=new Date(bars.at(-1).date+'T00:00:00Z');d.setUTCFullYear(d.getUTCFullYear()-Number(period));const i=bars.findIndex(b=>b.date>=d.toISOString().slice(0,10));return i<0?0:i}
 const btCfg=(over={})=>{const b=settings.bt;return{ref:{...b.ref},capital:b.capital,dcaPeriods:b.dcaPeriods,fee:b.fee,discount:b.discount,tax:b.tax,parking:b.parking,drip:b.drip,wholeShares:b.wholeShares,strategy:b.strategy,params:{...b.params},...over}};
 
 /* ---------- form ---------- */
@@ -1419,8 +1457,9 @@ function btFillForm(){
   $('btFamilies').innerHTML=E.FAMILIES.map(([id,name])=>`<button type="button" role="tab" data-family="${id}" aria-selected="${b.family===id}" class="${b.family===id?'active':''}">${name}</button>`).join('');
   $('btPresets').innerHTML=E.PRESETS.filter(p=>p.family===b.family).map(p=>`<button class="pill mini${b.preset===p.id?' on':''}" type="button" data-preset="${p.id}">${p.name}</button>`).join('');
   const set=(id,v)=>{$(id).value=String(v)};
-  set('btCapital',b.capital);set('btDcaPeriods',b.dcaPeriods);set('btPeriod',b.period);
-  set('btWindow',b.ref.window);set('btAnchorMode',b.ref.anchorMode);set('btAnchorCount',b.ref.anchorCount);set('btMethod',b.ref.method);
+  set('btCapital',b.capital);customOption($('btDcaPeriods'),b.dcaPeriods,b.dcaPeriods+' 期（自訂）');set('btDcaPeriods',b.dcaPeriods);set('btPeriod',b.period);
+  $('btDates').classList.toggle('hidden',b.period!=='custom');if(b.period==='custom'&&bars.length){$('btFrom').value=b.from||bars[btStart('5')].date;$('btTo').value=b.to||bars.at(-1).date}
+  customOption($('btWindow'),b.ref.window,b.ref.window+' 交易日（自訂）');set('btWindow',b.ref.window);set('btAnchorMode',b.ref.anchorMode);set('btAnchorCount',b.ref.anchorCount);set('btMethod',b.ref.method);
   set('btFee',b.fee);set('btDiscount',b.discount);set('btTax',b.tax);set('btParking',b.parking);$('btDrip').checked=!!b.drip;$('btWhole').checked=!!b.wholeShares;
   const card=$('backtestCard');card.querySelectorAll('.bt-if-average').forEach(e=>e.classList.toggle('hidden',b.ref.anchorMode!=='average'));
   card.querySelectorAll('.bt-if-classic').forEach(e=>e.classList.toggle('hidden',b.strategy!=='classic'));
@@ -1443,8 +1482,8 @@ function btRenderSplit(){
 }
 function btReadForm(){
   const b=settings.bt,num=(id,lo,hi,d)=>clampNum($(id).value,lo,hi,d);
-  b.capital=Math.round(num('btCapital',10000,1e9,1200000));b.dcaPeriods=[6,12,24,36,60].includes(Number($('btDcaPeriods').value))?Number($('btDcaPeriods').value):12;
-  b.period=['1','3','5','10','all'].includes($('btPeriod').value)?$('btPeriod').value:'5';
+  b.capital=Math.round(num('btCapital',10000,1e9,1200000));{const n=Math.round(Number($('btDcaPeriods').value));if(Number.isFinite(n)&&n>=1&&n<=240)b.dcaPeriods=n}
+  b.period=['1','3','5','10','all','custom'].includes($('btPeriod').value)?$('btPeriod').value:'5';if(b.period==='custom'){b.from=$('btFrom').value||b.from;b.to=$('btTo').value||b.to}
   b.ref={window:$('btWindow').value,anchorMode:$('btAnchorMode').value,anchorCount:Math.round(num('btAnchorCount',1,20,5)),method:$('btMethod').value==='fib'?'fib':'equal'};
   b.fee=num('btFee',0,1,0.1425);b.discount=num('btDiscount',10,100,100);b.tax=num('btTax',0,1,0.1);b.parking=num('btParking',0,10,1.5);b.drip=$('btDrip').checked;b.wholeShares=$('btWhole').checked;
   $('btParams').querySelectorAll('[data-k]').forEach(el=>{const k=el.dataset.k,v=el.type==='checkbox'?el.checked:el.tagName==='SELECT'?el.value:Number(el.value);
@@ -1547,7 +1586,7 @@ function renderBacktest(){
   btBarsRef=bars;
   if(!bars.length||bars.length<60){$('btKpis').innerHTML='<p class="small">需要至少 60 個交易日才能回測。</p>';btResult=null;applyMarkers();return}
   if(!btDivs){btEnsureDividends().then(()=>{btCtx=null;renderBacktest()});}
-  const seq=++btSeq,ctx=btContext(),cfg=btCfg(),start=btStart(settings.bt.period),r=E.run(ctx,cfg,start);btResult=r;
+  const seq=++btSeq,ctx=btContext(),cfg=btCfg(),start=btStart(settings.bt.period),end=btEnd(),r=E.run(ctx,cfg,start,end);btResult=r;
   $('btSummary').textContent=btSentence(cfg);
   // Verdict: name the metric; never call it a win when the return is behind.
   const dx=r.xirr-r.dca.xirr,dm=r.dca.mdd-r.mdd,calS=r.calmar,calD=r.dca.mdd>0?r.dca.cagr/r.dca.mdd:null;
@@ -1562,18 +1601,18 @@ function renderBacktest(){
   btDrawCharts(r);
   $('btNow').innerHTML='<h4>今日狀態</h4><dl>'+btNow(r).map(([a,b])=>`<dt>${a}</dt><dd>${b}</dd>`).join('')+'</dl>';
   btRenderTrades();
-  if(cfg.strategy==='classic')btRenderGrid(ctx,cfg,start);
+  if(cfg.strategy==='classic')btRenderGrid(ctx,cfg,start,end);
   if($('btRollingBox').open)btRenderRolling();else $('btRolling').innerHTML='';
   applyMarkers();
 }
-function btRenderGrid(ctx,cfg,start){
+function btRenderGrid(ctx,cfg,start,end){
   const p=cfg.params;let rows,cols,rowLabel,colLabel,make,cur;
   if(p.entry==='drop'){rows=[8,10,15,20,25];rowLabel='下跌';make=a=>({drop:a});cur=p.drop}else if(p.entry==='fib'){rows=[0.236,0.382,0.5,0.618];rowLabel='第一個位階';make=a=>({levels:[a,...p.levels.filter(x=>x>a)]});cur=p.levels[0]}else{rows=[5,4,3];rowLabel='買進分數';make=a=>({buyGrade:a});cur=p.buyGrade}
   if(['gain','high','pyramid'].includes(p.exit)){cols=[0,10,20,30,50].filter(x=>p.exit!=='gain'||x>0).map(x=>({rise:x}));colLabel='幅度'}else if(p.exit==='trailing'){cols=[6,8,10,15,20].map(x=>({trail:x}));colLabel='回落'}else if(p.exit==='grade'){cols=[{sellGrade:1},{sellGrade:2}];colLabel='賣出分數'}else{cols=[{fibExt:1},{fibExt:1.272},{fibExt:1.618}];colLabel='擴展位'}
   const curCol=JSON.stringify(Object.fromEntries(Object.keys(cols[0]).map(x=>[x,p[x]])));
   const rt=a=>p.entry==='drop'?a+'%':p.entry==='fib'?(a*100).toFixed(1)+'%':a+' 分',ct=b=>{const [kk,v]=Object.entries(b)[0];return kk==='fibExt'?(v*100).toFixed(1)+'%':kk==='sellGrade'?v+' 分':v+'%'};
   let html=`<table><thead><tr><th>${rowLabel} ＼ ${colLabel}</th>${cols.map(b=>`<th>${ct(b)}</th>`).join('')}</tr></thead><tbody>`;
-  for(const a of rows){html+=`<tr><th>${rt(a)}</th>`;for(const b of cols){const x=E.run(ctx,{...cfg,params:{...p,...make(a),...b}},start),isCur=a===cur&&JSON.stringify(b)===curCol,t=Math.max(-1,Math.min(1,x.xirr||0));
+  for(const a of rows){html+=`<tr><th>${rt(a)}</th>`;for(const b of cols){const x=E.run(ctx,{...cfg,params:{...p,...make(a),...b}},start,end),isCur=a===cur&&JSON.stringify(b)===curCol,t=Math.max(-1,Math.min(1,x.xirr||0));
     html+=`<td class="${x.xirr>0?'up':x.xirr<0?'down':''}${isCur?' current':''}" style="--heat:${Math.abs(t)}" title="總報酬 ${pctText(x.ret)}">${x.buys?pctText(x.xirr):'未觸發'}</td>`}html+='</tr>'}
   $('btGrid').innerHTML=html+'</tbody></table><p class="small">表中為年化報酬；框起來的是目前設定。</p>';
 }
@@ -1596,20 +1635,20 @@ $('btCsv').addEventListener('click',()=>{
 
 /* ---------- optimizer: every preset, three water-level windows, ranked three ways ---------- */
 $('btOptimize').addEventListener('click',()=>{
-  if(!bars.length)return;const ctx=btContext(),start=btStart(settings.bt.period),base=btCfg(),rows=[];
+  if(!bars.length)return;const ctx=btContext(),start=btStart(settings.bt.period),end=btEnd(),base=btCfg(),rows=[];
   $('btOptSheet').classList.remove('hidden');document.body.classList.add('searching');$('btOptBody').innerHTML='<p class="small">計算中…</p>';
   setTimeout(()=>{
     let dcaRef=null;
     for(const p of E.PRESETS){
       const usesWater=['classic','smart_dca_water','core_satellite','macro_regime'].includes(p.strategy);
       for(const w of usesWater?['60','120','240']:[base.ref.window]){
-        const cfg={...base,strategy:p.strategy,params:JSON.parse(JSON.stringify({...E.PARAMS[p.strategy],...p.params})),ref:{...base.ref,window:w}},r=E.run(ctx,cfg,start);
+        const cfg={...base,strategy:p.strategy,params:JSON.parse(JSON.stringify({...E.PARAMS[p.strategy],...p.params})),ref:{...base.ref,window:w}},r=E.run(ctx,cfg,start,end);
         dcaRef=dcaRef||r.dca;rows.push({p,w,usesWater,r});
       }
     }
     const calD=dcaRef.mdd>0?dcaRef.cagr/dcaRef.mdd:0,board=(title,key,dir,fmtv)=>{const seen=new Set(),list=[...rows].filter(x=>x.p.strategy!=='dca').sort((a,b)=>dir*((b.r[key]??-9)-(a.r[key]??-9))).filter(x=>!seen.has(x.p.id)&&seen.add(x.p.id)).slice(0,3);
       return `<section class="bt-board"><h4>${title}</h4>${list.map((x,j)=>`<button class="bt-rank" type="button" data-preset="${x.p.id}" data-window="${x.w}"><b>${j+1}</b><span>${x.p.name}${x.usesWater?'（'+x.w+' 日）':''}</span><em>${fmtv(x.r)}</em></button>`).join('')}</section>`};
-    $('btOptNote').textContent=`${selected}，${btStart(settings.bt.period)===0?'全部資料':'近 '+settings.bt.period+' 年'}，資金 ${fmt(settings.bt.capital/10000,0)} 萬元、定期定額分 ${settings.bt.dcaPeriods} 期；共試算 ${rows.length} 組。定期定額：年化 ${pctText(dcaRef.xirr)}、最大回落 −${fmt(dcaRef.mdd*100,1)}%、Calmar ${fmt(calD,2)}。`;
+    $('btOptNote').textContent=`${selected}，${settings.bt.period==='custom'?bars[start].date+' 至 '+bars[end].date:settings.bt.period==='all'?'全部資料':'近 '+settings.bt.period+' 年'}，資金 ${fmt(settings.bt.capital/10000,0)} 萬元、定期定額分 ${settings.bt.dcaPeriods} 期；共試算 ${rows.length} 組。定期定額：年化 ${pctText(dcaRef.xirr)}、最大回落 −${fmt(dcaRef.mdd*100,1)}%、Calmar ${fmt(calD,2)}。`;
     $('btOptBody').innerHTML='<div class="bt-boards">'+board('年化報酬最高','xirr',1,r=>pctText(r.xirr)+(r.xirr>r.dca.xirr?' 🏆':''))+board('風險調整後（Calmar）最高','calmar',1,r=>fmt(r.calmar,2)+(r.calmar>calD?' 🏆':''))+board('最大回落最小','mdd',-1,r=>'−'+fmt(r.mdd*100,1)+'%，年化 '+pctText(r.xirr))+'</div><p class="small">🏆 表示該指標勝過定期定額。歷史最佳參數未必在未來有效，請搭配「滾動期間勝率」一起判斷。點任一列即可套用。</p>';
   },30);
 });
@@ -1738,6 +1777,73 @@ $('radarChips').addEventListener('click',async e=>{const b=e.target.closest('[da
 const radarOpenSearch=openSearch;
 openSearch=function(){radarOpenSearch();loadRadar().then(()=>{if(!$('searchOverlay').classList.contains('hidden'))renderList()})};
 for(const id of ['openSearch','openSearchTop'])$(id).addEventListener('click',()=>loadRadar().then(renderList));
+
+/* ---------- User-defined inputs across the page ---------- */
+// "自訂…" in a select opens a small number box; the typed value becomes a normal option.
+function bindCustomSelect(select,{min,max,step=1,unit,label}){
+  const box=document.createElement('span');box.className='custom-entry hidden';
+  box.innerHTML=`<input type="number" min="${min}" max="${max}" step="${step}" inputmode="numeric" aria-label="${label}"><em>${unit}</em><button class="pill mini" type="button">套用</button><button class="pill mini" type="button">取消</button>`;
+  select.closest('label').after(box);
+  const [input,,ok,cancel]=box.children;let previous=select.value;
+  select.addEventListener('focus',()=>{if(select.value!=='custom')previous=select.value});
+  // Capture on the target runs before the page's own change handlers, so "custom" never reaches them.
+  select.addEventListener('change',e=>{if(select.value!=='custom'){previous=select.value;return}e.stopImmediatePropagation();select.value=previous;input.value=Number(previous)||'';box.classList.remove('hidden');input.focus()},true);
+  const apply=()=>{const v=Math.round(Number(input.value));if(!Number.isFinite(v)||v<min||v>max){input.setCustomValidity(`請輸入 ${min}–${max}`);input.reportValidity();return}
+    input.setCustomValidity('');customOption(select,v,`${v} ${unit}（自訂）`);select.value=String(v);previous=select.value;box.classList.add('hidden');select.dispatchEvent(new Event('change',{bubbles:true}))};
+  ok.addEventListener('click',apply);input.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();apply()}if(e.key==='Escape')box.classList.add('hidden')});
+  cancel.addEventListener('click',()=>box.classList.add('hidden'));
+}
+bindCustomSelect($('window'),{min:20,max:2400,unit:'交易日',label:'自訂觀察窗交易日數'});
+bindCustomSelect($('btWindow'),{min:20,max:2400,unit:'交易日',label:'自訂回測觀察窗交易日數'});
+bindCustomSelect($('btDcaPeriods'),{min:1,max:240,unit:'期',label:'自訂定期定額期數'});
+if(!/^(60|120|200|240|400|600|1200|2400|all)$/.test(String(settings.window))&&Number(settings.window)>0){customOption($('window'),settings.window,settings.window+' 交易日（自訂）');$('window').value=String(settings.window)}
+
+/* Chart range: custom dates. */
+$('rangeSeg').addEventListener('click',e=>{const b=e.target.closest('[data-range]');if(!b)return;const on=b.dataset.range==='custom';$('rangeCustom').classList.toggle('hidden',!on);
+  if(on&&bars.length){const last=bars.at(-1).date,d=new Date(last+'T00:00:00Z');d.setUTCMonth(d.getUTCMonth()-3);$('rangeFrom').value=settings.chartFrom||d.toISOString().slice(0,10);$('rangeTo').value=settings.chartTo||last;$('rangeFrom').min=$('rangeTo').min=bars[0].date;$('rangeFrom').max=$('rangeTo').max=last}});
+$('rangeApply').addEventListener('click',()=>{let a=$('rangeFrom').value,z=$('rangeTo').value;if(!a||!z)return;if(a>z)[a,z]=[z,a];settings.chartFrom=a;settings.chartTo=z;save();setRange('custom')});
+
+/* Indicator parameters and K-line style. */
+settings.chartType=['candle','ohlc','line'].includes(settings.chartType)?settings.chartType:'candle';
+settings.colorScheme=settings.colorScheme==='intl'?'intl':'tw';
+const IND_FIELDS=[['indMa1',s=>s.ma[0]],['indMa2',s=>s.ma[1]],['indMa3',s=>s.ma[2]],['indBbN',s=>s.bb[0]],['indBbK',s=>s.bb[1]],['indMacdF',s=>s.macd[0]],['indMacdS',s=>s.macd[1]],['indMacdG',s=>s.macd[2]],['indRsi',s=>s.rsi],['indKd',s=>s.kd]];
+function fillIndicators(){
+  for(const [id,get] of IND_FIELDS)$(id).value=get(settings.ind);$('chartType').value=settings.chartType;$('colorScheme').value=settings.colorScheme;
+  // Overlay buttons and the help text name the periods the user chose.
+  document.querySelectorAll('[data-overlay]').forEach(b=>{const j=['ma5','ma20','ma60'].indexOf(b.dataset.overlay);if(j>=0)b.lastChild.textContent=indName.ma(j)});
+  document.body.classList.toggle('intl-colors',settings.colorScheme==='intl');
+}
+function readIndicators(){
+  const v=id=>$(id).value;
+  settings.ind=normInd({ma:[v('indMa1'),v('indMa2'),v('indMa3')],bb:[v('indBbN'),v('indBbK')],macd:[v('indMacdF'),v('indMacdS'),v('indMacdG')],rsi:v('indRsi'),kd:v('indKd')});
+  settings.chartType=$('chartType').value;settings.colorScheme=$('colorScheme').value==='intl'?'intl':'tw';save();fillIndicators();drawChart(true);
+}
+$('indSettings').addEventListener('change',readIndicators);
+$('indReset').addEventListener('click',()=>{settings.ind=normInd(null);settings.chartType='candle';settings.colorScheme='tw';save();fillIndicators();drawChart(true)});
+function applyChartStyle(){
+  if(!lwc)return;const s=lwc.s,up=settings.colorScheme==='intl'?FALL:RISE,down=settings.colorScheme==='intl'?RISE:FALL,clear='rgba(0,0,0,0)',t=settings.chartType;
+  if(!s.ohlc){s.ohlc=lwc.main.addBarSeries({priceLineVisible:false,lastValueVisible:false,thinBars:false});s.closeLine=lwc.main.addLineSeries({color:'#19a7aa',lineWidth:2,priceLineVisible:false,lastValueVisible:false})}
+  // The candle series stays (markers and price lines live on it) but turns transparent for the other styles.
+  s.candle.applyOptions(t==='candle'?{upColor:up,downColor:down,borderUpColor:up,borderDownColor:down,wickUpColor:up,wickDownColor:down}:{upColor:clear,downColor:clear,borderUpColor:clear,borderDownColor:clear,wickUpColor:clear,wickDownColor:clear});
+  s.ohlc.applyOptions({upColor:up,downColor:down,visible:t==='ohlc'});s.closeLine.applyOptions({visible:t==='line'});
+  s.ohlc.setData(t==='ohlc'?lwc.data.map(b=>({time:b.date,open:b.open,high:b.high,low:b.low,close:b.close})):[]);
+  s.closeLine.setData(t==='line'?lwc.data.map(b=>({time:b.date,value:b.close})):[]);
+}
+const styleDrawChart=drawChart;
+drawChart=function(keepView){styleDrawChart(keepView);applyChartStyle()};
+fillIndicators();
+
+/* Weight plan: type an exact percentage next to each slider. */
+function syncWeightNumbers(){document.querySelectorAll('.w-num').forEach(n=>{if(document.activeElement!==n)n.value=$(n.dataset.for).value})}
+document.querySelectorAll('.w-num').forEach(n=>n.addEventListener('input',()=>{const v=Math.max(0,Math.min(100,Math.round(Number(n.value)||0)));const s=$(n.dataset.for);s.value=v;s.dispatchEvent(new Event('input',{bubbles:true}))}));
+const numUpdateWeights=updateWeights;
+updateWeights=function(){numUpdateWeights();syncWeightNumbers()};
+['wEtf','wIndex','wVolume','wBrent','wFx'].forEach(k=>$(k).addEventListener('input',syncWeightNumbers));
+syncWeightNumbers();
+
+/* Tide radar: adjustable water-score threshold. */
+RADAR_TESTS.low=x=>x.score>=clampNum($('radarMin').value,0,5,4.5);
+$('radarMin').addEventListener('change',()=>{if(radarFilter==='low')renderList()});
 
 })();
 </script>

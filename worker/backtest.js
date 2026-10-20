@@ -67,7 +67,9 @@ function btContext(){
   const adj=historyMeta?.adjustments||[],div=(btDivs?.[selected]||[]).map(([date,v])=>{let f=1;for(const a of adj)if(date<a.date)f*=a.factor;return[date,v/f]});
   btCtx=E.prepare(bars,div,btMacro());btCtx.bars=bars;return btCtx;
 }
-function btStart(period){if(period==='all')return 0;const d=new Date(bars.at(-1).date+'T00:00:00Z');d.setUTCFullYear(d.getUTCFullYear()-Number(period));const i=bars.findIndex(b=>b.date>=d.toISOString().slice(0,10));return i<0?0:i}
+// Custom dates use the first bar on or after the start and the last bar on or before the end.
+function btEnd(){const b=settings.bt;if(b.period!=='custom'||!b.to)return bars.length-1;let j=-1;for(let i=0;i<bars.length;i++)if(bars[i].date<=b.to)j=i;return Math.max(0,j)}
+function btStart(period){if(period==='all')return 0;if(period==='custom'){const b=settings.bt,i=b.from?bars.findIndex(x=>x.date>=b.from):0;return Math.max(0,Math.min(i<0?0:i,btEnd()-40))}const d=new Date(bars.at(-1).date+'T00:00:00Z');d.setUTCFullYear(d.getUTCFullYear()-Number(period));const i=bars.findIndex(b=>b.date>=d.toISOString().slice(0,10));return i<0?0:i}
 const btCfg=(over={})=>{const b=settings.bt;return{ref:{...b.ref},capital:b.capital,dcaPeriods:b.dcaPeriods,fee:b.fee,discount:b.discount,tax:b.tax,parking:b.parking,drip:b.drip,wholeShares:b.wholeShares,strategy:b.strategy,params:{...b.params},...over}};
 
 /* ---------- form ---------- */
@@ -89,8 +91,9 @@ function btFillForm(){
   $('btFamilies').innerHTML=E.FAMILIES.map(([id,name])=>`<button type="button" role="tab" data-family="${id}" aria-selected="${b.family===id}" class="${b.family===id?'active':''}">${name}</button>`).join('');
   $('btPresets').innerHTML=E.PRESETS.filter(p=>p.family===b.family).map(p=>`<button class="pill mini${b.preset===p.id?' on':''}" type="button" data-preset="${p.id}">${p.name}</button>`).join('');
   const set=(id,v)=>{$(id).value=String(v)};
-  set('btCapital',b.capital);set('btDcaPeriods',b.dcaPeriods);set('btPeriod',b.period);
-  set('btWindow',b.ref.window);set('btAnchorMode',b.ref.anchorMode);set('btAnchorCount',b.ref.anchorCount);set('btMethod',b.ref.method);
+  set('btCapital',b.capital);customOption($('btDcaPeriods'),b.dcaPeriods,b.dcaPeriods+' 期（自訂）');set('btDcaPeriods',b.dcaPeriods);set('btPeriod',b.period);
+  $('btDates').classList.toggle('hidden',b.period!=='custom');if(b.period==='custom'&&bars.length){$('btFrom').value=b.from||bars[btStart('5')].date;$('btTo').value=b.to||bars.at(-1).date}
+  customOption($('btWindow'),b.ref.window,b.ref.window+' 交易日（自訂）');set('btWindow',b.ref.window);set('btAnchorMode',b.ref.anchorMode);set('btAnchorCount',b.ref.anchorCount);set('btMethod',b.ref.method);
   set('btFee',b.fee);set('btDiscount',b.discount);set('btTax',b.tax);set('btParking',b.parking);$('btDrip').checked=!!b.drip;$('btWhole').checked=!!b.wholeShares;
   const card=$('backtestCard');card.querySelectorAll('.bt-if-average').forEach(e=>e.classList.toggle('hidden',b.ref.anchorMode!=='average'));
   card.querySelectorAll('.bt-if-classic').forEach(e=>e.classList.toggle('hidden',b.strategy!=='classic'));
@@ -113,8 +116,8 @@ function btRenderSplit(){
 }
 function btReadForm(){
   const b=settings.bt,num=(id,lo,hi,d)=>clampNum($(id).value,lo,hi,d);
-  b.capital=Math.round(num('btCapital',10000,1e9,1200000));b.dcaPeriods=[6,12,24,36,60].includes(Number($('btDcaPeriods').value))?Number($('btDcaPeriods').value):12;
-  b.period=['1','3','5','10','all'].includes($('btPeriod').value)?$('btPeriod').value:'5';
+  b.capital=Math.round(num('btCapital',10000,1e9,1200000));{const n=Math.round(Number($('btDcaPeriods').value));if(Number.isFinite(n)&&n>=1&&n<=240)b.dcaPeriods=n}
+  b.period=['1','3','5','10','all','custom'].includes($('btPeriod').value)?$('btPeriod').value:'5';if(b.period==='custom'){b.from=$('btFrom').value||b.from;b.to=$('btTo').value||b.to}
   b.ref={window:$('btWindow').value,anchorMode:$('btAnchorMode').value,anchorCount:Math.round(num('btAnchorCount',1,20,5)),method:$('btMethod').value==='fib'?'fib':'equal'};
   b.fee=num('btFee',0,1,0.1425);b.discount=num('btDiscount',10,100,100);b.tax=num('btTax',0,1,0.1);b.parking=num('btParking',0,10,1.5);b.drip=$('btDrip').checked;b.wholeShares=$('btWhole').checked;
   $('btParams').querySelectorAll('[data-k]').forEach(el=>{const k=el.dataset.k,v=el.type==='checkbox'?el.checked:el.tagName==='SELECT'?el.value:Number(el.value);
@@ -217,7 +220,7 @@ function renderBacktest(){
   btBarsRef=bars;
   if(!bars.length||bars.length<60){$('btKpis').innerHTML='<p class="small">需要至少 60 個交易日才能回測。</p>';btResult=null;applyMarkers();return}
   if(!btDivs){btEnsureDividends().then(()=>{btCtx=null;renderBacktest()});}
-  const seq=++btSeq,ctx=btContext(),cfg=btCfg(),start=btStart(settings.bt.period),r=E.run(ctx,cfg,start);btResult=r;
+  const seq=++btSeq,ctx=btContext(),cfg=btCfg(),start=btStart(settings.bt.period),end=btEnd(),r=E.run(ctx,cfg,start,end);btResult=r;
   $('btSummary').textContent=btSentence(cfg);
   // Verdict: name the metric; never call it a win when the return is behind.
   const dx=r.xirr-r.dca.xirr,dm=r.dca.mdd-r.mdd,calS=r.calmar,calD=r.dca.mdd>0?r.dca.cagr/r.dca.mdd:null;
@@ -232,18 +235,18 @@ function renderBacktest(){
   btDrawCharts(r);
   $('btNow').innerHTML='<h4>今日狀態</h4><dl>'+btNow(r).map(([a,b])=>`<dt>${a}</dt><dd>${b}</dd>`).join('')+'</dl>';
   btRenderTrades();
-  if(cfg.strategy==='classic')btRenderGrid(ctx,cfg,start);
+  if(cfg.strategy==='classic')btRenderGrid(ctx,cfg,start,end);
   if($('btRollingBox').open)btRenderRolling();else $('btRolling').innerHTML='';
   applyMarkers();
 }
-function btRenderGrid(ctx,cfg,start){
+function btRenderGrid(ctx,cfg,start,end){
   const p=cfg.params;let rows,cols,rowLabel,colLabel,make,cur;
   if(p.entry==='drop'){rows=[8,10,15,20,25];rowLabel='下跌';make=a=>({drop:a});cur=p.drop}else if(p.entry==='fib'){rows=[0.236,0.382,0.5,0.618];rowLabel='第一個位階';make=a=>({levels:[a,...p.levels.filter(x=>x>a)]});cur=p.levels[0]}else{rows=[5,4,3];rowLabel='買進分數';make=a=>({buyGrade:a});cur=p.buyGrade}
   if(['gain','high','pyramid'].includes(p.exit)){cols=[0,10,20,30,50].filter(x=>p.exit!=='gain'||x>0).map(x=>({rise:x}));colLabel='幅度'}else if(p.exit==='trailing'){cols=[6,8,10,15,20].map(x=>({trail:x}));colLabel='回落'}else if(p.exit==='grade'){cols=[{sellGrade:1},{sellGrade:2}];colLabel='賣出分數'}else{cols=[{fibExt:1},{fibExt:1.272},{fibExt:1.618}];colLabel='擴展位'}
   const curCol=JSON.stringify(Object.fromEntries(Object.keys(cols[0]).map(x=>[x,p[x]])));
   const rt=a=>p.entry==='drop'?a+'%':p.entry==='fib'?(a*100).toFixed(1)+'%':a+' 分',ct=b=>{const [kk,v]=Object.entries(b)[0];return kk==='fibExt'?(v*100).toFixed(1)+'%':kk==='sellGrade'?v+' 分':v+'%'};
   let html=`<table><thead><tr><th>${rowLabel} ＼ ${colLabel}</th>${cols.map(b=>`<th>${ct(b)}</th>`).join('')}</tr></thead><tbody>`;
-  for(const a of rows){html+=`<tr><th>${rt(a)}</th>`;for(const b of cols){const x=E.run(ctx,{...cfg,params:{...p,...make(a),...b}},start),isCur=a===cur&&JSON.stringify(b)===curCol,t=Math.max(-1,Math.min(1,x.xirr||0));
+  for(const a of rows){html+=`<tr><th>${rt(a)}</th>`;for(const b of cols){const x=E.run(ctx,{...cfg,params:{...p,...make(a),...b}},start,end),isCur=a===cur&&JSON.stringify(b)===curCol,t=Math.max(-1,Math.min(1,x.xirr||0));
     html+=`<td class="${x.xirr>0?'up':x.xirr<0?'down':''}${isCur?' current':''}" style="--heat:${Math.abs(t)}" title="總報酬 ${pctText(x.ret)}">${x.buys?pctText(x.xirr):'未觸發'}</td>`}html+='</tr>'}
   $('btGrid').innerHTML=html+'</tbody></table><p class="small">表中為年化報酬；框起來的是目前設定。</p>';
 }
@@ -266,20 +269,20 @@ $('btCsv').addEventListener('click',()=>{
 
 /* ---------- optimizer: every preset, three water-level windows, ranked three ways ---------- */
 $('btOptimize').addEventListener('click',()=>{
-  if(!bars.length)return;const ctx=btContext(),start=btStart(settings.bt.period),base=btCfg(),rows=[];
+  if(!bars.length)return;const ctx=btContext(),start=btStart(settings.bt.period),end=btEnd(),base=btCfg(),rows=[];
   $('btOptSheet').classList.remove('hidden');document.body.classList.add('searching');$('btOptBody').innerHTML='<p class="small">計算中…</p>';
   setTimeout(()=>{
     let dcaRef=null;
     for(const p of E.PRESETS){
       const usesWater=['classic','smart_dca_water','core_satellite','macro_regime'].includes(p.strategy);
       for(const w of usesWater?['60','120','240']:[base.ref.window]){
-        const cfg={...base,strategy:p.strategy,params:JSON.parse(JSON.stringify({...E.PARAMS[p.strategy],...p.params})),ref:{...base.ref,window:w}},r=E.run(ctx,cfg,start);
+        const cfg={...base,strategy:p.strategy,params:JSON.parse(JSON.stringify({...E.PARAMS[p.strategy],...p.params})),ref:{...base.ref,window:w}},r=E.run(ctx,cfg,start,end);
         dcaRef=dcaRef||r.dca;rows.push({p,w,usesWater,r});
       }
     }
     const calD=dcaRef.mdd>0?dcaRef.cagr/dcaRef.mdd:0,board=(title,key,dir,fmtv)=>{const seen=new Set(),list=[...rows].filter(x=>x.p.strategy!=='dca').sort((a,b)=>dir*((b.r[key]??-9)-(a.r[key]??-9))).filter(x=>!seen.has(x.p.id)&&seen.add(x.p.id)).slice(0,3);
       return `<section class="bt-board"><h4>${title}</h4>${list.map((x,j)=>`<button class="bt-rank" type="button" data-preset="${x.p.id}" data-window="${x.w}"><b>${j+1}</b><span>${x.p.name}${x.usesWater?'（'+x.w+' 日）':''}</span><em>${fmtv(x.r)}</em></button>`).join('')}</section>`};
-    $('btOptNote').textContent=`${selected}，${btStart(settings.bt.period)===0?'全部資料':'近 '+settings.bt.period+' 年'}，資金 ${fmt(settings.bt.capital/10000,0)} 萬元、定期定額分 ${settings.bt.dcaPeriods} 期；共試算 ${rows.length} 組。定期定額：年化 ${pctText(dcaRef.xirr)}、最大回落 −${fmt(dcaRef.mdd*100,1)}%、Calmar ${fmt(calD,2)}。`;
+    $('btOptNote').textContent=`${selected}，${settings.bt.period==='custom'?bars[start].date+' 至 '+bars[end].date:settings.bt.period==='all'?'全部資料':'近 '+settings.bt.period+' 年'}，資金 ${fmt(settings.bt.capital/10000,0)} 萬元、定期定額分 ${settings.bt.dcaPeriods} 期；共試算 ${rows.length} 組。定期定額：年化 ${pctText(dcaRef.xirr)}、最大回落 −${fmt(dcaRef.mdd*100,1)}%、Calmar ${fmt(calD,2)}。`;
     $('btOptBody').innerHTML='<div class="bt-boards">'+board('年化報酬最高','xirr',1,r=>pctText(r.xirr)+(r.xirr>r.dca.xirr?' 🏆':''))+board('風險調整後（Calmar）最高','calmar',1,r=>fmt(r.calmar,2)+(r.calmar>calD?' 🏆':''))+board('最大回落最小','mdd',-1,r=>'−'+fmt(r.mdd*100,1)+'%，年化 '+pctText(r.xirr))+'</div><p class="small">🏆 表示該指標勝過定期定額。歷史最佳參數未必在未來有效，請搭配「滾動期間勝率」一起判斷。點任一列即可套用。</p>';
   },30);
 });
