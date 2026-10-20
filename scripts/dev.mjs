@@ -6,7 +6,7 @@ import {pathToFileURL} from 'node:url';
 const root=resolve(import.meta.dirname,'..');
 let stamp=0,worker;
 async function current(){
-  const files=['worker/index.js','worker/page.html','worker/style.css','worker/client.js'];
+  const files=['worker/index.js','worker/page.html','worker/style.css','worker/client.js','worker/brent-snapshot.json'];
   const all=await Promise.all(files.map(async p=>(await import('node:fs/promises')).stat(resolve(root,p))));
   const latest=Math.max(...all.map(s=>s.mtimeMs));
   if(!worker||latest>stamp){execFileSync(process.execPath,['scripts/build.mjs'],{cwd:root});worker=(await import(pathToFileURL(resolve(root,'dist/server/index.js')).href+'?t='+Date.now())).default;stamp=latest}

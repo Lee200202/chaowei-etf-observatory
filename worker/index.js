@@ -1,5 +1,6 @@
 // Bundled by scripts/build.mjs. The HTML placeholder is replaced at build time.
 const PAGE = __PAGE__;
+const BRENT_FALLBACK = __BRENT__;
 const ETF = [
   ['0050','元大台灣50','passive','大型權值'],
   ['0056','元大高股息','passive','高股息'],
@@ -26,14 +27,29 @@ function barsFrom(raw){const rows=[];for(const data of raw){if(!Array.isArray(da
 function marketFrom(raw){const rows=[];for(const data of raw){if(!Array.isArray(data?.data))continue;for(const r of data.data){const date=rocDate(r[0]),volume=num(r[1]),value=num(r[2]),index=num(r[4]);if(date&&[volume,value,index].every(Number.isFinite))rows.push({date,volume,value,index})}}return dedupSort(rows)}
 function adjust0050(code,rows){if(code!=='0050')return rows;return rows.map(b=>b.date<='2025-06-10'?{...b,open:b.open/4,high:b.high/4,low:b.low/4,close:b.close/4,volume:b.volume*4}:b)}
 async function brentDaily(){
-  if(brentCache&&Date.now()-brentCache.time<21600000)return brentCache.days;
-  const res=await fetch('https://fred.stlouisfed.org/graph/fredgraph.csv?id=DCOILBRENTEU',{cf:{cacheTtl:3600,cacheEverything:true}});
-  if(!res.ok)throw Error(`布蘭特資料 HTTP ${res.status}`);
-  const text=await res.text(),days=[];
-  for(const line of text.split(/\r?\n/).slice(1)){const [date,raw]=line.split(','),value=Number(raw);if(/^\d{4}-\d{2}-\d{2}$/.test(date)&&raw!=='.'&&Number.isFinite(value))days.push({date,value})}
-  if(!days.length)throw Error('布蘭特資料格式異常');
-  brentCache={time:Date.now(),days:days.slice(-650)};
-  return brentCache.days;
+  if(brentCache&&Date.now()-brentCache.time<21600000)return brentCache;
+  try{
+    const res=await fetch('https://www.eia.gov/dnav/pet/hist/rbrteD.htm',{cf:{cacheTtl:3600,cacheEverything:true}});
+    if(!res.ok)throw Error(`EIA HTTP ${res.status}`);
+    const days=parseEia(await res.text()).slice(-650);
+    if(days.length<600)throw Error('EIA 歷史筆數不足');
+    brentCache={time:Date.now(),days,source:'EIA Brent daily table',snapshot:false};
+  }catch{
+    brentCache={time:Date.now(),days:BRENT_FALLBACK,source:'EIA verified snapshot',snapshot:true};
+  }
+  return brentCache;
+}
+function parseEia(html){
+  const month={Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
+  const rows=[],re=/<td class=.B6.>\s*(?:&nbsp;)*\s*(\d{4})\s+([A-Za-z]{3})-\s*(\d{1,2})\s+to\s+[A-Za-z]{3}-\s*\d{1,2}<\/td>([\s\S]*?)<\/tr>/g;
+  for(const m of html.matchAll(re)){
+    const values=[...m[4].matchAll(/<td class=.B3.>(.*?)<\/td>/g)].map(x=>x[1]);
+    for(let i=0;i<Math.min(5,values.length);i++){
+      const value=Number(values[i]);
+      if(values[i]&&Number.isFinite(value)){const d=new Date(Date.UTC(Number(m[1]),month[m[2]],Number(m[3])+i));rows.push({date:d.toISOString().slice(0,10),value})}
+    }
+  }
+  return rows;
 }
 async function fxDaily(){
   if(fxCache&&Date.now()-fxCache.time<21600000)return fxCache.days;
@@ -48,7 +64,7 @@ async function fxDaily(){
 export default {async fetch(request){const url=new URL(request.url),path=url.pathname;
   if(path==='/')return new Response(PAGE,{headers:{'content-type':'text/html; charset=utf-8','cache-control':'public, max-age=600','x-content-type-options':'nosniff','referrer-policy':'strict-origin-when-cross-origin'}});
   if(path==='/api/etfs')return json({etfs:ETF});
-  if(path==='/api/brent'){try{const days=await brentDaily();return json({days,latest:days.at(-1).date,source:'EIA via FRED DCOILBRENTEU',unit:'USD/barrel'})}catch(e){return json({error:e.message},503)}}
+  if(path==='/api/brent'){try{const data=await brentDaily();return json({days:data.days,latest:data.days.at(-1).date,source:data.source,snapshot:data.snapshot,unit:'USD/barrel'})}catch(e){return json({error:e.message},503)}}
   if(path==='/api/fx'){try{const days=await fxDaily();return json({days,latest:days.at(-1).date,source:'CBC FTDOpenData_Day',unit:'TWD/USD'})}catch(e){return json({error:e.message},503)}}
   if(path==='/api/bars'){
     const code=url.searchParams.get('code');if(!ETF.some(x=>x.code===code))return json({error:'此 ETF 尚未列入首批名單'},404);
