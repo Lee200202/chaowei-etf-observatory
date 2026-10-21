@@ -97,7 +97,7 @@ function setupStore(){
 function storeReadme_(ss){
   const sh=storeTab_(ss,'readme'),rows=[
     ['用途','潮位 ETF 觀測所的雲端資料主檔：盤中與歷史市場資料。網站的即時刻度先讀這裡，十年歷史另有 GitHub 鏡像供網頁快速讀取。'],
-    ['盤中大盤','交易日 09:00–13:40 每 5 分鐘記錄：證交所每5秒指數統計（MI_5MINS_INDEX）與每5秒委託成交統計（MI_5MINS）。'],
+    ['盤中大盤','交易日 09:00–13:40 每 5 分鐘記錄：證交所基本市況報導的即時加權指數與累計成交張數。'],
     ['同時段量能','每個交易日 54 個 5 分鐘刻度的累計成交量（張），用來和「過去交易日同一時刻」比較。'],
     ['大盤日K','證交所 FMTQIK：成交股數、成交金額、加權指數。'],
     ['ETF日K','證交所 MI_INDEX（type=0099P）每日收盤行情；價格為交易所原始價，未還原分割。'],
@@ -298,7 +298,7 @@ function liveFromStore_(){
     // A record older than 12 minutes during trading hours means the trigger stalled; let the caller fetch directly.
     const mins=taipeiNow_().getUTCHours()*60+taipeiNow_().getUTCMinutes();
     if(mins>13*60+40||Date.now()-recorded<12*60000)
-      out.intraday={date:last[0],time:last[1],index:liveNum_(last[2]),volumeTime:last[1],lots:liveNum_(last[3]),valueMillion:liveNum_(last[4]),marks,source:'潮位資料庫（證交所每5秒統計）'};
+      out.intraday={date:last[0],time:last[1],index:liveNum_(last[2]),volumeTime:last[1],lots:liveNum_(last[3]),valueMillion:liveNum_(last[4]),marks,source:'潮位資料庫（證交所基本市況報導）'};
   }
   [['brent','EIA Brent spot daily'],['fx','CBC FTDOpenData_Day']].forEach(([key,source])=>{
     const days=storeTail_(storeTab_(ss,key),40).map(r=>({date:r[0],value:liveNum_(r[1])})).filter(x=>x.value!=null);

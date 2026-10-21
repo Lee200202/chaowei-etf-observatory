@@ -44,5 +44,12 @@ const intraday=box.twseIntraday_('2026-10-21');
 assert.equal(intraday.index,46410.55);assert.equal(intraday.time,'11:37:25');
 assert.equal(intraday.lots,6520000);assert.equal(intraday.marks['0905'],867021);assert.equal(intraday.marks['1135'],6500000);
 assert.equal(intraday.marks['0900'],undefined,'09:00 has no trades yet');
+// During market hours the post-close reports are empty; MIS supplies today's price and volume.
+box.UrlFetchApp.fetch=url=>({getResponseCode:()=>200,getContentText:()=>JSON.stringify({msgArray:[
+  {c:'t00',d:'20261021',t:'09:12:15',z:'47,079.24',m:'1,547,181'}]})});
+box.UrlFetchApp.fetchAll=()=>{throw Error('post-close report should not be called for a valid MIS quote')};
+const marketOpen=box.twseIntraday_('2026-10-21');
+assert.equal(marketOpen.index,47079.24);assert.equal(marketOpen.lots,1547181);
+assert.equal(marketOpen.marks['0910'],1547181);assert.equal(marketOpen.time,'09:12:15');
 assert.equal(box.doGet({parameter:{api:'live',callback:'__cwl_abcdefgh'}}).type,'js');
 console.log('Apps Script snapshot proxy, quote gate, ETF allow-list, key isolation, live market parsing and page entry passed');

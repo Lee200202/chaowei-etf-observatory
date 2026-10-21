@@ -85,10 +85,10 @@ function readSnapshot(path){
   return JSON.parse(text);
 }
 
-// 市場刻度的最新資料：盤中加權指數與累計成交量（證交所每 5 秒統計）、EIA 布蘭特、央行匯率。
+// 市場刻度的最新資料：盤中加權指數與累計成交量（證交所基本市況報導）、EIA 布蘭特、央行匯率。
 // 整包快取 4 分鐘，所有訪客共用一次對外請求；前端每 5 分鐘讀一次。
 function getLiveMarket(){
-  const cache=CacheService.getScriptCache(),hit=cache.get('live-v1');
+  const cache=CacheService.getScriptCache(),hit=cache.get('live-v2');
   if(hit)return JSON.parse(hit);
   const out={generated:new Date().toISOString(),intraday:null,brent:null,fx:null,store:false,errors:[]};
   const now=new Date(Date.now()+8*3600000),mins=now.getUTCHours()*60+now.getUTCMinutes(),day=now.getUTCDay();
@@ -101,11 +101,29 @@ function getLiveMarket(){
   }
   if(!out.brent)try{out.brent=eiaBrent_()}catch(err){out.errors.push('EIA：'+err.message)}
   if(!out.fx)try{out.fx=cbcFx_()}catch(err){out.errors.push('央行：'+err.message)}
-  cache.put('live-v1',JSON.stringify(out),240);
+  cache.put('live-v2',JSON.stringify(out),240);
   return out;
 }
 function liveNum_(v){const n=Number(String(v==null?'':v).replace(/,/g,''));return isFinite(n)?n:null}
 function twseIntraday_(date){
+  // MI_5MINS is a post-close report. During trading it returns "沒有符合條件的資料".
+  // Basic Market Information Reporting (MIS) publishes the current index and cumulative lots.
+  const misUrl='https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=tse_t00.tw&json=1&delay=0&_='+Date.now();
+  try{
+    const misRes=UrlFetchApp.fetch(misUrl,{headers:{Referer:'https://mis.twse.com.tw/stock/'},muteHttpExceptions:true});
+    if(misRes.getResponseCode()===200){
+      const mis=JSON.parse(misRes.getContentText('UTF-8'));
+      const row=(mis.msgArray||[]).filter(x=>x.c==='t00')[0];
+      const time=String(row&&row.t||''),index=liveNum_(row&&row.z),lots=liveNum_(row&&row.m);
+      if(row&&row.d===date.replace(/-/g,'')&&/^\d\d:\d\d:\d\d$/.test(time)&&index>0&&lots>0){
+        const minute=Math.floor(Number(time.slice(3,5))/5)*5;
+        const mark=time.slice(0,2)+String(minute).padStart(2,'0');
+        return{date,time,index,volumeTime:time,lots,valueMillion:null,
+          marks:{[mark]:lots},source:'證交所基本市況報導（盤中）'};
+      }
+    }
+  }catch(err){} // MIS can fail briefly; the post-close report remains a fallback.
+  // Once the exchange has published the post-close report, it provides the full day of marks.
   const d=date.replace(/-/g,'');
   const urls=['https://www.twse.com.tw/rwd/zh/TAIEX/MI_5MINS_INDEX?date='+d+'&response=json','https://www.twse.com.tw/rwd/zh/afterTrading/MI_5MINS?date='+d+'&response=json'];
   const res=UrlFetchApp.fetchAll(urls.map(url=>({url,muteHttpExceptions:true})));
@@ -117,7 +135,7 @@ function twseIntraday_(date){
   vol.data.forEach(r=>{const t=String(r[0]),lots=liveNum_(r[6]);if(!(lots>0))return;last=r;if(/^\d\d:\d[05]:00$/.test(t))marks[t.slice(0,5).replace(':','')]=lots});
   if(!last)return null;
   return{date,time:String(lastIdx[0]),index:liveNum_(lastIdx[1]),volumeTime:String(last[0]),lots:liveNum_(last[6]),valueMillion:liveNum_(last[7]),marks,
-    source:'證交所每5秒指數統計、每5秒委託成交統計'};
+    source:'證交所盤後每5秒指數及委託成交統計'};
 }
 function eiaBrent_(){
   const cache=CacheService.getScriptCache(),hit=cache.get('eia-brent-live');if(hit)return JSON.parse(hit);
