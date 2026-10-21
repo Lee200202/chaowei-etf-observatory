@@ -257,6 +257,22 @@ html{scroll-padding-top:92px}#explore,#market,#method-story,#chartCard,#weights{
 .story-progress{display:flex;align-items:center;justify-content:center;gap:8px;max-width:980px;margin:15px 0 0}.story-progress button{width:24px;height:24px;padding:0;border:0;background:transparent;display:grid;place-items:center}.story-progress button:before{content:"";display:block;width:8px;height:8px;border-radius:999px;background:#709194;transition:width .25s ease,background .25s ease}.story-progress button[aria-current="true"]:before{width:22px;background:#86e3d8}.story-progress button:focus-visible{outline:2px solid #86e3d8;outline-offset:2px;border-radius:999px}
 @media(prefers-reduced-motion:reduce){.story-progress button:before{transition:none}}
 @media(max-width:440px){.topbar nav{gap:6px}.topbar nav .pill{width:39px;min-width:39px;height:39px;min-height:39px}}
+/* Keep one focal card centered while showing the adjacent cards as swipe cues. */
+.story-arrow[data-rail]{display:none!important}
+.story-rail-head,.story-rail,.story-progress{width:100%;max-width:980px;margin-inline:auto}
+.story-rail{--rail-card-width:clamp(300px,55vw,580px);padding:0 calc((100% - var(--rail-card-width))/2) 10px;scroll-snap-type:x mandatory}
+.story-tile{flex-basis:var(--rail-card-width);scroll-snap-align:center}
+.story-progress{margin-top:15px}
+.factor-grid,.factor-rail-nav,.factor-progress{width:100%;max-width:850px;margin-inline:auto}
+.factor-grid{--rail-card-width:clamp(260px,40vw,390px);padding:2px calc((100% - var(--rail-card-width))/2) 12px}
+.factor{flex-basis:var(--rail-card-width);scroll-snap-align:center}
+.factor-progress{margin-top:10px}
+.factor-progress button[aria-current="true"]:before{background:#0b8588}
+.story-rail-head>div,.factor-rail-nav>div{min-width:44px}
+@media(max-width:760px){
+  .story-rail{--rail-card-width:min(82vw,420px)}
+  .factor-grid{--rail-card-width:min(76vw,310px)}
+}
 </style>
 </head>
 <body>
@@ -2178,74 +2194,81 @@ window.addEventListener('scroll',()=>{if(!toTopFrame)toTopFrame=requestAnimation
       else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}
     }
   });
-  let manualStory=()=>{};
-  document.querySelectorAll('[data-rail]').forEach(button=>button.addEventListener('click',()=>{
-    const rail=$(button.dataset.rail),card=rail.querySelector(':scope > *');
-    const distance=card?card.getBoundingClientRect().width+16:rail.clientWidth*.8;
-    if(rail.id==='storyRail')manualStory();
-    rail.scrollBy({left:distance*Number(button.dataset.dir),behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});
-  }));
-  const rail=$('storyRail'),railHead=document.querySelector('.story-rail-head');
   const reduced=matchMedia('(prefers-reduced-motion: reduce)');
-  const tiles=[...rail.children];
-  let storyVisible=false,storyPaused=false,storyIndex=0,manualUntil=0,autoMoving=false;
-  const autoButton=document.createElement('button');
-  autoButton.type='button';autoButton.className='pill story-arrow story-autoplay';
-  railHead.querySelector('div').prepend(autoButton);
-  const syncAutoplay=()=>{
-    autoButton.textContent=storyPaused?'▶':'Ⅱ';
-    autoButton.setAttribute('aria-label',storyPaused?'播放觀測卡輪播':'暫停觀測卡輪播');
-    autoButton.setAttribute('aria-pressed',String(storyPaused));
-    autoButton.classList.toggle('hidden',reduced.matches);
-    railHead.querySelector('span').textContent=reduced.matches?'左右滑動，認識觀測方式':storyPaused?'輪播已暫停 · 可左右滑動':'自動輪播 · 也可左右滑動';
-  };
-  autoButton.addEventListener('click',()=>{storyPaused=!storyPaused;syncAutoplay()});
-  const progress=document.createElement('div');
-  progress.className='story-progress';progress.setAttribute('role','group');
-  progress.setAttribute('aria-label','觀測卡片位置');
-  const dots=tiles.map((_,i)=>{
-    const dot=document.createElement('button');dot.type='button';
-    dot.setAttribute('aria-label','顯示第 '+(i+1)+' 張觀測卡');
-    dot.addEventListener('click',()=>{manualStory();goTo(i)});
-    progress.append(dot);return dot;
-  });
-  rail.after(progress);
-  const syncDots=()=>dots.forEach((dot,i)=>dot.setAttribute('aria-current',i===storyIndex?'true':'false'));
-  function goTo(index,automatic=false){
-    storyIndex=(index+tiles.length)%tiles.length;
-    if(automatic){autoMoving=true;setTimeout(()=>{autoMoving=false},900)}
-    rail.scrollTo({left:tiles[storyIndex].offsetLeft-tiles[0].offsetLeft,
-      behavior:reduced.matches?'instant':'smooth'});
-    syncDots();
-  }
-  syncDots();
-  manualStory=()=>{manualUntil=Date.now()+12000};
-  ['pointerdown','touchstart','wheel','keydown'].forEach(type=>rail.addEventListener(type,manualStory,{passive:true}));
-  rail.addEventListener('focusin',manualStory);
-  rail.addEventListener('keydown',event=>{
-    if(event.key!=='ArrowLeft'&&event.key!=='ArrowRight')return;
-    event.preventDefault();manualStory();goTo(storyIndex+(event.key==='ArrowRight'?1:-1));
-  });
-  rail.addEventListener('scroll',()=>{
-    if(autoMoving)return;
-    const max=Math.max(0,rail.scrollWidth-rail.clientWidth);
-    const positions=tiles.map(tile=>Math.min(max,tile.offsetLeft-tiles[0].offsetLeft));
-    storyIndex=positions.reduce((best,p,i)=>Math.abs(p-rail.scrollLeft)<Math.abs(positions[best]-rail.scrollLeft)?i:best,0);
-    syncDots();
-  },{passive:true});
-  reduced.addEventListener?.('change',syncAutoplay);
-  syncAutoplay();
-  if('IntersectionObserver' in window){
-    const observer=new IntersectionObserver(entries=>{storyVisible=entries[0].isIntersecting},{threshold:.35});
-    observer.observe(rail);
-  }else storyVisible=true;
-  setInterval(()=>{
-    if(!storyVisible||document.hidden||storyPaused||reduced.matches||
-       document.body.classList.contains('motion-paused')||Date.now()<manualUntil||
-       rail.matches(':hover')||rail.contains(document.activeElement))return;
+  document.querySelectorAll('[data-rail]').forEach(button=>button.remove());
+  function initRail({id,head,interval,label,dotsAfter}){
+    const rail=$(id),nav=document.querySelector(head),tiles=[...rail.children];
     if(tiles.length<2)return;
-    goTo(storyIndex+1,true);
-  },5000);
+    let visible=false,paused=false,index=0,manualUntil=0,frame=0,moving=false;
+    const button=document.createElement('button');
+    button.type='button';button.className='pill story-arrow story-autoplay';
+    nav.querySelector('div').append(button);
+    const caption=nav.querySelector('span');
+    const syncButton=()=>{
+      button.textContent=paused?'▶':'Ⅱ';
+      button.setAttribute('aria-label',(paused?'播放':'暫停')+label+'輪播');
+      button.setAttribute('aria-pressed',String(paused));
+      button.classList.toggle('hidden',reduced.matches);
+      caption.textContent=reduced.matches?'左右滑動探索':paused?'輪播已暫停 · 可左右滑動':'自動探索 · 可左右滑動';
+    };
+    button.addEventListener('click',()=>{paused=!paused;syncButton()});
+    const progress=document.createElement('div');
+    progress.className='story-progress'+(id==='factorRail'?' factor-progress':'');
+    progress.setAttribute('role','group');
+    progress.setAttribute('aria-label',label+'位置');
+    const dots=tiles.map((_,i)=>{
+      const dot=document.createElement('button');dot.type='button';
+      dot.setAttribute('aria-label','顯示第 '+(i+1)+' 張'+label);
+      dot.addEventListener('click',()=>{manual();goTo(i)});
+      progress.append(dot);return dot;
+    });
+    (dotsAfter==='nav'?nav:rail).after(progress);
+    const syncDots=()=>dots.forEach((dot,i)=>dot.setAttribute('aria-current',i===index?'true':'false'));
+    const position=i=>tiles[i].offsetLeft-tiles[0].offsetLeft;
+    const cancel=()=>{
+      if(frame)cancelAnimationFrame(frame);
+      frame=0;moving=false;rail.style.scrollSnapType='';
+    };
+    const manual=()=>{manualUntil=Date.now()+6500;cancel()};
+    function goTo(next){
+      index=(next+tiles.length)%tiles.length;syncDots();cancel();
+      const target=position(index),start=rail.scrollLeft;
+      if(reduced.matches||Math.abs(target-start)<1){rail.scrollTo({left:target,behavior:'instant'});return}
+      const begun=performance.now(),duration=340;
+      moving=true;rail.style.scrollSnapType='none';
+      const step=now=>{
+        const t=Math.min(1,(now-begun)/duration),ease=1-Math.pow(1-t,3);
+        rail.scrollLeft=start+(target-start)*ease;
+        if(t<1)frame=requestAnimationFrame(step);
+        else{frame=0;rail.scrollLeft=target;rail.style.scrollSnapType='';requestAnimationFrame(()=>{moving=false})}
+      };
+      frame=requestAnimationFrame(step);
+    }
+    syncDots();syncButton();
+    reduced.addEventListener?.('change',()=>{cancel();syncButton()});
+    ['pointerdown','touchstart','wheel'].forEach(type=>rail.addEventListener(type,manual,{passive:true}));
+    rail.addEventListener('focusin',manual);
+    rail.addEventListener('keydown',event=>{
+      if(event.key!=='ArrowLeft'&&event.key!=='ArrowRight')return;
+      event.preventDefault();manual();goTo(index+(event.key==='ArrowRight'?1:-1));
+    });
+    rail.addEventListener('scroll',()=>{
+      if(moving)return;
+      index=tiles.reduce((best,_,i)=>Math.abs(position(i)-rail.scrollLeft)<Math.abs(position(best)-rail.scrollLeft)?i:best,0);
+      syncDots();
+    },{passive:true});
+    if('IntersectionObserver' in window){
+      new IntersectionObserver(entries=>{visible=entries[0].isIntersecting},{threshold:.35}).observe(rail);
+    }else visible=true;
+    setInterval(()=>{
+      if(!visible||document.hidden||paused||reduced.matches||
+         document.body.classList.contains('motion-paused')||Date.now()<manualUntil||
+         rail.matches(':hover')||rail.contains(document.activeElement))return;
+      goTo(index+1);
+    },interval);
+  }
+  initRail({id:'storyRail',head:'.story-rail-head',interval:3300,label:'觀測卡片',dotsAfter:'rail'});
+  initRail({id:'factorRail',head:'.factor-rail-nav',interval:3800,label:'市場卡片',dotsAfter:'nav'});
   const toggle=$('motionToggle');
   toggle.addEventListener('click',()=>{
     const paused=document.body.classList.toggle('motion-paused');

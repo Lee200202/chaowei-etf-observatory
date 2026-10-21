@@ -39,3 +39,19 @@ html{scroll-padding-top:92px}#explore,#market,#method-story,#chartCard,#weights{
 .story-progress{display:flex;align-items:center;justify-content:center;gap:8px;max-width:980px;margin:15px 0 0}.story-progress button{width:24px;height:24px;padding:0;border:0;background:transparent;display:grid;place-items:center}.story-progress button:before{content:"";display:block;width:8px;height:8px;border-radius:999px;background:#709194;transition:width .25s ease,background .25s ease}.story-progress button[aria-current="true"]:before{width:22px;background:#86e3d8}.story-progress button:focus-visible{outline:2px solid #86e3d8;outline-offset:2px;border-radius:999px}
 @media(prefers-reduced-motion:reduce){.story-progress button:before{transition:none}}
 @media(max-width:440px){.topbar nav{gap:6px}.topbar nav .pill{width:39px;min-width:39px;height:39px;min-height:39px}}
+/* Keep one focal card centered while showing the adjacent cards as swipe cues. */
+.story-arrow[data-rail]{display:none!important}
+.story-rail-head,.story-rail,.story-progress{width:100%;max-width:980px;margin-inline:auto}
+.story-rail{--rail-card-width:clamp(300px,55vw,580px);padding:0 calc((100% - var(--rail-card-width))/2) 10px;scroll-snap-type:x mandatory}
+.story-tile{flex-basis:var(--rail-card-width);scroll-snap-align:center}
+.story-progress{margin-top:15px}
+.factor-grid,.factor-rail-nav,.factor-progress{width:100%;max-width:850px;margin-inline:auto}
+.factor-grid{--rail-card-width:clamp(260px,40vw,390px);padding:2px calc((100% - var(--rail-card-width))/2) 12px}
+.factor{flex-basis:var(--rail-card-width);scroll-snap-align:center}
+.factor-progress{margin-top:10px}
+.factor-progress button[aria-current="true"]:before{background:#0b8588}
+.story-rail-head>div,.factor-rail-nav>div{min-width:44px}
+@media(max-width:760px){
+  .story-rail{--rail-card-width:min(82vw,420px)}
+  .factor-grid{--rail-card-width:min(76vw,310px)}
+}
