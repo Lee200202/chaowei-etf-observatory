@@ -653,6 +653,7 @@ renderPosition=function(){
   const provisional=liveQuote?.available&&last&&liveQuote.date>last.date;
   $('liveSource').classList.toggle('hidden',!provisional);
   $('priceLabel').textContent=provisional?'最新成交價':'最近收盤價';
+  $('barPrice').previousElementSibling.textContent=provisional?'盤中成交':'收盤';
   if(provisional){
     const time=liveQuote.time?new Date(liveQuote.time).toLocaleTimeString('zh-TW',{timeZone:'Asia/Taipei',hour:'2-digit',minute:'2-digit'}):'時間待確認';
     $('price').textContent=fmt(liveQuote.price,2)+' 元';
