@@ -295,9 +295,9 @@ function liveFromStore_(){
   if(rows.length){
     const last=rows[rows.length-1],recorded=Date.parse(last[7].replace(' ','T')+'+08:00'),marks={};
     rows.forEach(r=>{if(r[5]&&r[6]!=='')marks[r[5].replace(':','')]=liveNum_(r[6])});
-    // A record older than 12 minutes during trading hours means the trigger stalled; let the caller fetch directly.
+    // A record older than 6 minutes during trading hours misses the five-minute refresh; fetch directly.
     const mins=taipeiNow_().getUTCHours()*60+taipeiNow_().getUTCMinutes();
-    if(mins>13*60+40||Date.now()-recorded<12*60000)
+    if(mins>13*60+40||Date.now()-recorded<6*60000)
       out.intraday={date:last[0],time:last[1],index:liveNum_(last[2]),volumeTime:last[1],lots:liveNum_(last[3]),valueMillion:liveNum_(last[4]),marks,source:'潮位資料庫（證交所基本市況報導）'};
   }
   [['brent','EIA Brent spot daily'],['fx','CBC FTDOpenData_Day']].forEach(([key,source])=>{

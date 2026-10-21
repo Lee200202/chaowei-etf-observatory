@@ -104,8 +104,8 @@ assert.equal(live.intraday.index,46700.1);assert.equal(live.intraday.marks['1010
 assert.equal(live.fx.latest,'2026-10-20');assert.equal(live.brent.latest,'2026-10-16');
 cache.clear();const bundle=box.getLiveMarket();
 assert.equal(bundle.store,true);assert.equal(bundle.intraday.time,'10:12:05');
-// A stalled trigger (record older than 12 minutes during trading) falls back to a direct read.
-clock+=20*60000;cache.clear();fetchLog=[];
+// A stalled trigger (record older than 6 minutes during trading) falls back to a direct read.
+clock+=7*60000;cache.clear();fetchLog=[];
 assert.equal(box.liveFromStore_().intraday,null);
 assert.ok(box.getLiveMarket().intraday);assert.ok(fetchLog.some(u=>u.includes('MI_5MINS')));
 
