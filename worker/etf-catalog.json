@@ -1,6 +1,6 @@
 {
   "source": "https://www.twse.com.tw/zh/ETFortune/ajaxProductsResult",
-  "updated": "2026-10-21",
+  "updated": "2026-10-22",
   "etfs": [
     {
       "code": "00400A",
@@ -1776,6 +1776,22 @@
       "type": "passive",
       "note": "臺灣指數公司彭博台美動能多資產平衡指數",
       "listingDate": "2025-12-26",
+      "market": "TWSE"
+    },
+    {
+      "code": "009831",
+      "name": "FT核心AI電力算力",
+      "type": "passive",
+      "note": "Solactive 核心AI電力算力科技指數",
+      "listingDate": "2026-10-29",
+      "market": "TWSE"
+    },
+    {
+      "code": "009832",
+      "name": "兆豐美國黃金礦業",
+      "type": "passive",
+      "note": "NYSE TIP美國黃金礦業指數",
+      "listingDate": "2026-10-29",
       "market": "TWSE"
     },
     {
