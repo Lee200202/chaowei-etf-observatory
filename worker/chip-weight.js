@@ -35,7 +35,7 @@ updateWeights=function(){
   EXTRA_FACTORS.forEach((f,i)=>settings[f.setting]=extra[i]);settings.marginDirection=$('marginDirection').value;
   const outs=['oEtf','oIndex','oVolume','oBrent','oFx',...EXTRA_FACTORS.map(f=>'o'+f.id.slice(1))];
   outs.forEach((id,i)=>$(id).textContent=sum?Math.round(weights[i]/sum*100)+'%':'0%');
-  const names=['本檔 ETF','大盤價格','大盤量能','布蘭特原油','美元／新台幣',...EXTRA_FACTORS.map(f=>f.name)];
+  const names=['本檔 ETF','大盤價格','大盤量能','原油（00642U）','美元／新台幣',...EXTRA_FACTORS.map(f=>f.name)];
   $('weightBar').innerHTML=weights.map((w,i)=>w>0&&sum>0?`<span class="w${i}" style="width:${(w/sum*100).toFixed(2)}%" title="${names[i]} ${Math.round(w/sum*100)}%">${w/sum>=0.12?names[i]+' '+Math.round(w/sum*100)+'%':''}</span>`:'').join('');
   $('weightStatus').textContent=sum===100?'權重合計 100%':sum>0?`權重合計 ${sum}%，依比例換算成 100%`:'請至少設定一項權重';
   const base=[position?.core,marketPosition?.index?.core,marketPosition?.volumeGrade==null||settings.volumeDirection==='off'?null:settings.volumeDirection==='low'?5-marketPosition.volumeScore:marketPosition.volumeScore,brentPosition?.core,fxPosition?.core];

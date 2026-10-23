@@ -60,9 +60,11 @@ const BT_EXPLAIN={
 async function btEnsureDividends(){if(btDivs)return btDivs;try{const r=await fetch('/api/dividends'),d=await r.json();btDivs=r.ok?d.events||{}:{}}catch{btDivs={}}return btDivs}
 function btMacro(){
   // Average of the oil score (cheaper = higher) and the USD/TWD score (user's direction), on each bar's date.
-  if(!brent.length||!fx.length)return null;
+  // Oil is the same series as the oil card: 00642U closes (ETF proxy for WTI), EIA Brent only until it loads.
+  const oilList=oilDays.length?oilDays:brent;
+  if(!oilList.length||!fx.length)return null;
   const series=(list,flip)=>{const out=new Map();for(let k=0;k<list.length;k++){const s=Math.max(0,k-240),w=list.slice(s,k);if(w.length<40)continue;const lo=Math.min(...w.map(x=>x.value)),hi=Math.max(...w.map(x=>x.value));if(hi>lo){const r=(list[k].value-lo)/(hi-lo);out.set(list[k].date,5*(1-(flip?1-r:r)))}}return out};
-  const oil=series(brent,false),cur=series(fx,settings.fxDirection==='high'),dates=bars.map(b=>b.date),pick=(m,keys)=>{let v=null,j=0;return d=>{while(j<keys.length&&keys[j]<=d){v=m.get(keys[j]);j++}return v}};
+  const oil=series(oilList,false),cur=series(fx,settings.fxDirection==='high'),dates=bars.map(b=>b.date),pick=(m,keys)=>{let v=null,j=0;return d=>{while(j<keys.length&&keys[j]<=d){v=m.get(keys[j]);j++}return v}};
   const po=pick(oil,[...oil.keys()].sort()),pf=pick(cur,[...cur.keys()].sort());
   return dates.map(d=>{const a=po(d),b=pf(d);return a==null||b==null?NaN:(a+b)/2});
 }

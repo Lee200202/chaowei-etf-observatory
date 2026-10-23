@@ -35,12 +35,38 @@ async function loadMktMargin(){
 }
 const mmComputeMarket=computeMarket;computeMarket=function(){mmComputeMarket();computeMktMargin()};
 
+/* ---------- Oil level from 00642U (TWSE-listed oil futures ETF that tracks WTI) ---------- */
+// EIA's Brent spot arrives days late, so the oil card scores the same-day close of 00642U 期元大S&P石油
+// instead. It is an ETF proxy for WTI futures (S&P GSCI Crude Oil ER, roll included), not the Brent price;
+// EIA Brent stays in the trend chart as a reference line. Cheaper oil scores higher, as before.
+var oilDays=[];const OIL_CODE='00642U';
+computeBrent=function(){
+  const usable=bars.length?oilDays.filter(x=>x.date<=bars.at(-1).date):oilDays,n=settings.window==='all'?usable.length-1:Number(settings.window);
+  const prior=usable.slice(Math.max(0,usable.length-1-n),-1),last=usable.at(-1);
+  if(!last||prior.length<20||settings.window!=='all'&&prior.length<n){brentPosition=null;$('brentScore').textContent='—';$('brentMeta').textContent=last?'觀察窗資料不足':'讀取 00642U 收盤中';return}
+  const age=bars.length?(Date.parse(bars.at(-1).date)-Date.parse(last.date))/86400000:0;
+  if(age>10){brentPosition=null;$('brentScore').textContent='逾期';$('brentMeta').textContent=last.date+' 之後沒有新收盤，暫停計分';return}
+  const range=scalarRange(prior.map(x=>x.value));if(!range){brentPosition=null;return}
+  const r=(last.value-range.low)/(range.high-range.low),s=scoreFor(r,settings.method);brentPosition={...s,last,r};
+  $('brentScore').textContent=fmt(s.core,1)+' / 5';$('brentMeta').textContent=`收盤 ${fmt(last.value,2)} 元 · ${last.date.slice(5)} · 水位 ${fmt(r,2)}`;
+};
+async function loadOil(){
+  try{const res=await fetch('/api/history?code='+OIL_CODE),d=await res.json();if(!res.ok||d.error)throw Error(d.error||'讀取失敗');
+    oilDays=d.bars.filter(b=>Number.isFinite(b.close)).map(b=>({date:b.date,value:b.close}))}
+  catch(e){oilDays=[];brentPosition=null;$('brentScore').textContent='—';$('brentMeta').textContent='00642U 資料暫不可用：'+e.message;updateWeights();return}
+  computeBrent();updateWeights();if(factorTrendKey==='brent')renderFactorTrend();
+  // The backtest's oil-and-FX filter reads the same series; rebuild it once the closes arrive.
+  if(btCtx){btCtx=null;btSchedule()}
+}
+setInterval(()=>{if(!document.hidden)loadOil()},600000);
+
 /* ---------- Tap a factor tile: its trend as a line chart ---------- */
 // The observation window's high and low are drawn as dashed lines, so the score above can be read off the chart.
 const FACTOR_TRENDS={
   index:{title:'台灣加權指數',unit:'點',color:'#0e7490',data:()=>market.map(x=>[x.date,x.index]),fmt:v=>fmt(v,0)+' 點'},
   volume:{title:'大盤成交股數',unit:'億股',color:'#6aa9b8',data:()=>market.map(x=>[x.date,x.volume/1e8]),fmt:v=>fmt(v,1)+' 億股'},
-  brent:{title:'布蘭特原油（EIA 現貨）',unit:'美元／桶',color:'#c98a2b',data:()=>brent.map(x=>[x.date,x.value]),fmt:v=>fmt(v,2)+' 美元'},
+  brent:{title:'原油 ETF 00642U 收盤（追蹤 WTI）',unit:'元',color:'#c98a2b',data:()=>oilDays.map(x=>[x.date,x.value]),fmt:v=>fmt(v,2)+' 元',
+    right:()=>({name:'EIA 布蘭特現貨（參考，美元）',color:'#9aa5ab',byDate:new Map(brent.map(x=>[x.date,x.value]))})},
   fx:{title:'美元／新台幣（央行收盤）',unit:'新台幣',color:'#7c6bb0',data:()=>fx.map(x=>[x.date,x.value]),fmt:v=>fmt(v,3)},
   margin:{title:'大盤融資餘額',unit:'億元',color:'#b4566e',data:()=>marginDays.map(x=>[x.date,x.value]),fmt:v=>fmt(v,1)+' 億元'}
 };
@@ -49,6 +75,9 @@ let factorTrendKey=null;
 const trendPanel=document.createElement('div');trendPanel.className='factor-trend hidden';trendPanel.id='factorTrend';trendPanel.setAttribute('aria-live','polite');
 $('market').querySelector('.factor-rail-nav').after(trendPanel);
 const tileFor={index:'indexScore',volume:'volumeScore',brent:'brentScore',fx:'fxScore',margin:'mktMarginScore'};
+// The oil card says plainly what it measures.
+$('brentScore').closest('.factor').querySelector('h4').textContent='原油水位 · 00642U（ETF 代理）';
+{const note=document.createElement('p');note.className='factor-note';note.textContent='期元大S&P石油，追蹤 WTI 原油期貨；不是布蘭特報價';$('brentScore').before(note)}
 for(const [key,id] of Object.entries(tileFor)){
   const tile=$(id).closest('.factor');tile.dataset.trend=key;tile.tabIndex=0;tile.setAttribute('role','button');tile.setAttribute('aria-expanded','false');
   tile.setAttribute('aria-label',FACTOR_TRENDS[key].title+'：查看趨勢圖');
@@ -77,10 +106,11 @@ function renderFactorTrend(){
   const first=rows[0][1],last=rows.at(-1)[1];
   trendPanel.append(chipChart({title:def.title,unit:def.unit,width:Math.max(280,Math.round(trendPanel.clientWidth||600)),dates:rows.map(x=>x[0]),kind:'area',
     series:[{name:def.title,color:def.color,data:rows.map(x=>x[1])}],bands,format:def.fmt,
+    right:def.right?(()=>{const r=def.right();return{name:r.name,color:r.color,data:rows.map(x=>r.byDate.get(x[0])??null)}})():undefined,
     note:`區間 ${last>=first?'+':''}${fmt((last/first-1)*100,1)}%`}));
 }
 let factorWidth=0;window.addEventListener('resize',()=>{const w=trendPanel.clientWidth;if(factorTrendKey&&Math.abs(w-factorWidth)>40){factorWidth=w;clearTimeout(window.__factorResize);window.__factorResize=setTimeout(renderFactorTrend,150)}});
 // Keep an open chart current when the window, Brent or FX data change.
 const ftApplyLive=applyLive;applyLive=function(){ftApplyLive();if(factorTrendKey)renderFactorTrend()};
 $('window').addEventListener('change',()=>setTimeout(()=>{if(factorTrendKey)renderFactorTrend()},0));
-loadMktMargin();
+loadMktMargin();loadOil();

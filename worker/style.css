@@ -214,3 +214,4 @@ html,body{overflow-x:clip}
 .factor-more{display:inline-block;margin-top:6px;font-size:12px;font-weight:800;color:#0e7490}.factor[data-trend].active .factor-more{color:var(--ink)}
 .factor-trend{margin-top:14px}.factor-trend-head{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}.factor-trend-head .segment{flex-wrap:wrap}
 .chip-band{font-size:10px;fill:var(--ink);opacity:.75}.weight-bar .w6{background:#8a5a9e}
+.factor-note{margin:2px 0 6px;font-size:11px;color:var(--muted);line-height:1.5}
