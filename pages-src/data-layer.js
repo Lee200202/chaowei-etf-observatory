@@ -25,6 +25,12 @@ function installChaoweiApi(base,serverFallback){
     try{const v=await version();return await getJson(base+path+(v?'?v='+v:''),600000,v?'force-cache':'no-cache')}
     catch(e){if(serverFallback)return serverFallback(path);throw e}
   }
+  // Chip snapshots can change without the history manifest changing. Revalidate this small
+  // per-ETF file so a returning visitor does not keep an older institutional/margin row.
+  async function freshFile(path){
+    try{return await getJson(base+path,300000,'no-cache')}
+    catch(e){if(serverFallback)return serverFallback(path);throw e}
+  }
   async function twseMonth(report,code){
     const month=taipei().toISOString().slice(0,7).replace('-','')+'01';
     // HtmlService treats // inside a template literal as a comment when sanitizing inline JS.
@@ -74,10 +80,11 @@ function installChaoweiApi(base,serverFallback){
     if(path==='/api/intraday-profile')return file('data/history/intraday-volume.json');
     if(path==='/api/dividends')return file('data/history/dividends.json');
     if(path==='/api/margin')return file('data/history/margin.json');
+    if(path==='/api/holders')return freshFile('data/history/holders.json');
     if(path==='/api/chips'){
       const code=params.get('code');
       if(!/^[0-9A-Z]{4,6}$/.test(code||''))return{error:'代號格式錯誤'};
-      return file(`data/chips/${code}.json`).catch(()=>({code,rows:[],source:null,latest:null}));
+      return freshFile(`data/chips/${code}.json`).catch(()=>({code,rows:[],source:null,latest:null}));
     }
     if(path==='/api/radar')return file('data/history/radar.json');
     return{error:'未知 API'};

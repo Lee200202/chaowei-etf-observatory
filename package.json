@@ -18,6 +18,7 @@
     "dividends:update": "node scripts/update-dividends.mjs",
     "chips:update": "node scripts/update-chips.mjs",
     "margin:update": "node scripts/update-margin.mjs",
+    "holders:update": "node scripts/update-holders.mjs",
     "test:engine": "node scripts/test-engine.mjs",
     "test:wave": "node scripts/test-wave.mjs"
   }
