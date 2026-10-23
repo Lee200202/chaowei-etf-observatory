@@ -1458,7 +1458,10 @@ function waveParams(){
 }
 function wavePopulate(){const p=waveParams();for(const [key,id] of Object.entries(waveControl))$(id).value=p[key]??'';waveLastKey=interval}
 function waveSave(){const raw={};for(const [key,id] of Object.entries(waveControl))raw[key]=$(id).value;settings.waveStudy[interval]=ChaoweiWave.normalize(raw);save();window.chaoweiWave.render()}
-for(const id of Object.values(waveControl))$(id).addEventListener('change',waveSave);
+for(const [key,id] of Object.entries(waveControl)){
+  $(id).addEventListener('change',waveSave);
+  if(key!=='cutoff')$(id).addEventListener('input',waveSave);
+}
 function waveEnsureDividends(){
   if(waveDivPromise)return waveDivPromise;
   waveDivPromise=fetch('/api/dividends').then(r=>{if(!r.ok)throw Error('配息資料讀取失敗');return r.json()}).then(d=>{waveDividends=d;window.chaoweiWave.render();return d}).catch(e=>{waveDivPromise=null;$('waveSubtitle').textContent='配息資料暫不可用：'+e.message;return null});
