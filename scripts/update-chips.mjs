@@ -30,9 +30,14 @@ async function official(report,date){
 function field(data,row,name){const i=data.fields.indexOf(name);return i<0?null:num(row[i])}
 
 for(const date of dates){
-  let trades,held;
+  let trades,held,margin;
   try{trades=await official('T86',date);held=await official('MI_QFIIS',date)}
   catch(error){console.warn(error.message);continue}
+  try{
+    const wait=lastCall+gap-Date.now();if(wait>0)await sleep(wait);lastCall=Date.now();
+    const response=await fetch(`https://www.twse.com.tw/exchangeReport/MI_MARGN?response=json&date=${date.replaceAll('-','')}&selectType=ALL`,{headers:{'user-agent':'Mozilla/5.0'},signal:AbortSignal.timeout(30000)});
+    const report=await response.json();margin=report.stat==='OK'?new Map((report.tables?.[1]?.data||[]).map(row=>[String(row[0]).trim(),row])):new Map();
+  }catch(error){console.warn(`融資資料 ${date}: ${error.message}`);margin=new Map()}
   const ownership=new Map(held.data.map(row=>[String(row[0]).trim(),row]));
   let count=0;
   for(const row of trades.data){
@@ -45,7 +50,8 @@ for(const date of dates){
     if([foreignNet,trustNet,dealerNet,totalNet].some(v=>v===null))continue;
     const issued=h?field(held,h,'發行股數'):null;
     const foreignHeld=h?field(held,h,'全體外資及陸資持有股數'):null;
-    const item=[date,foreignNet,trustNet,dealerNet,totalNet,foreignHeld,issued];
+    const m=margin.get(code);
+    const item=[date,foreignNet,trustNet,dealerNet,totalNet,foreignHeld,issued,m?num(m[6]):null,m?num(m[12]):null];
     if(!rows.has(code))rows.set(code,[]);
     rows.get(code).push(item);count++;
   }
@@ -59,7 +65,7 @@ for(const [code,current] of rows){
   const merged=new Map(old.map(row=>[row[0],row]));
   for(const row of current)merged.set(row[0],row);
   const history=[...merged.values()].sort((a,b)=>a[0].localeCompare(b[0]));
-  await writeFile(path,JSON.stringify({code,source:{trades:'TWSE T86',foreignOwnership:'TWSE MI_QFIIS'},unit:'shares',fields:['date','foreignNet','trustNet','dealerNet','totalNet','foreignHeld','issued'],first:history[0][0],latest:history.at(-1)[0],rows:history})+'\n');
+  await writeFile(path,JSON.stringify({code,source:{trades:'TWSE T86',foreignOwnership:'TWSE MI_QFIIS',margin:'TWSE MI_MARGN'},unit:'shares; margin balances in trading units (lots)',fields:['date','foreignNet','trustNet','dealerNet','totalNet','foreignHeld','issued','marginBalanceLots','shortBalanceLots'],first:history[0][0],latest:history.at(-1)[0],rows:history})+'\n');
   files++;
 }
 console.log(`Saved ${files} ETF chip snapshots through ${dates.at(-1)}`);

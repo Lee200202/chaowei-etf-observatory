@@ -1,0 +1,48 @@
+/* Optional margin-balance factor; absent data never becomes a zero score. */
+const marginRow=document.createElement('div');marginRow.className='weight';
+marginRow.innerHTML='<label for="wMargin">本檔融資餘額</label><input id="wMargin" type="range" min="0" max="100" step="1" value="0"><input class="w-num" type="number" min="0" max="100" step="1" data-for="wMargin" aria-label="融資權重數值"><output id="oMargin">0%</output>';
+$('weights').querySelector('.weights').append(marginRow);
+const marginControls=document.createElement('div');marginControls.className='controls';
+marginControls.innerHTML='<label>融資解讀<select id="marginDirection"><option value="low">融資越低分越高</option><option value="high">融資越高分越高</option></select></label><span class="small">看今日融資餘額落在近 60 個交易日的高低位置；資料不足 20 天時停算。</span>';
+$('weights').querySelector('.weights').after(marginControls);
+const bankHint=document.createElement('p');bankHint.className='small';bankHint.textContent='八大官股：尚無授權逐檔資料，暫不開放加權。';marginControls.after(bankHint);
+settings.marginWeight=Math.max(0,Math.min(100,Number(settings.marginWeight)||0));
+settings.marginDirection=settings.marginDirection==='high'?'high':'low';
+$('wMargin').value=settings.marginWeight;$('marginDirection').value=settings.marginDirection;
+$('wMargin').disabled=shareView;$('marginDirection').disabled=shareView;
+function marginScore(){
+  if(chipCode!==selected)return null;
+  const through=$('chipDate').value||chipRows.at(-1)?.[0];
+  const values=chipRows.filter(r=>r[0]<=through).slice(-60).map(r=>r[7]).filter(Number.isFinite);
+  if(values.length<20)return null;
+  const low=Math.min(...values),high=Math.max(...values);if(high===low)return null;
+  const r=(values.at(-1)-low)/(high-low);
+  return 5*(settings.marginDirection==='low'?1-r:r);
+}
+const fiveFactorWeights=updateWeights;
+updateWeights=function(){
+  fiveFactorWeights();
+  const five=settings.weights||[],extra=Number($('wMargin').value)||0,sum=five.reduce((a,b)=>a+Number(b||0),0)+extra;
+  settings.marginWeight=extra;settings.marginDirection=$('marginDirection').value;
+  ['oEtf','oIndex','oVolume','oBrent','oFx'].forEach((id,i)=>$(id).textContent=sum?Math.round((Number(five[i])||0)/sum*100)+'%':'0%');
+  $('oMargin').textContent=sum?Math.round(extra/sum*100)+'%':'0%';
+  const names=['本檔 ETF','大盤價格','大盤量能','布蘭特原油','美元／新台幣','融資餘額'];
+  $('weightBar').innerHTML=[...five,extra].map((w,i)=>w>0&&sum>0?`<span class="w${i}" style="width:${(w/sum*100).toFixed(2)}%" title="${names[i]} ${Math.round(w/sum*100)}%">${w/sum>=0.12?names[i]+' '+Math.round(w/sum*100)+'%':''}</span>`:'').join('');
+  $('weightStatus').textContent=sum===100?'權重合計 100%':sum>0?`權重合計 ${sum}%，依比例換算成 100%`:'請至少設定一項權重';
+  const base=[position?.core,marketPosition?.index?.core,marketPosition?.volumeGrade==null||settings.volumeDirection==='off'?null:settings.volumeDirection==='low'?5-marketPosition.volumeScore:marketPosition.volumeScore,brentPosition?.core,fxPosition?.core];
+  const chip=marginScore(),scores=[...base,chip],weights=[...five,extra];
+  if(sum<=0||weights.some((w,i)=>w>0&&!Number.isFinite(scores[i]))){$('combined').textContent='—';$('combinedExtra').textContent=extra&&chip==null?'融資可用資料不足，暫停綜合分':'選取的因子資料不足';$('weightPreview').textContent='';return}
+  const value=weights.reduce((n,w,i)=>n+w*scores[i],0)/sum;
+  $('combined').textContent=fmt(value,1)+' / 5';$('combinedExtra').textContent=extra?`融資水位 ${fmt(chip,1)} 分 · ${settings.marginDirection==='low'?'融資越低分越高':'融資越高分越高'}`:'延伸綜合分請參照各項位置';
+  const d=value-position.core;
+  $('weightPreview').innerHTML=`只看 ${selected}：<b>${fmt(position.core,1)}</b> 分 → 依你的權重：<b>${fmt(value,1)}</b> 分`+(Math.abs(d)>=0.05?`（${d>0?'偏向加碼':'偏向減碼'} ${fmt(Math.abs(d),1)} 分）`:'');
+  save();
+};
+$('wMargin').addEventListener('input',()=>{marginRow.querySelector('.w-num').value=$('wMargin').value;updateWeights()});
+marginRow.querySelector('.w-num').addEventListener('input',e=>{$('wMargin').value=Math.max(0,Math.min(100,Number(e.target.value)||0));updateWeights()});
+$('marginDirection').addEventListener('change',updateWeights);
+marginRow.querySelector('.w-num').value=$('wMargin').value;
+// Settings from the signed-in account arrive later; move the margin controls with them.
+const marginApplyProfile=window.chaoweiApplyProfile;
+window.chaoweiApplyProfile=profile=>{marginApplyProfile(profile);$('wMargin').value=Math.max(0,Math.min(100,Number(settings.marginWeight)||0));$('marginDirection').value=settings.marginDirection==='high'?'high':'low';marginRow.querySelector('.w-num').value=$('wMargin').value;updateWeights()};
+updateWeights();

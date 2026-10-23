@@ -21,6 +21,6 @@ const cutoff=all.segments.at(-1)?.availableDate;
 const summary=W.summary(all.segments,cutoff);
 assert.equal(summary.training.count+summary.testing.count,summary.all.count,'training and test periods partition by confirmation date');
 const code=JSON.parse(await readFile(new URL('../pages-data/chips/0050.json',import.meta.url),'utf8'));
-assert.ok(code.rows.length>=20&&code.rows.every(r=>r.length===7&&r[5]>=0&&r[6]>0&&r[5]<=r[6]),'institutional rows and ownership ratio');
+assert.ok(code.rows.length>=20&&code.rows.every(r=>r.length===9&&r[5]>=0&&r[6]>0&&r[5]<=r[6]&&(r[7]===null||r[7]>=0)&&(r[8]===null||r[8]>=0)),'institutional rows, ownership ratio and margin balances');
 assert.ok(code.rows.every((r,i)=>!i||r[0]>code.rows[i-1][0]),'institutional dates ascend');
 console.log(`Wave research verified: ${all.pivots.length} pivots, ${all.segments.length} segments; 0050 chip days ${code.rows.length}.`);

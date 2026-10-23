@@ -63,7 +63,7 @@ renderPinList();
 
 const chipCard=document.createElement('section');
 chipCard.className='chip-card card member-only';chipCard.id='chipCard';
-chipCard.innerHTML='<div class="card-heading"><div><h3>ETF 法人籌碼</h3><p class="small">證交所盤後資料 · ETF 本身</p></div><label class="chip-date">資料日<select id="chipDate" aria-label="法人籌碼日期"></select></label></div><div id="chipContents" class="chip-contents"><p class="small">讀取法人資料中…</p></div><p class="small chip-source">買賣超是當日交易，並非持有庫存；外陸資持有數另列。<a href="https://www.twse.com.tw/zh/trading/foreign/t86.html" target="_blank" rel="noopener">交易來源</a> · <a href="https://www.twse.com.tw/zh/trading/foreign/mi-qfiis.html" target="_blank" rel="noopener">持有來源</a></p>';
+chipCard.innerHTML='<div class="card-heading"><div><h3>ETF 法人與融資</h3><p class="small">證交所盤後資料 · ETF 本身</p></div><label class="chip-date">資料日<select id="chipDate" aria-label="法人籌碼日期"></select></label></div><div id="chipContents" class="chip-contents"><p class="small">讀取法人資料中…</p></div><p class="small chip-source">買賣超是當日交易，並非持有庫存；融資是餘額，不能直接視為買賣訊號。<a href="https://www.twse.com.tw/zh/trading/foreign/t86.html" target="_blank" rel="noopener">法人來源</a> · <a href="https://www.twse.com.tw/zh/trading/margin/mi-margn.html" target="_blank" rel="noopener">融資來源</a></p>';
 $('chartCard').after(chipCard);
 chipCard.insertAdjacentHTML('afterbegin','<div class="member-lock"><div class="member-lock-box"><span class="member-badge">會員專屬</span><h4>查看 ETF 法人籌碼</h4><p>登入後看外陸資持有單位與三大法人每日買賣超。</p><button class="action" type="button" data-open-account>用 Google 登入解鎖</button></div></div>');
 let chipCode='',chipRows=[],chipGeneration=0;
@@ -89,10 +89,77 @@ function renderChip(){
   const prior=chipRows.filter(x=>x[0]<=day).slice(-20),sum=prior.reduce((n,x)=>n+x[1],0);
   const foot=document.createElement('p');foot.className='small';foot.textContent=`近 ${prior.length} 個已取得交易日：外陸資累計買賣超 ${(sum>0?'+':'')+sharesToLots(sum)}。投信、政府持有多少單位未由此報表提供。`;
   node.append(foot);
+  const range=[20,60,120].includes(settings.chipRange)?settings.chipRange:60,history=chipRows.filter(x=>x[0]<=day).slice(-range);
+  const seg=document.createElement('div');seg.className='segment chip-range';seg.setAttribute('aria-label','趨勢期間');
+  seg.innerHTML=[20,60,120].map(n=>`<button type="button" data-range="${n}" class="${n===range?'active':''}" aria-pressed="${n===range}">${n} 日</button>`).join('');
+  seg.addEventListener('click',e=>{const b=e.target.closest('[data-range]');if(!b)return;settings.chipRange=Number(b.dataset.range);save();renderChip()});
+  node.append(seg);
+  const width=Math.max(280,Math.round(node.clientWidth||600));
+  // 三大法人: stacked bars per day (buying above zero, selling below), the day's total as a line.
+  const lots=v=>Number.isFinite(v)?v/1000:null;
+  node.append(chipChart({title:'三大法人每日買賣超',unit:'張',width,dates:history.map(r=>r[0]),kind:'stack',
+    series:[{name:'外陸資',color:'#d74640',data:history.map(r=>lots(r[1]))},{name:'投信',color:'#18a49b',data:history.map(r=>lots(r[2]))},{name:'自營商',color:'#e3a052',data:history.map(r=>lots(r[3]))}],
+    line:{name:'合計',color:'var(--ink)',data:history.map(r=>lots(r[4]))}}));
+  // 融資: balance as an area, the ETF close (split-adjusted) as a dashed line on its own right-hand scale.
+  const closeBy=new Map(bars.map(b=>[b.date,b.close])),margin=history.map(r=>Number.isFinite(r[7])?r[7]:null);
+  const firstM=margin.find(Number.isFinite),lastM=[...margin].reverse().find(Number.isFinite);
+  node.append(chipChart({title:'融資餘額趨勢',unit:'張',width,dates:history.map(r=>r[0]),kind:'area',
+    series:[{name:'融資餘額',color:'#0e7490',data:margin}],right:{name:`${selected} 收盤`,color:'#9aa5ab',data:history.map(r=>closeBy.get(r[0])??null)},
+    note:Number.isFinite(firstM)&&Number.isFinite(lastM)?`區間變化 ${lastM>=firstM?'+':''}${fmt(lastM-firstM,0)} 張（${firstM?(lastM>=firstM?'+':'')+fmt((lastM/firstM-1)*100,1)+'%':'—'}）`:''}));
+  const m=document.createElement('p');m.className='small';m.textContent=`${day} 融資餘額 ${Number.isFinite(row[7])?fmt(row[7],0)+' 張':'暫無資料'} · 融券餘額 ${Number.isFinite(row[8])?fmt(row[8],0)+' 張':'暫無資料'}`;node.append(m);
+  const gov=document.createElement('div');gov.className='chip-gov';gov.innerHTML='<strong>八大官股買賣超</strong><p class="small">逐檔 ETF 資料需取得授權來源；目前不顯示估算值，也不納入分數。</p>';node.append(gov);updateWeights();
 }
+/* Small SVG trend chart drawn at the card's real pixel width, so labels stay legible on phones.
+   kind 'stack': series stacked above/below zero plus an optional total line; kind 'area': one filled line
+   plus an optional dashed comparison line on its own right-hand scale. Hover or tap shows that day. */
+function chipChart({title,unit,width,dates,kind,series,line,right,note}){
+  const NS='http://www.w3.org/2000/svg',wrap=document.createElement('div');wrap.className='chip-trend';
+  const head=document.createElement('div');head.className='chip-trend-head';head.innerHTML=`<strong></strong><span></span>`;
+  head.querySelector('strong').textContent=title;head.querySelector('span').textContent=`${dates[0]||'—'} 至 ${dates.at(-1)||'—'} · 單位：${unit}${note?' · '+note:''}`;wrap.append(head);
+  const all=series.flatMap(s=>s.data).filter(Number.isFinite);
+  if(!all.length){const p=document.createElement('p');p.className='small';p.textContent='此期間尚無可用資料';wrap.append(p);return wrap}
+  const W=width-34,H=width<480?170:200,L=width<480?46:58,R=right?(width<480?40:50):10,T=12,B=24,n=dates.length,step=(W-L-R)/Math.max(1,n);
+  let lo,hi;
+  if(kind==='stack'){lo=0;hi=0;dates.forEach((_,i)=>{let p=0,q=0;for(const s of series){const v=s.data[i];if(v>0)p+=v;else if(v<0)q+=v}hi=Math.max(hi,p,line?.data[i]??0);lo=Math.min(lo,q,line?.data[i]??0)})}
+  else{lo=Math.min(...all);hi=Math.max(...all);const pad=(hi-lo)*0.12||Math.abs(hi)*0.05||1;lo-=pad;hi+=pad}
+  const span=hi-lo||1,y=v=>T+(hi-v)/span*(H-T-B),x=i=>L+step*(i+0.5);
+  const svg=document.createElementNS(NS,'svg');svg.setAttribute('viewBox',`0 0 ${W} ${H}`);svg.setAttribute('width',W);svg.setAttribute('height',H);svg.setAttribute('role','img');svg.setAttribute('aria-label',`${title}，${dates.length} 個交易日`);
+  const el=(tag,attrs,parent=svg)=>{const e=document.createElementNS(NS,tag);for(const [k,v] of Object.entries(attrs))e.setAttribute(k,String(v));parent.append(e);return e};
+  const short=v=>Math.abs(v)>=10000?fmt(v/10000,1)+'萬':fmt(v,0);
+  // Gridlines with labels: top, middle, bottom (and zero for stacked bars).
+  const ticks=kind==='stack'?[hi,0,lo].filter((v,i,a)=>a.indexOf(v)===i):[hi,(hi+lo)/2,lo];
+  // A label too close to one already drawn (zero next to a small maximum) is skipped; zero wins.
+  const drawn=[];for(const v of kind==='stack'?[0,hi,lo]:ticks){if(!ticks.includes(v))continue;el('line',{x1:L,x2:W-R,y1:y(v),y2:y(v),stroke:'var(--line)','stroke-dasharray':v===0?'':'3 4'});if(drawn.some(d=>Math.abs(d-y(v))<14))continue;drawn.push(y(v));const t=el('text',{x:L-6,y:y(v)+4,'text-anchor':'end',class:'chip-axis'});t.textContent=short(v)}
+  if(kind==='stack'){
+    const bw=Math.max(2,Math.min(18,step*0.68));
+    dates.forEach((_,i)=>{let p=0,q=0;for(const s of series){const v=s.data[i];if(!Number.isFinite(v)||!v)continue;const from=v>0?p:q,to=from+v;el('rect',{x:x(i)-bw/2,y:y(Math.max(from,to)),width:bw,height:Math.max(1,Math.abs(y(from)-y(to))),fill:s.color,rx:Math.min(2,bw/3)});if(v>0)p=to;else q=to}});
+    if(line){const pts=line.data.map((v,i)=>Number.isFinite(v)?`${x(i)},${y(v)}`:null).filter(Boolean);if(pts.length>1)el('polyline',{points:pts.join(' '),fill:'none',stroke:line.color,'stroke-width':1.6,'stroke-linejoin':'round',opacity:.75});
+      if(n<=60)line.data.forEach((v,i)=>{if(Number.isFinite(v))el('circle',{cx:x(i),cy:y(v),r:2.2,fill:line.color})})}
+  }else{
+    const s=series[0],pts=s.data.map((v,i)=>Number.isFinite(v)?[x(i),y(v)]:null).filter(Boolean);
+    if(pts.length>1){el('path',{d:`M${pts[0][0]},${H-B} `+pts.map(p=>`L${p[0]},${p[1]}`).join(' ')+` L${pts.at(-1)[0]},${H-B} Z`,fill:s.color,opacity:.14});el('polyline',{points:pts.map(p=>p.join(',')).join(' '),fill:'none',stroke:s.color,'stroke-width':2.4,'stroke-linejoin':'round'})}
+    if(right){const rv=right.data.filter(Number.isFinite);if(rv.length>1){const rl=Math.min(...rv),rh=Math.max(...rv),rs=rh-rl||1,ry=v=>T+(rh-v)/rs*(H-T-B);
+      const rp=right.data.map((v,i)=>Number.isFinite(v)?`${x(i)},${ry(v)}`:null).filter(Boolean);el('polyline',{points:rp.join(' '),fill:'none',stroke:right.color,'stroke-width':1.6,'stroke-dasharray':'5 4'});
+      for(const v of [rh,rl]){const t=el('text',{x:W-R+6,y:ry(v)+4,class:'chip-axis'});t.textContent=fmt(v,v>=100?0:1)}}}
+  }
+  // Date labels: first, middle, last.
+  for(const i of [...new Set([0,Math.floor((n-1)/2),n-1])]){const t=el('text',{x:x(i),y:H-6,'text-anchor':i===0?'start':i===n-1?'end':'middle',class:'chip-axis'});t.textContent=dates[i].slice(5)}
+  const guide=el('line',{x1:0,x2:0,y1:T,y2:H-B,stroke:'var(--muted)','stroke-width':1,opacity:0});
+  wrap.append(svg);
+  const legend=document.createElement('p');legend.className='chip-legend';
+  legend.innerHTML=[...series.map(s=>`<span style="color:${s.color}">● ${s.name}</span>`),line?`<span>━ ${line.name}</span>`:'',right?`<span style="color:${right.color}">┅ ${right.name}（右軸）</span>`:''].join('');wrap.append(legend);
+  const tip=document.createElement('p');tip.className='chip-tip';tip.setAttribute('aria-live','polite');wrap.append(tip);
+  const signed=v=>Number.isFinite(v)?(v>0?'+':'')+fmt(v,0):'—';
+  const show=i=>{tip.textContent=`${dates[i]}　`+[...series.map(s=>`${s.name} ${kind==='stack'?signed(s.data[i]):Number.isFinite(s.data[i])?fmt(s.data[i],0):'—'} 張`),line?`${line.name} ${signed(line.data[i])} 張`:'',right&&Number.isFinite(right.data[i])?`${right.name} ${fmt(right.data[i],2)}`:''].filter(Boolean).join(' · ');guide.setAttribute('x1',x(i));guide.setAttribute('x2',x(i));guide.setAttribute('opacity',.45)};
+  const pick=e=>{const r=svg.getBoundingClientRect(),px=(e.clientX-r.left)*W/r.width;show(Math.max(0,Math.min(n-1,Math.floor((px-L)/step))))};
+  svg.addEventListener('pointermove',pick);svg.addEventListener('pointerdown',pick);svg.addEventListener('pointerleave',()=>{guide.setAttribute('opacity',0);show(n-1)});
+  show(n-1);return wrap;
+}
+// Charts are drawn at the card's pixel width; redraw when it changes.
+let chipWidth=0;window.addEventListener('resize',()=>{const w=$('chipContents').clientWidth;if(chipRows.length&&Math.abs(w-chipWidth)>40){chipWidth=w;clearTimeout(window.__chipResize);window.__chipResize=setTimeout(renderChip,150)}});
 async function loadChips(code){
   if(!isMember)return;
-  const generation=++chipGeneration;chipCode=code;chipRows=[];$('chipDate').replaceChildren();$('chipContents').textContent='讀取法人資料中…';
+  const generation=++chipGeneration;chipCode=code;chipRows=[];$('chipDate').replaceChildren();$('chipContents').textContent='讀取法人資料中…';updateWeights();
   try{
     const response=await fetch(`/api/chips?code=${encodeURIComponent(code)}`),data=await response.json();
     if(generation!==chipGeneration||code!==selected)return;
