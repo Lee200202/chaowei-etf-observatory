@@ -41,3 +41,4 @@ body:not(.member) .wave-pin-panel.member-only{max-height:220px;min-height:180px}
 .chip-axis{font-size:10px;fill:var(--muted);font-weight:700}.chip-tip{margin:4px 0 0;font-size:12px;color:var(--ink);min-height:1.5em;font-variant-numeric:tabular-nums}
 .chip-range{display:inline-flex;margin-top:14px}.chip-trend svg{touch-action:pan-y;cursor:crosshair}.chip-legend span{white-space:nowrap}
 .weight-bar .w5{background:#b4566e}
+.chip-gov-link{display:inline-flex;align-items:center;gap:4px;margin-top:10px;padding:8px 14px;border:1px solid var(--line);border-radius:999px;font-size:13px;font-weight:800;color:#0e7490;text-decoration:none;background:var(--paper)}.chip-gov-link:hover{border-color:#19a7aa}

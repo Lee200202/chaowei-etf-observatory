@@ -107,7 +107,7 @@ function renderChip(){
     series:[{name:'融資餘額',color:'#0e7490',data:margin}],right:{name:`${selected} 收盤`,color:'#9aa5ab',data:history.map(r=>closeBy.get(r[0])??null)},
     note:Number.isFinite(firstM)&&Number.isFinite(lastM)?`區間變化 ${lastM>=firstM?'+':''}${fmt(lastM-firstM,0)} 張（${firstM?(lastM>=firstM?'+':'')+fmt((lastM/firstM-1)*100,1)+'%':'—'}）`:''}));
   const m=document.createElement('p');m.className='small';m.textContent=`${day} 融資餘額 ${Number.isFinite(row[7])?fmt(row[7],0)+' 張':'暫無資料'} · 融券餘額 ${Number.isFinite(row[8])?fmt(row[8],0)+' 張':'暫無資料'}`;node.append(m);
-  const gov=document.createElement('div');gov.className='chip-gov';gov.innerHTML='<strong>八大官股買賣超</strong><p class="small">逐檔 ETF 資料需取得授權來源；目前不顯示估算值，也不納入分數。</p>';node.append(gov);updateWeights();
+  const gov=document.createElement('div');gov.className='chip-gov';gov.innerHTML='<strong>八大官股買賣超</strong><p class="small">尚未取得授權資料，本站不擷取、不估算，也不納入分數。可先到外部網站查看全市場八大行庫動向：</p><a class="chip-gov-link" href="https://www.wantgoo.com/stock/public-bank/trend" target="_blank" rel="noopener noreferrer">玩股網・八大行庫買賣動向 ↗</a>';node.append(gov);updateWeights();
 }
 /* Small SVG trend chart drawn at the card's real pixel width, so labels stay legible on phones.
    kind 'stack': series stacked above/below zero plus an optional total line; kind 'area': one filled line
