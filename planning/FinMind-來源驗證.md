@@ -13,3 +13,7 @@ FinMind 文件說 `TaiwanStockPrice` 為盤後日資料，`CrudeOilPrices` 為�
 後續可優先評估：ETF 本身的法人、融資與外資持股歷史缺口，及 Brent 現貨交叉驗證。若要啟用公開展示，先核對方案與展示授權，再用伺服端保管 token、限制呼叫頻率、提供來源／原始日期／口徑、比對現有證交所和 EIA 數值；不將 token 或原始批次資料放在公開前端。
 
 來源：[FinMind 完整資料集文件](https://finmind.github.io/llms-full.txt)、[方案與授權](https://finmind.github.io/en/Pricing/)、[FinMind API](https://api.finmindtrade.com/docs)。
+
+## 2026-10-23 更新：布蘭特參考線改用 FinMind
+
+使用者確認本站屬非商業用途，網站的布蘭特參考線改為期交所布蘭特原油期貨（BRF）近月每日結算價（新台幣／桶），經 FinMind `TaiwanFuturesDaily` 取得並標示「FinMind／期交所」。歷史 2018-07-02 起共 2,024 個交易日；換成美元後與 EIA 現貨長期中位比 0.994，近期期貨低於現貨屬逆價差。油價計分仍用 00642U。Apps Script token 檢查（`checkFinMindToken`）2026-10-23 結果：有效、Free（register）等級、每小時 600 次。FinMind 條款不允許任何方案公開展示即時資料，BRF 每日結算價非即時；若網站轉為商業用途須改用 Sponsor Pro。

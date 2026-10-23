@@ -62,6 +62,10 @@ jobs:
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         continue-on-error: true
         run: npm run snapshots:update
+      - name: Append Brent futures near-month settlement (FinMind / TAIFEX BRF)
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        continue-on-error: true
+        run: npm run brent:update
       - run: npm run history:validate
       - run: npm run build:pages
       - name: Save refreshed snapshots
@@ -71,7 +75,7 @@ jobs:
           if git diff --cached --quiet; then exit 0; fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m 'Daily snapshot: TWSE history, catalogue, EIA and CBC'
+          git commit -m 'Daily snapshot: TWSE history, catalogue, TAIFEX BRF and CBC'
           git push
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

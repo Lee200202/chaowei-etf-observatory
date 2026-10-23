@@ -9,5 +9,5 @@ try{
   assert.equal(data.snapshot,true);
   assert(data.days.length>=600);
   assert(data.latest<=new Date().toISOString().slice(0,10));
-  console.log(JSON.stringify({result:'pass',fallback:'EIA snapshot',latest:data.latest,count:data.days.length}));
+  console.log(JSON.stringify({result:'pass',fallback:'BRF snapshot',latest:data.latest,count:data.days.length}));
 }finally{globalThis.fetch=original}

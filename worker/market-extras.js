@@ -36,9 +36,9 @@ async function loadMktMargin(){
 const mmComputeMarket=computeMarket;computeMarket=function(){mmComputeMarket();computeMktMargin()};
 
 /* ---------- Oil level from 00642U (TWSE-listed oil futures ETF that tracks WTI) ---------- */
-// EIA's Brent spot arrives days late, so the oil card scores the same-day close of 00642U 期元大S&P石油
-// instead. It is an ETF proxy for WTI futures (S&P GSCI Crude Oil ER, roll included), not the Brent price;
-// EIA Brent stays in the trend chart as a reference line. Cheaper oil scores higher, as before.
+// The oil card scores the same-day close of 00642U 期元大S&P石油, an ETF proxy for WTI futures
+// (S&P GSCI Crude Oil ER, roll included), not the Brent price. The trend chart's Brent reference line is the
+// 期交所 BRF near-month settlement (NT$/barrel, via FinMind). Cheaper oil scores higher, as before.
 var oilDays=[];const OIL_CODE='00642U';
 computeBrent=function(){
   const usable=bars.length?oilDays.filter(x=>x.date<=bars.at(-1).date):oilDays,n=settings.window==='all'?usable.length-1:Number(settings.window);
@@ -66,7 +66,7 @@ const FACTOR_TRENDS={
   index:{title:'台灣加權指數',unit:'點',color:'#0e7490',data:()=>market.map(x=>[x.date,x.index]),fmt:v=>fmt(v,0)+' 點'},
   volume:{title:'大盤成交股數',unit:'億股',color:'#6aa9b8',data:()=>market.map(x=>[x.date,x.volume/1e8]),fmt:v=>fmt(v,1)+' 億股'},
   brent:{title:'原油 ETF 00642U 收盤（追蹤 WTI）',unit:'元',color:'#c98a2b',data:()=>oilDays.map(x=>[x.date,x.value]),fmt:v=>fmt(v,2)+' 元',
-    right:()=>({name:'EIA 布蘭特現貨（參考，美元）',color:'#9aa5ab',byDate:new Map(brent.map(x=>[x.date,x.value]))})},
+    right:()=>({name:'布蘭特期貨近月結算（參考，新台幣／桶；FinMind／期交所 BRF）',color:'#9aa5ab',byDate:new Map(brent.map(x=>[x.date,x.value]))})},
   fx:{title:'美元／新台幣（央行收盤）',unit:'新台幣',color:'#7c6bb0',data:()=>fx.map(x=>[x.date,x.value]),fmt:v=>fmt(v,3)},
   margin:{title:'大盤融資餘額',unit:'億元',color:'#b4566e',data:()=>marginDays.map(x=>[x.date,x.value]),fmt:v=>fmt(v,1)+' 億元'}
 };

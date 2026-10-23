@@ -458,7 +458,8 @@ function mergeDays(base,extra){const m=new Map(base.map(x=>[x.date,x]));for(cons
 const hhmm=d=>d.toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Asia/Taipei'});
 async function loadIntradayProfile(){try{const r=await fetch('/api/intraday-profile'),d=await r.json();if(r.ok&&Array.isArray(d.days))intradayProfile=d}catch{}}
 function applyLive(){
-  if(live?.brent?.days?.length&&brent.length){brent=mergeDays(brent,live.brent.days);brentSnapshot=false}
+  // Only merge the BRF near-month series; an older Apps Script version still answers with EIA spot in US dollars.
+  if(live?.brent?.unit==='TWD/barrel'&&live.brent.days?.length&&brent.length){brent=mergeDays(brent,live.brent.days);brentSnapshot=false}
   if(live?.fx?.days?.length&&fx.length)fx=mergeDays(fx,live.fx.days);
   computeMarket();computeBrent();computeFx();updateWeights();
 }
@@ -467,7 +468,7 @@ function renderLiveMeta(){
   $('refreshClock').textContent=hhmm(liveAt);
   const parts=[];
   if(live?.intraday)parts.push('大盤盤中 '+live.intraday.time.slice(0,5));
-  if(live?.brent)parts.push('EIA 公布至 '+live.brent.latest);
+  if(live?.brent?.unit==='TWD/barrel')parts.push('期交所 BRF 結算至 '+live.brent.latest);
   if(live?.fx)parts.push('央行公布至 '+live.fx.latest);
   if(live?.errors?.length)parts.push('部分來源暫不可用：'+live.errors.join('；'));
   $('liveMeta').textContent=parts.join(' · ')||'等待下一次更新';

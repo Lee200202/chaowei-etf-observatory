@@ -1,5 +1,5 @@
 // FinMind token 內部檢查：只讀取指令碼屬性 FINMIND_API_TOKEN 向 FinMind 查詢，不寫入任何資料分頁、不輸出 token。
-// 目前網站與潮位資料庫沒有任何 FinMind 資料來源；這裡只確認 token 能否使用、帳號等級與額度。
+// 網站的布蘭特參考線（brfNear_）也用同一個 token；這裡只確認 token 能否使用、帳號等級與額度。
 const FINMIND_DATA_URL='https://api.finmindtrade.com/api/v4/data';
 
 function finmindGet_(url,token){

@@ -1,7 +1,7 @@
 // 潮位資料庫：Google 試算表是市場資料的雲端主檔（盤中與歷史）。
 // 第一次：在 Apps Script 編輯器選 setupStore 執行並授權；之後由排程維護，不需要任何本機電腦。
 //   - 每 5 分鐘 captureIntraday：盤中（09:00–13:40）記錄加權指數與累計成交量；每小時順便更新原油與匯率。
-//   - 每天 18 點 appendDaily：證交所 ETF 日 K、大盤日 K、同時段量能、EIA 原油、央行匯率。
+//   - 每天 18 點 appendDaily：證交所 ETF 日 K、大盤日 K、同時段量能、期交所 BRF 布蘭特期貨近月、央行匯率。
 //   - importStep：建檔時把 GitHub 上的十年歷史分批匯入，完成後自動移除自己的排程。
 // 價格存交易所原始價；分割比例另列在「ETF分割紀錄」，需要還原時用它換算。
 
@@ -13,7 +13,8 @@ const STORE_TABS={
   market:['大盤日K',['日期','成交股數','成交金額（元）','加權指數'],[1]],
   etf:['ETF日K',['日期','代號','開盤','最高','最低','收盤','成交股數'],[1,2]],
   splits:['ETF分割紀錄',['代號','生效日','比例','說明'],[1,2,4]],
-  brent:['布蘭特原油',['日期','美元／桶'],[1]],
+  brent:['布蘭特原油',['日期','美元／桶'],[1]],// EIA 現貨舊資料，2026-10 起停止更新
+  brf:['布蘭特期貨近月',['日期','結算價（新台幣／桶）','合約月份'],[1,3]],
   fx:['美元新台幣',['日期','新台幣／美元'],[1]],
   bank:['八大行庫總額',['日期','八大行庫買賣總金額（億元）','加權指數','來源','寫入時間'],[1,4,5]],
   log:['更新紀錄',['時間','工作','結果'],[1,2,3]],
@@ -78,7 +79,7 @@ function setupStore(){
   const props=storeProps_();
   let ss=store_();
   if(!ss){ss=SpreadsheetApp.create('潮位資料庫（ETF 盤中與歷史資料）');props.setProperty('STORE_ID',ss.getId())}
-  Object.keys(STORE_TABS).forEach(key=>storeTab_(ss,key));
+  Object.keys(STORE_TABS).filter(key=>key!=='brent').forEach(key=>storeTab_(ss,key));// 舊 EIA 分頁只保留在既有資料庫
   const blank=ss.getSheetByName('工作表1')||ss.getSheetByName('Sheet1');
   if(blank&&ss.getSheets().length>1)ss.deleteSheet(blank);
   storeReadme_(ss);
@@ -103,7 +104,8 @@ function storeReadme_(ss){
     ['大盤日K','證交所 FMTQIK：成交股數、成交金額、加權指數。'],
     ['ETF日K','證交所 MI_INDEX（type=0099P）每日收盤行情；價格為交易所原始價，未還原分割。'],
     ['ETF分割紀錄','由漲跌價差推算的分割／反分割比例；生效日以前的價格除以比例即為還原價。'],
-    ['布蘭特原油','美國 EIA 現貨日價（官方約落後一週公布）。'],
+    ['布蘭特原油','美國 EIA 現貨日價舊資料，2026-10 改用期交所 BRF 後停止更新。'],
+    ['布蘭特期貨近月','期交所布蘭特原油期貨（BRF）近月每日結算價，新台幣／桶，資料來源 FinMind；網站的布蘭特參考線。'],
     ['美元新台幣','中央銀行每日收盤匯率。'],
     ['八大行庫總額','HiStock 圖表的全市場八大行庫買賣總金額，單位億元；不是逐檔 ETF 買賣超。私人研究分頁，平日約 20:00 單次更新。'],
     ['排程','captureIntraday 每 5 分鐘；appendDaily 每天 18:30 前後；importStep 只在建檔時分批匯入。'],
@@ -127,7 +129,7 @@ function importStep(){
       const brent=pagesJson_('data/brent.json'),fx=pagesJson_('data/fx.json');
       storeAppend_(storeTab_(ss,'market'),'market',market.rows.map(r=>[r[0],r[1],r[2],r[3]]));
       storeAppend_(storeTab_(ss,'profile'),'profile',profile.days.map(([d,lots])=>[d].concat(lots)));
-      storeAppend_(storeTab_(ss,'brent'),'brent',brent.days.map(x=>[x.date,x.value]));
+      storeAppend_(storeTab_(ss,'brf'),'brf',brent.days.map(x=>[x.date,x.value,x.contract||'']));
       storeAppend_(storeTab_(ss,'fx'),'fx',fx.days.map(x=>[x.date,x.value]));
       state={phase:'etf',next:0,lastClose:{}};
       storeLog_(ss,'importStep','大盤 '+market.rows.length+' 日、同時段量能 '+profile.days.length+' 日、原油 '+brent.days.length+' 筆、匯率 '+fx.days.length+' 筆已匯入');
@@ -187,9 +189,14 @@ function captureIntraday(){
   }
 }
 function storeMacro_(ss){
-  [['brent',eiaBrent_],['fx',cbcFx_]].forEach(([key,fetcher])=>{
+  [['brf',brfNear_],['fx',cbcFx_]].forEach(([key,fetcher])=>{
     const sh=storeTab_(ss,key),last=(storeTail_(sh,1)[0]||[''])[0];
-    const rows=fetcher().days.filter(x=>x.date>last).map(x=>[x.date,x.value]);
+    let days=fetcher().days;
+    // An empty BRF tab is first filled with the full history GitHub Pages already publishes.
+    if(key==='brf'&&!last){try{const all=pagesJson_('data/brent.json');if(all.unit==='TWD/barrel')days=all.days.concat(days)}catch(err){}}
+    const seen={},rows=[];
+    days.forEach(x=>{if(x.date>last&&!seen[x.date]){seen[x.date]=true;rows.push(key==='brf'?[x.date,x.value,x.contract||'']:[x.date,x.value])}});
+    rows.sort((a,b)=>a[0].localeCompare(b[0]));
     if(rows.length)storeLog_(ss,'macro',STORE_TABS[key][0]+' 新增 '+storeAppend_(sh,key,rows)+' 筆');
   });
 }
@@ -302,9 +309,9 @@ function liveFromStore_(){
     if(mins>13*60+40||Date.now()-recorded<6*60000)
       out.intraday={date:last[0],time:last[1],index:liveNum_(last[2]),volumeTime:last[1],lots:liveNum_(last[3]),valueMillion:liveNum_(last[4]),marks,source:'潮位資料庫（證交所基本市況報導）'};
   }
-  [['brent','EIA Brent spot daily'],['fx','CBC FTDOpenData_Day']].forEach(([key,source])=>{
-    const days=storeTail_(storeTab_(ss,key),40).map(r=>({date:r[0],value:liveNum_(r[1])})).filter(x=>x.value!=null);
-    if(days.length)out[key]={days,latest:days[days.length-1].date,source:source+'（潮位資料庫）'};
+  [['brent','brf',BRF_SOURCE,'TWD/barrel'],['fx','fx','CBC FTDOpenData_Day','TWD/USD']].forEach(([key,tab,source,unit])=>{
+    const days=storeTail_(storeTab_(ss,tab),40).map(r=>({date:r[0],value:liveNum_(r[1])})).filter(x=>x.value!=null);
+    if(days.length)out[key]={days,latest:days[days.length-1].date,source:source+'（潮位資料庫）',unit};
   });
   return out;
 }

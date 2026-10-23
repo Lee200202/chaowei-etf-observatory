@@ -62,7 +62,7 @@ const BT_EXPLAIN={
 async function btEnsureDividends(){if(btDivs)return btDivs;try{const r=await fetch('/api/dividends'),d=await r.json();btDivs=r.ok?d.events||{}:{}}catch{btDivs={}}return btDivs}
 function btMacro(){
   // Average of the oil score (cheaper = higher) and the USD/TWD score (user's direction), on each bar's date.
-  // Oil is the same series as the oil card: 00642U closes (ETF proxy for WTI), EIA Brent only until it loads.
+  // Oil is the same series as the oil card: 00642U closes (ETF proxy for WTI), the BRF Brent line only until it loads.
   const oilList=oilDays.length?oilDays:brent;
   if(!oilList.length||!fx.length)return null;
   const series=(list,flip)=>{const out=new Map();for(let k=0;k<list.length;k++){const s=Math.max(0,k-240),w=list.slice(s,k);if(w.length<40)continue;const lo=Math.min(...w.map(x=>x.value)),hi=Math.max(...w.map(x=>x.value));if(hi>lo){const r=(list[k].value-lo)/(hi-lo);out.set(list[k].date,5*(1-(flip?1-r:r)))}}return out};

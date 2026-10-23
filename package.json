@@ -23,6 +23,7 @@
     "test:wave": "node scripts/test-wave.mjs",
     "source:finmind:check": "node scripts/validate-finmind.mjs",
     "test:bank": "node scripts/test-bank-history.mjs",
-    "test:finmind": "node scripts/test-finmind-check.mjs"
+    "test:finmind": "node scripts/test-finmind-check.mjs",
+    "brent:update": "node scripts/update-brent-futures.mjs"
   }
 }

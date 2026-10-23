@@ -38,12 +38,20 @@ const files={
   'etf-catalog.json':{etfs:[{code:'0050'},{code:'009816'}]},
   'data/history/market.json':{rows:[['2026-10-16',1e10,5e11,46000],['2026-10-19',1.1e10,5.2e11,46500]]},
   'data/history/intraday-volume.json':{marks:[],days:[['2026-10-19',Array.from({length:54},(_,i)=>100000*(i+1))]]},
-  'data/brent.json':{days:[{date:'2026-10-13',value:120},{date:'2026-10-14',value:126.55}]},
+  'data/brent.json':{unit:'TWD/barrel',days:[{date:'2026-09-01',value:3200,contract:'202610'},{date:'2026-09-02',value:3210,contract:'202610'}]},
   'data/fx.json':{days:[{date:'2026-10-19',value:32.445}]},
   // Split-adjusted history: 0050 split 1→4 on 2025-06-18, so the 2025-06-17 bar is 188/4.
   'data/history/0050.json':{adjustments:[{date:'2025-06-18',factor:4}],rows:[['2025-06-17',47,47.5,46.75,47.1,1000],['2025-06-18',47.2,47.6,47,47.57,9000],['2026-10-19',108,108.5,107.5,108.15,5000]]},
   'data/history/009816.json':{adjustments:[],rows:[['2026-10-19',16,16.2,15.9,16.07,1000]]}
 };
+// FinMind TaiwanFuturesDaily BRF: 25 weekdays to 2026-10-16. Each day has the near (202611) and next (202612) month,
+// a spread order and a night-session row; on 2026-10-07 the near month has no settlement price, so 202612 is used.
+const brfDays=[];for(let t=Date.parse('2026-09-14T00:00:00Z');brfDays.length<25;t+=86400000){const d=new Date(t);if(d.getUTCDay()%6)brfDays.push(d.toISOString().slice(0,10))}
+const brfRows=brfDays.flatMap((date,i)=>[
+  {date,contract_date:'202611',trading_session:'position',settlement_price:date==='2026-10-07'?0:3400+i},
+  {date,contract_date:'202612',trading_session:'position',settlement_price:3300+i},
+  {date,contract_date:'202611/202612',trading_session:'position',settlement_price:1},
+  {date,contract_date:'202610',trading_session:'after_market',settlement_price:0}]);
 let fetchLog=[],twseToday=null;
 const response=(body,status=200)=>({getResponseCode:()=>status,getContentText:()=>typeof body==='string'?body:JSON.stringify(body)});
 function serve(url){
@@ -54,7 +62,7 @@ function serve(url){
   if(url.includes('FMTQIK'))return response({stat:'OK',data:[['115/10/19','11,000,000,000','520,000,000,000','0','46,500.00'],['115/10/20','11,310,000,000','758,684,000,000','0','46,292.93']]});
   if(url.includes('MI_5MINS_INDEX'))return response({stat:'OK',data:[['09:00:00','46,822.08'],['10:12:05','46,700.10']]});
   if(url.includes('MI_5MINS'))return response({stat:'OK',data:[['09:05:00','1','1','1','1','1','867,021','78,527'],['10:10:00','1','1','1','1','1','3,000,000','200,000'],['10:12:05','1','1','1','1','1','3,100,000','205,000']]});
-  if(url.includes('eia.gov'))return response('<tr><td class="B6">&nbsp;&nbsp;2026 Oct-12 to Oct-16</td><td class="B3">125.10</td><td class="B3">126.55</td><td class="B3">127.00</td><td class="B3"></td><td class="B3"></td></tr>'.repeat(1)+Array.from({length:6},(_,i)=>`<tr><td class="B6">2026 Sep-${String(7+i*7).padStart(2,'0')} to Sep-${String(11+i*7).padStart(2,'0')}</td><td class="B3">110</td><td class="B3">111</td><td class="B3">112</td><td class="B3">113</td><td class="B3">114</td></tr>`).join(''));
+  if(url.includes('finmindtrade.com')&&url.includes('data_id=BRF'))return response({status:200,msg:'success',data:brfRows});
   if(url.includes('cbc.gov.tw'))return response([{'日期':'20261019',NTD_USD:'32.445'},{'日期':'20261020',NTD_USD:'32.401'}]);
   return response('',404);
 }
@@ -101,7 +109,14 @@ assert.deepEqual(intra[1].slice(0,7),['2026-10-20','10:12:05',46700.1,3100000,20
 assert.equal(tab('美元新台幣').rows.at(-1)[0],'2026-10-20','hourly macro refresh appends the new CBC day');
 const live=box.liveFromStore_();
 assert.equal(live.intraday.index,46700.1);assert.equal(live.intraday.marks['1010'],3000000);assert.equal(live.intraday.lots,3100000);
-assert.equal(live.fx.latest,'2026-10-20');assert.equal(live.brent.latest,'2026-10-16');
+assert.equal(live.fx.latest,'2026-10-20');assert.equal(live.brent.latest,'2026-10-16');assert.equal(live.brent.unit,'TWD/barrel');
+const brf=tab('布蘭特期貨近月').rows;
+assert.deepEqual(brf[0],['日期','結算價（新台幣／桶）','合約月份']);
+assert.deepEqual(brf[1],['2026-09-01',3200,'202610'],'history imported from the published BRF snapshot');
+assert.equal(brf.length,1+2+25,'every FinMind trading day after the imported history, once');
+assert.deepEqual(brf.find(r=>r[0]==='2026-10-07').slice(1),[3317,'202612'],'near month without a settlement falls to the next month');
+assert.deepEqual(brf.at(-1),['2026-10-16',3424,'202611'],'spread orders and night-session rows are ignored');
+assert.equal(tab('布蘭特原油'),null,'the retired EIA tab is not created for a new store');
 cache.clear();const bundle=box.getLiveMarket();
 assert.equal(bundle.store,true);assert.equal(bundle.intraday.time,'10:12:05');
 // A stalled trigger (record older than 6 minutes during trading) falls back to a direct read.

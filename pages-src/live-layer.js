@@ -1,4 +1,4 @@
-// Live market factors (intraday TAIEX and turnover, EIA Brent, CBC USD/TWD) through the Apps Script deployment.
+// Live market factors (intraday TAIEX and turnover, TAIFEX BRF Brent near-month, CBC USD/TWD) through the Apps Script deployment.
 // Apps Script caches one bundle for all visitors; the page asks every five minutes.
 function installChaoweiLive(appsScriptUrl){
   // Anonymous usage events (one row each) and the popular-search list, via the same Apps Script.

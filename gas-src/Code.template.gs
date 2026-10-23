@@ -85,10 +85,10 @@ function readSnapshot(path){
   return JSON.parse(text);
 }
 
-// 市場刻度的最新資料：盤中加權指數與累計成交量（證交所基本市況報導）、EIA 布蘭特、央行匯率。
+// 市場刻度的最新資料：盤中加權指數與累計成交量（證交所基本市況報導）、期交所 BRF 布蘭特期貨近月結算價、央行匯率。
 // 整包快取 4 分鐘，所有訪客共用一次對外請求；前端每 5 分鐘讀一次。
 function getLiveMarket(){
-  const cache=CacheService.getScriptCache(),hit=cache.get('live-v2');
+  const cache=CacheService.getScriptCache(),hit=cache.get('live-v3');
   if(hit)return JSON.parse(hit);
   const out={generated:new Date().toISOString(),intraday:null,brent:null,fx:null,store:false,errors:[]};
   const now=new Date(Date.now()+8*3600000),mins=now.getUTCHours()*60+now.getUTCMinutes(),day=now.getUTCDay();
@@ -99,9 +99,9 @@ function getLiveMarket(){
   if(!out.intraday&&day>=1&&day<=5&&mins>=9*60+1&&mins<=16*60){
     try{out.intraday=twseIntraday_(now.toISOString().slice(0,10))}catch(err){out.errors.push('證交所盤中統計：'+err.message)}
   }
-  if(!out.brent)try{out.brent=eiaBrent_()}catch(err){out.errors.push('EIA：'+err.message)}
+  if(!out.brent)try{out.brent=brfNear_()}catch(err){out.errors.push('FinMind BRF：'+err.message)}
   if(!out.fx)try{out.fx=cbcFx_()}catch(err){out.errors.push('央行：'+err.message)}
-  cache.put('live-v2',JSON.stringify(out),240);
+  cache.put('live-v3',JSON.stringify(out),240);
   return out;
 }
 function liveNum_(v){const n=Number(String(v==null?'':v).replace(/,/g,''));return isFinite(n)?n:null}
@@ -137,17 +137,31 @@ function twseIntraday_(date){
   return{date,time:String(lastIdx[0]),index:liveNum_(lastIdx[1]),volumeTime:String(last[0]),lots:liveNum_(last[6]),valueMillion:liveNum_(last[7]),marks,
     source:'證交所盤後每5秒指數及委託成交統計'};
 }
-function eiaBrent_(){
-  const cache=CacheService.getScriptCache(),hit=cache.get('eia-brent-live');if(hit)return JSON.parse(hit);
-  const res=UrlFetchApp.fetch('https://www.eia.gov/dnav/pet/hist/rbrteD.htm',{muteHttpExceptions:true});
-  if(res.getResponseCode()!==200)throw Error('HTTP '+res.getResponseCode());
-  const html=res.getContentText('UTF-8'),month={Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11},days=[];
-  const re=/<td class=.B6.>\s*(?:&nbsp;)*\s*(\d{4})\s+([A-Za-z]{3})-\s*(\d{1,2})\s+to\s+[A-Za-z]{3}-\s*\d{1,2}<\/td>([\s\S]*?)<\/tr>/g;let m;
-  while((m=re.exec(html))){const values=[],cell=/<td class=.B3.>(.*?)<\/td>/g;let c;while((c=cell.exec(m[4])))values.push(c[1]);
-    for(let i=0;i<Math.min(5,values.length);i++){const value=Number(values[i]);if(values[i]&&isFinite(value))days.push({date:new Date(Date.UTC(Number(m[1]),month[m[2]],Number(m[3])+i)).toISOString().slice(0,10),value})}}
-  if(days.length<20)throw Error('格式變更');
-  const out={days:days.slice(-40),latest:days[days.length-1].date,source:'EIA Brent spot daily'};
-  cache.put('eia-brent-live',JSON.stringify(out),1200);
+// 期交所布蘭特原油期貨（BRF）近月結算價，新台幣／桶，經 FinMind 取得（網站須標示 FinMind）。
+// 近月 = 每個交易日一般交易時段有結算價的最近單一月份契約。指令碼屬性 FINMIND_API_TOKEN 有設就放在標頭，沒設用匿名額度。
+const BRF_SOURCE='FinMind／期交所 BRF 近月結算';
+function brfNearRows_(rows){
+  const byDate={};
+  rows.forEach(r=>{
+    if(r.trading_session!=='position'||!/^\d{6}$/.test(String(r.contract_date))||!(Number(r.settlement_price)>0))return;
+    const best=byDate[r.date];
+    if(!best||r.contract_date<best.contract)byDate[r.date]={date:r.date,value:Number(r.settlement_price),contract:String(r.contract_date)};
+  });
+  return Object.keys(byDate).sort().map(d=>byDate[d]);
+}
+function brfNear_(){
+  const cache=CacheService.getScriptCache(),hit=cache.get('brf-near-live');if(hit)return JSON.parse(hit);
+  const start=new Date(Date.now()+8*3600000-70*86400000).toISOString().slice(0,10);
+  const token=String(PropertiesService.getScriptProperties().getProperty('FINMIND_API_TOKEN')||'').trim();
+  const res=UrlFetchApp.fetch('https://api.finmindtrade.com/api/v4/data?dataset=TaiwanFuturesDaily&data_id=BRF&start_date='+start,
+    {headers:token?{Authorization:'Bearer '+token}:{},muteHttpExceptions:true});
+  let body={};try{body=JSON.parse(res.getContentText('UTF-8'))}catch(err){}
+  if(res.getResponseCode()!==200||body.status!==200||!Array.isArray(body.data))throw Error('HTTP '+res.getResponseCode()+' '+String(body.msg||'').slice(0,60));
+  const days=brfNearRows_(body.data);
+  if(days.length<20)throw Error('資料不足或格式變更');
+  const last=days[days.length-1];
+  const out={days:days.slice(-40),latest:last.date,contract:last.contract,source:BRF_SOURCE,unit:'TWD/barrel'};
+  cache.put('brf-near-live',JSON.stringify(out),1200);
   return out;
 }
 function cbcFx_(){
