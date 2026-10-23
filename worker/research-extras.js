@@ -44,8 +44,9 @@ window.chaoweiPins={
   render(){
     if(lwc?.s?.candle){
       const times=new Set(lwc.data.map(x=>x.date));
-      const markers=[...(window.chaoweiWaveMarkers||[]).filter(p=>times.has(p.time)),...currentPins().filter(p=>times.has(p.date)).map(p=>({time:p.date,position:p.kind==='peak'?'aboveBar':'belowBar',color:PIN_COLOR[p.kind],shape:p.kind==='exclude'?'circle':p.kind==='peak'?'arrowDown':'arrowUp',text:PIN_LABEL[p.kind]}))].sort((a,b)=>a.time.localeCompare(b.time));
-      lwc.s.candle.setMarkers(markers);
+      const markers=[...(window.chaoweiWaveMarkers||[]).filter(p=>times.has(p.time)),...currentPins().filter(p=>times.has(p.date)).map(p=>({time:p.date,position:p.kind==='peak'?'aboveBar':'belowBar',color:PIN_COLOR[p.kind],shape:p.kind==='exclude'?'circle':p.kind==='peak'?'arrowDown':'arrowUp',text:`${PIN_LABEL[p.kind]} ${fmt(p.price,2)}`}))].sort((a,b)=>a.time.localeCompare(b.time));
+      window.chaoweiResearchMarkers=markers;
+      applyMarkers();
     }
     renderPinList();
   }

@@ -361,7 +361,9 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('btOptSheet').cl
 /* ---------- markers on the K-line chart ---------- */
 function applyMarkers(){
   if(!lwc)return;
-  if(!isMember||!btResult||!settings.bt.markers||!lwc.data.length){lwc.s.candle.setMarkers([]);return}
+  if(!isMember||!lwc.data.length){lwc.s.candle.setMarkers([]);return}
+  const research=(window.chaoweiResearchMarkers||[]).filter(x=>lwc.data.some(b=>b.date===x.time));
+  if(!btResult||!settings.bt.markers){lwc.s.candle.setMarkers(research);return}
   const dates=lwc.data.map(b=>b.date),markers=[];
   // Routine monthly buys and dividend reinvestment would bury the chart; show decisions only.
   for(const t of btResult.trades){
@@ -370,6 +372,7 @@ function applyMarkers(){
     if(at<0)continue;
     markers.push(t.type==='buy'?{time:dates[at],position:'belowBar',color:'#0e7490',shape:'arrowUp',text:'買'}:{time:dates[at],position:'aboveBar',color:'#c2410c',shape:'arrowDown',text:t.kind==='trim'?'減':'賣'});
   }
+  markers.push(...research);
   markers.sort((a,b)=>a.time.localeCompare(b.time));
   lwc.s.candle.setMarkers(markers);
 }

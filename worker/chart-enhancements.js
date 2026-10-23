@@ -280,6 +280,8 @@ function buildCharts(){
   });
   main.subscribeCrosshairMove(p=>{updateLegend(p?.logical);showTip(p)});
   main.subscribeClick(p=>window.chaoweiPins?.onChartClick(p));
+  let waveMarkerFrame=0;
+  main.timeScale().subscribeVisibleLogicalRangeChange(()=>{if(waveMarkerFrame)return;waveMarkerFrame=requestAnimationFrame(()=>{waveMarkerFrame=0;window.chaoweiWave?.refreshMarkers()})});
   vol.subscribeCrosshairMove(p=>{updateLegend(p?.logical);showTip(p&&p.point?{...p,point:{x:p.point.x,y:$('chart').clientHeight-10}}:p)});
   for(const k of OSC_KEYS)oscCharts[k].subscribeCrosshairMove(p=>updateLegend(p?.logical));
   return lwc;
