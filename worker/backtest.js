@@ -45,7 +45,8 @@ const BT_SCHEMA={
   dual_momentum:[['minScore','另需水位分數至少','num',{min:0,max:4,step:0.5,unit:'分'}]],
   macro_regime:[['pullback','多頭：回落多少買','num',{min:2,max:20,step:1,unit:'%'}],['trail','多頭：自高點回落賣','num',{min:3,max:30,step:1,unit:'%'}],['stop','空頭：停損','num',{min:5,max:40,step:1,unit:'%'}],['macroFilter','原油與匯率濾網','check'],['macroMin','濾網最低分','num',{min:0,max:4,step:0.5,unit:'分'},p=>p.macroFilter]],
   vol_targeting:[['target','目標年化波動','num',{min:5,max:60,step:1,unit:'%'}],['minW','最低持股','num',{min:0,max:80,step:5,unit:'%'}],['band','偏離多少調整','num',{min:2,max:30,step:1,unit:'%'}]],
-  bb_squeeze:[['squeeze','帶寬低於近 120 日','num',{min:5,max:40,step:1,unit:'% 分位'}],['volume','突破時需放量','check']]
+  bb_squeeze:[['squeeze','帶寬低於近 120 日','num',{min:5,max:40,step:1,unit:'% 分位'}],['volume','突破時需放量','check']],
+  ma_offset_flow:[['ma','分界均線','num',{min:2,max:960,step:1,unit:'日'}],['offset','往右平移','num',{min:0,max:60,step:1,unit:'根'}],['flow','籌碼方向期數','num',{min:2,max:60,step:1,unit:'根'}]]
 };
 const BT_EXPLAIN={
   classic:'在區間低處分批買進，依設定賣出；沒有部位時現金停泊',dca:'每月固定金額買進，作為比較基準',
@@ -53,7 +54,8 @@ const BT_EXPLAIN={
   bias_tiered_dca:'依股價與 MA60 的乖離決定每月扣款倍數',tech_bb_rsi_dca:'每月小額底倉，超賣（%B、RSI 偏低）時加碼，過熱時小幅減碼',
   core_satellite:'核心每月潮位定投不賣出，衛星資金在低水位進場、移動停利出場',rebalance_50_50:'維持固定持股比例，偏離時高賣低買',
   dual_momentum:'近 60／120 日報酬為正且站上 MA120 時滿倉，轉弱時改持現金',macro_regime:'依 MA200 判斷多空：多頭淺回檔買、空頭只在水位 5 分買',
-  vol_targeting:'波動低時提高持股、波動放大時降低持股',bb_squeeze:'布林帶寬壓縮後突破上軌才買進，跌破 MA20 賣出'
+  vol_targeting:'波動低時提高持股、波動放大時降低持股',bb_squeeze:'布林帶寬壓縮後突破上軌才買進，跌破 MA20 賣出',
+  ma_offset_flow:'960 Trading 規則（只做多）：收盤低於「均線往右平移」的分界線且籌碼方向為正時買進，收盤高於分界線且籌碼方向轉負時全賣'
 };
 
 /* ---------- context: daily bars + split-adjusted dividends + macro score ---------- */
@@ -229,6 +231,7 @@ function btNow(r){
   else if(s==='macro_regime'&&ctx.ma200[i]>0){rows.push(['市場體制',c>ctx.ma200[i]&&ctx.ma200[i]>ctx.ma200[i-20]?'多頭（MA200 之上且上彎）':'空頭或盤整']);if(ctx.macro)rows.push(['原油＋匯率分數',Number.isFinite(ctx.macro[i])?fmt(ctx.macro[i],1)+' 分':'—'])}
   else if(s==='vol_targeting'){rows.push(['近 20 日年化波動',fmt(ctx.sigma[i]*100,0)+'% → 目標持股 '+fmt(Math.max(p.minW,Math.min(100,p.target/ctx.sigma[i])),0)+'%'])}
   else if(s==='bb_squeeze'){rows.push(['布林帶寬','近 120 日第 '+fmt(ctx.bwRank[i]*100,0)+' 百分位'+(r.shares?'；持有中，跌破 MA20 '+fmt(ctx.ma20[i],2)+' 賣出':'')])}
+  else if(s==='ma_offset_flow'){const lf=E.lineFlow(ctx,p);rows.push(['分界線／籌碼方向',(Number.isFinite(lf.line[i])?fmt(lf.line[i],2):'—')+'／'+(Number.isFinite(lf.flow[i])?(lf.flow[i]>0?'+':'')+fmt(lf.flow[i],2):'—')])}
   else if(s==='rebalance_50_50'){const v=r.shares*c,eq=v+r.cash;rows.push(['持股比例',fmt(v/eq*100,0)+'%（目標 '+p.weight+'%，±'+p.band+'% 時再平衡）'])}
   return rows;
 }
@@ -257,6 +260,12 @@ function btAction(r){
     main=gap>0?`依「定期定值」：下期目標市值 ${money(target)}，目前持股 ${money(cur)}，應補 ${amt(Math.min(gap,B*p.cap))}${gap>B*p.cap?'（已達單月上限 '+p.cap+' 倍）':''}。`
       :`依「定期定值」：持股市值已超過目標 ${amt(-gap)}，${p.allowSell?'可賣出超出部分轉入蓄水池':'本期不扣款'}。`;
   }else if(s==='dca')main=`依「定期定額」：每月照常扣款 ${amt(B)}，不看水位。`;
+  else if(s==='ma_offset_flow'){
+    const lf=E.lineFlow(ctx,p),L=lf.line[i],F=lf.flow[i];
+    if(Number.isFinite(L)&&Number.isFinite(F)){const below=c<L,buy=below&&F>0,sell=!below&&F<0;
+      main=`依「960 分界線＋籌碼方向」：收盤 ${px(c)} ${below?'低於':'高於'}分界線 ${px(L)}，籌碼方向 <b>${F>0?'+':''}${fmt(F,2)}</b>（${F>0?'買盤':'賣盤'}較強）。`+
+        (r.shares?(sell?'符合出場條件，持股應<b>全部賣出</b>。':'持有中，等收盤高於分界線且籌碼方向轉負才出場。'):(buy?`符合進場條件，可投入約 ${amt(r.cash)}。`:'目前空手，等收盤低於分界線且籌碼方向轉正。'))}
+  }
   else if(s==='tech_bb_rsi_dca')main=`依「${btName()}」：每月底倉 ${amt(B*p.baseRatio)}；%B 低於 ${p.pbLow} 且 RSI 低於 ${p.rsiLow} 時加碼 ${amt(B*p.dipMult)}。`;
   else if(s==='classic'){
     const k=p.entry==='fib'?p.levels.length:1+p.adds;

@@ -273,8 +273,26 @@ const ChaoweiEngine=(()=>{
         if(squeezed&&c>ctx.bbUp[i]&&(!p.volume||ctx.vol[i]>ctx.volMa20[i]))acc.buy(i,acc.cash,'帶寬壓縮後突破上軌','entry');return}
       if(inflow&&acc.cash>0)acc.buy(i,acc.cash,'持有期間投入新入金','add');
       if(c<ctx.ma20[i])acc.sell(i,acc.shares,'收盤跌破 MA20','exit');
+    }},
+    // 960 Trading's rule, long-only (see planning/960trading-策略紀錄.md): the dividing line is the N-bar average
+    // shifted right by `offset` bars; buy when the close is below it while the flow direction is positive, sell
+    // everything when the close is above it while the flow turns negative.
+    ma_offset_flow:{day(i,ctx,cfg,acc,st,h,inflow){
+      const p=cfg.params,{line,flow}=lineFlow(ctx,p),c=ctx.close[i];if(!Number.isFinite(line[i])||!Number.isFinite(flow[i]))return;
+      if(!acc.shares){if(c<line[i]&&flow[i]>0)acc.buy(i,acc.cash,`收盤 ${c} 低於分界線 ${line[i].toFixed(2)}，籌碼方向 +${flow[i].toFixed(2)}`,'entry');return}
+      if(inflow&&acc.cash>0)acc.buy(i,acc.cash,'持有期間投入新入金','add');
+      if(c>line[i]&&flow[i]<0)acc.sell(i,acc.shares,`收盤 ${c} 高於分界線 ${line[i].toFixed(2)}，籌碼方向 ${flow[i].toFixed(2)}`,'exit');
     }}
   };
+  /* Dividing line (SMA of `ma` closes, shifted right by `offset` bars) and flow direction (sum over `flow` bars
+     of candle direction × body ratio). Both use bars up to i only. */
+  function lineFlow(ctx,p){
+    const key='lf|'+p.ma+'|'+p.offset+'|'+p.flow;if(ctx.refCache.has(key))return ctx.refCache.get(key);
+    const n=ctx.n,ma=sma(ctx.close,Math.max(1,p.ma)),line=new Float64Array(n).fill(NaN),flow=new Float64Array(n).fill(NaN),f=new Float64Array(n);
+    for(let i=0;i<n;i++){if(i-p.offset>=0)line[i]=ma[i-p.offset];const b=ctx.bars[i],range=b.high-b.low;f[i]=range>0?Math.sign(b.close-b.open)*Math.abs(b.close-b.open)/range:0}
+    let s=0;for(let i=0;i<n;i++){s+=f[i];if(i>=p.flow)s-=f[i-p.flow];if(i>=p.flow-1)flow[i]=s}
+    const out={line,flow};ctx.refCache.set(key,out);return out;
+  }
   /* ---------- defaults and presets ---------- */
   const PARAMS={
     classic:{entry:'drop',drop:20,levels:[0.382,0.5,0.618],buyGrade:5,step:10,adds:3,exit:'gain',rise:20,sellGrade:1,fibExt:1,trail:10,atrMult:3,stop:0,maxDays:0},
@@ -288,7 +306,8 @@ const ChaoweiEngine=(()=>{
     dual_momentum:{minScore:0},
     macro_regime:{pullback:6,trail:10,stop:15,macroFilter:true,macroMin:1.5},
     vol_targeting:{target:18,minW:20,band:10},
-    bb_squeeze:{squeeze:15,volume:true}
+    bb_squeeze:{squeeze:15,volume:true},
+    ma_offset_flow:{ma:16,offset:13,flow:13}
   };
   const P=(strategy,params)=>({strategy,params:{...PARAMS[strategy],...params}});
   const FAMILIES=[['swing','經典回檔波段'],['dca','智慧定期定額'],['trend','順勢動能'],['mix','配置雙軌']];
@@ -300,6 +319,7 @@ const ChaoweiEngine=(()=>{
     {id:'grade51',family:'swing',name:'水位 5 分買、1 分賣',...P('classic',{entry:'grade',buyGrade:5,step:10,adds:2,exit:'grade',sellGrade:1})},
     {id:'chandelier',family:'swing',name:'潮位抄底＋移動停利',...P('classic',{entry:'grade',buyGrade:4,step:8,adds:2,exit:'trailing',trail:10,atrMult:3})},
     {id:'pyramid',family:'swing',name:'金字塔分批停利',...P('classic',{entry:'drop',drop:12,step:8,adds:2,exit:'pyramid',rise:15})},
+    {id:'ma960',family:'swing',name:'960 分界線＋籌碼方向',...P('ma_offset_flow',{})},
     {id:'dca',family:'dca',name:'定期定額（對照）',...P('dca',{})},
     {id:'smartDca',family:'dca',name:'潮位動態加權定投',...P('smart_dca_water',{})},
     {id:'va',family:'dca',name:'定期定值',...P('value_averaging',{})},
@@ -312,5 +332,5 @@ const ChaoweiEngine=(()=>{
     {id:'coreSat',family:'mix',name:'70/30 核心衛星',...P('core_satellite',{})},
     {id:'rebalance',family:'mix',name:'50:50 動態再平衡',...P('rebalance_50_50',{})}
   ];
-  return{prepare,reference,water,score,run,xirr,STRATEGIES,PARAMS,PRESETS,FAMILIES};
+  return{prepare,reference,water,score,lineFlow,run,xirr,STRATEGIES,PARAMS,PRESETS,FAMILIES};
 })();
