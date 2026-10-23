@@ -55,7 +55,7 @@ const BT_EXPLAIN={
   core_satellite:'核心每月潮位定投不賣出，衛星資金在低水位進場、移動停利出場',rebalance_50_50:'維持固定持股比例，偏離時高賣低買',
   dual_momentum:'近 60／120 日報酬為正且站上 MA120 時滿倉，轉弱時改持現金',macro_regime:'依 MA200 判斷多空：多頭淺回檔買、空頭只在水位 5 分買',
   vol_targeting:'波動低時提高持股、波動放大時降低持股',bb_squeeze:'布林帶寬壓縮後突破上軌才買進，跌破 MA20 賣出',
-  ma_offset_flow:'960 Trading 規則（只做多）：收盤低於「均線往右平移」的分界線且籌碼方向為正時買進，收盤高於分界線且籌碼方向轉負時全賣'
+  ma_offset_flow:'均線分界＋籌碼方向（只做多）：收盤低於往右平移的均線且籌碼方向為正時買進；收盤高於分界線且籌碼方向轉負時全賣。「做空條件」在 ETF 回測中只作出場，不建立空單。MA 長度、平移根數及籌碼期數均可調整。'
 };
 
 /* ---------- context: daily bars + split-adjusted dividends + macro score ---------- */
@@ -263,7 +263,7 @@ function btAction(r){
   else if(s==='ma_offset_flow'){
     const lf=E.lineFlow(ctx,p),L=lf.line[i],F=lf.flow[i];
     if(Number.isFinite(L)&&Number.isFinite(F)){const below=c<L,buy=below&&F>0,sell=!below&&F<0;
-      main=`依「960 分界線＋籌碼方向」：收盤 ${px(c)} ${below?'低於':'高於'}分界線 ${px(L)}，籌碼方向 <b>${F>0?'+':''}${fmt(F,2)}</b>（${F>0?'買盤':'賣盤'}較強）。`+
+      main=`依「${p.ma}MA＋${p.offset} 分界線與籌碼方向」：收盤 ${px(c)} ${below?'低於':'高於'}分界線 ${px(L)}，籌碼方向 <b>${F>0?'+':''}${fmt(F,2)}</b>（${F>0?'買盤':'賣盤'}較強）。`+
         (r.shares?(sell?'符合出場條件，持股應<b>全部賣出</b>。':'持有中，等收盤高於分界線且籌碼方向轉負才出場。'):(buy?`符合進場條件，可投入約 ${amt(r.cash)}。`:'目前空手，等收盤低於分界線且籌碼方向轉正。'))}
   }
   else if(s==='tech_bb_rsi_dca')main=`依「${btName()}」：每月底倉 ${amt(B*p.baseRatio)}；%B 低於 ${p.pbLow} 且 RSI 低於 ${p.rsiLow} 時加碼 ${amt(B*p.dipMult)}。`;

@@ -1462,7 +1462,7 @@ function renderChip(){
     series:[{name:'融資餘額',color:'#0e7490',data:margin}],right:{name:`${selected} 收盤`,color:'#9aa5ab',data:history.map(r=>closeBy.get(r[0])??null)},
     note:Number.isFinite(firstM)&&Number.isFinite(lastM)?`區間變化 ${lastM>=firstM?'+':''}${fmt(lastM-firstM,0)} 張（${firstM?(lastM>=firstM?'+':'')+fmt((lastM/firstM-1)*100,1)+'%':'—'}）`:''}));
   const m=document.createElement('p');m.className='small';m.textContent=`${day} 融資餘額 ${Number.isFinite(row[7])?fmt(row[7],0)+' 張':'暫無資料'} · 融券餘額 ${Number.isFinite(row[8])?fmt(row[8],0)+' 張':'暫無資料'}`;node.append(m);
-  const gov=document.createElement('div');gov.className='chip-gov';gov.innerHTML='<strong>八大官股買賣超</strong><p class="small">尚未取得授權資料，本站不擷取、不估算，也不納入分數。可先到外部網站查看全市場八大行庫動向：</p><a class="chip-gov-link" href="https://www.wantgoo.com/stock/public-bank/trend" target="_blank" rel="noopener noreferrer">玩股網・八大行庫買賣動向 ↗</a>';node.append(gov);updateWeights();
+  const gov=document.createElement('div');gov.className='chip-gov';gov.innerHTML='<strong>八大官股買賣超</strong><p class="small">本站尚未匯入逐檔授權資料，也不將外站數值納入分數。可到來源網站核對：</p><a class="chip-gov-link" target="_blank" rel="noopener noreferrer">HiStock・這檔 ETF ↗</a> · <a class="chip-gov-link" href="https://www.wantgoo.com/stock/public-bank/trend" target="_blank" rel="noopener noreferrer">玩股網・全市場 ↗</a>';gov.querySelector('a').href='https://histock.tw/stock/broker.aspx?no='+encodeURIComponent(selected);node.append(gov);updateWeights();
 }
 /* Small SVG trend chart drawn at the card's real pixel width, so labels stay legible on phones.
    kind 'stack': series stacked above/below zero plus an optional total line; kind 'area': one filled line
@@ -1529,36 +1529,6 @@ $('chipDate').addEventListener('change',renderChip);
 const researchLoadBars=loadBars;
 loadBars=function(...args){if(selected!==chipCode)window.chaoweiWaveMarkers=[];if(isMember&&(selected!==chipCode||!chipRows.length))loadChips(selected);return researchLoadBars(...args)};
 window.chaoweiResearchMemberChanged=signedIn=>{if(signedIn)loadChips(selected);else{chipRows=[];chipCode='';pinMode=false;pinModeButton.setAttribute('aria-pressed','false')}};
-
-/* Official weekly TDCC holder distribution for the selected ETF. */
-const holderCard=document.createElement('section');holderCard.className='holder-card card member-only';holderCard.id='holderCard';
-holderCard.innerHTML='<div class="card-heading"><div><h3>ETF 大戶持有分布</h3><p class="small">集保結算所每週資料 · ETF 本身</p></div></div><div id="holderContents" class="holder-contents"><p class="small">讀取集保資料中…</p></div><p class="small">持有 400 張以上的集保戶比例，不等於法人或八大官股持股，也不是每日買賣超。<a href="https://www.tdcc.com.tw/portal/zh/smWeb/qryStock" target="_blank" rel="noopener noreferrer">集保來源 ↗</a></p>';
-chipCard.after(holderCard);
-holderCard.insertAdjacentHTML('afterbegin','<div class="member-lock"><div class="member-lock-box"><span class="member-badge">會員專屬</span><h4>查看大戶持有分布</h4><p>登入後查看 ETF 集保戶 400 張以上與千張以上的持有比例。</p><button class="action" type="button" data-open-account>用 Google 登入解鎖</button></div></div>');
-let holderPromise,holderGeneration=0;
-async function loadHolders(code){
-  if(!isMember)return;
-  const gen=++holderGeneration,node=$('holderContents');node.textContent='讀取集保資料中…';
-  try{
-    holderPromise??=fetch('/api/holders').then(r=>{if(!r.ok)throw Error('HTTP '+r.status);return r.json()}).catch(e=>{holderPromise=null;throw e});
-    const d=await holderPromise;if(gen!==holderGeneration||code!==selected)return;
-    const rows=(d.rows||[]).filter(r=>r[1]===code&&/^\d{4}-\d{2}-\d{2}$/.test(r[0])).sort((a,b)=>a[0].localeCompare(b[0]));
-    node.replaceChildren();if(!rows.length){node.textContent='集保開放資料目前沒有這檔 ETF 的持有分布。';return}
-    const last=rows.at(-1),grid=document.createElement('div');grid.className='holder-grid';
-    for(const [label,pct,count,color] of [['400 張以上',last[2],last[4],'#0e7490'],['1,000 張以上',last[3],last[5],'#e3a052']]){
-      const item=document.createElement('div');item.className='holder-stat';
-      const h=document.createElement('span');h.textContent=label;const b=document.createElement('strong');b.textContent=fmt(pct,2)+'%';
-      const track=document.createElement('div');track.className='holder-meter';const fill=document.createElement('i');fill.style.width=Math.max(0,Math.min(100,pct))+'%';fill.style.background=color;track.append(fill);
-      const detail=document.createElement('small');detail.textContent=`${fmt(count,0)} 戶 · ${last[0]}`;item.append(h,b,track,detail);grid.append(item)
-    }
-    node.append(grid);
-    if(rows.length>=2){node.append(chipChart({title:'400 張以上持有比例',unit:'%',width:Math.max(280,node.clientWidth||600),dates:rows.map(r=>r[0]),kind:'area',series:[{name:'400 張以上',color:'#0e7490',data:rows.map(r=>r[2])}],format:v=>fmt(v,2)+'%'}))}
-    else{const p=document.createElement('p');p.className='small';p.textContent='目前只有一週快照；後續每週追加後顯示趨勢。';node.append(p)}
-  }catch{if(gen===holderGeneration)node.textContent='集保資料暫時無法取得。'}
-}
-const holdersLoadBars=loadBars;loadBars=function(...args){if(isMember)loadHolders(selected);return holdersLoadBars(...args)};
-const holdersMemberChanged=window.chaoweiResearchMemberChanged;
-window.chaoweiResearchMemberChanged=signedIn=>{holdersMemberChanged?.(signedIn);if(signedIn)loadHolders(selected);else holderGeneration++};
 
 /* Member research: transparent swing rules and descriptive train/test split. */
 settings.waveStudy=settings.waveStudy&&typeof settings.waveStudy==='object'?settings.waveStudy:{};
@@ -1654,6 +1624,36 @@ window.chaoweiApplyProfile=profile=>{waveApplyProfile(profile);settings.waveStud
 wavePopulate();
 // These cards are inserted after the base member gate initializes.
 window.chaoweiSetMember(false);
+
+/* Official weekly TDCC holder distribution for the selected ETF. */
+const holderCard=document.createElement('section');holderCard.className='holder-card card member-only';holderCard.id='holderCard';
+holderCard.innerHTML='<div class="card-heading"><div><h3>ETF 大戶持有分布</h3><p class="small">集保結算所每週資料 · ETF 本身</p></div></div><div id="holderContents" class="holder-contents"><p class="small">讀取集保資料中…</p></div><p class="small">持有 400 張以上的集保戶比例，不等於法人或八大官股持股，也不是每日買賣超。<a href="https://www.tdcc.com.tw/portal/zh/smWeb/qryStock" target="_blank" rel="noopener noreferrer">集保來源 ↗</a></p>';
+chipCard.after(holderCard);
+holderCard.insertAdjacentHTML('afterbegin','<div class="member-lock"><div class="member-lock-box"><span class="member-badge">會員專屬</span><h4>查看大戶持有分布</h4><p>登入後查看 ETF 集保戶 400 張以上與千張以上的持有比例。</p><button class="action" type="button" data-open-account>用 Google 登入解鎖</button></div></div>');
+let holderPromise,holderGeneration=0;
+async function loadHolders(code){
+  if(!isMember)return;
+  const gen=++holderGeneration,node=$('holderContents');node.textContent='讀取集保資料中…';
+  try{
+    holderPromise??=fetch('/api/holders').then(r=>{if(!r.ok)throw Error('HTTP '+r.status);return r.json()}).catch(e=>{holderPromise=null;throw e});
+    const d=await holderPromise;if(gen!==holderGeneration||code!==selected)return;
+    const rows=(d.rows||[]).filter(r=>r[1]===code&&/^\d{4}-\d{2}-\d{2}$/.test(r[0])).sort((a,b)=>a[0].localeCompare(b[0]));
+    node.replaceChildren();if(!rows.length){node.textContent='集保開放資料目前沒有這檔 ETF 的持有分布。';return}
+    const last=rows.at(-1),grid=document.createElement('div');grid.className='holder-grid';
+    for(const [label,pct,count,color] of [['400 張以上',last[2],last[4],'#0e7490'],['1,000 張以上',last[3],last[5],'#e3a052']]){
+      const item=document.createElement('div');item.className='holder-stat';
+      const h=document.createElement('span');h.textContent=label;const b=document.createElement('strong');b.textContent=fmt(pct,2)+'%';
+      const track=document.createElement('div');track.className='holder-meter';const fill=document.createElement('i');fill.style.width=Math.max(0,Math.min(100,pct))+'%';fill.style.background=color;track.append(fill);
+      const detail=document.createElement('small');detail.textContent=`${fmt(count,0)} 戶 · ${last[0]}`;item.append(h,b,track,detail);grid.append(item)
+    }
+    node.append(grid);
+    if(rows.length>=2){node.append(chipChart({title:'400 張以上持有比例',unit:'%',width:Math.max(280,node.clientWidth||600),dates:rows.map(r=>r[0]),kind:'area',series:[{name:'400 張以上',color:'#0e7490',data:rows.map(r=>r[2])}],format:v=>fmt(v,2)+'%'}))}
+    else{const p=document.createElement('p');p.className='small';p.textContent='目前只有一週快照；後續每週追加後顯示趨勢。';node.append(p)}
+  }catch{if(gen===holderGeneration)node.textContent='集保資料暫時無法取得。'}
+}
+const holdersLoadBars=loadBars;loadBars=function(...args){if(isMember)loadHolders(selected);return holdersLoadBars(...args)};
+const holdersMemberChanged=window.chaoweiResearchMemberChanged;
+window.chaoweiResearchMemberChanged=signedIn=>{holdersMemberChanged?.(signedIn);if(signedIn)loadHolders(selected);else holderGeneration++};
 
 /* ---------- Strategy engine v3 (pure: no DOM; also loaded by scripts/test-engine.mjs) ----------
    Capital model: every strategy receives the same cash flows (one lump at the start, or the same
@@ -1977,6 +1977,7 @@ const ChaoweiEngine=(()=>{
     {id:'chandelier',family:'swing',name:'潮位抄底＋移動停利',...P('classic',{entry:'grade',buyGrade:4,step:8,adds:2,exit:'trailing',trail:10,atrMult:3})},
     {id:'pyramid',family:'swing',name:'金字塔分批停利',...P('classic',{entry:'drop',drop:12,step:8,adds:2,exit:'pyramid',rise:15})},
     {id:'ma960',family:'swing',name:'960 分界線＋籌碼方向',...P('ma_offset_flow',{})},
+    {id:'ma4flow',family:'swing',name:'4MA＋13 籌碼方向',...P('ma_offset_flow',{ma:4,offset:13,flow:13})},
     {id:'dca',family:'dca',name:'定期定額（對照）',...P('dca',{})},
     {id:'smartDca',family:'dca',name:'潮位動態加權定投',...P('smart_dca_water',{})},
     {id:'va',family:'dca',name:'定期定值',...P('value_averaging',{})},
@@ -2049,7 +2050,7 @@ const BT_EXPLAIN={
   core_satellite:'核心每月潮位定投不賣出，衛星資金在低水位進場、移動停利出場',rebalance_50_50:'維持固定持股比例，偏離時高賣低買',
   dual_momentum:'近 60／120 日報酬為正且站上 MA120 時滿倉，轉弱時改持現金',macro_regime:'依 MA200 判斷多空：多頭淺回檔買、空頭只在水位 5 分買',
   vol_targeting:'波動低時提高持股、波動放大時降低持股',bb_squeeze:'布林帶寬壓縮後突破上軌才買進，跌破 MA20 賣出',
-  ma_offset_flow:'960 Trading 規則（只做多）：收盤低於「均線往右平移」的分界線且籌碼方向為正時買進，收盤高於分界線且籌碼方向轉負時全賣'
+  ma_offset_flow:'均線分界＋籌碼方向（只做多）：收盤低於往右平移的均線且籌碼方向為正時買進；收盤高於分界線且籌碼方向轉負時全賣。「做空條件」在 ETF 回測中只作出場，不建立空單。MA 長度、平移根數及籌碼期數均可調整。'
 };
 
 /* ---------- context: daily bars + split-adjusted dividends + macro score ---------- */
@@ -2257,7 +2258,7 @@ function btAction(r){
   else if(s==='ma_offset_flow'){
     const lf=E.lineFlow(ctx,p),L=lf.line[i],F=lf.flow[i];
     if(Number.isFinite(L)&&Number.isFinite(F)){const below=c<L,buy=below&&F>0,sell=!below&&F<0;
-      main=`依「960 分界線＋籌碼方向」：收盤 ${px(c)} ${below?'低於':'高於'}分界線 ${px(L)}，籌碼方向 <b>${F>0?'+':''}${fmt(F,2)}</b>（${F>0?'買盤':'賣盤'}較強）。`+
+      main=`依「${p.ma}MA＋${p.offset} 分界線與籌碼方向」：收盤 ${px(c)} ${below?'低於':'高於'}分界線 ${px(L)}，籌碼方向 <b>${F>0?'+':''}${fmt(F,2)}</b>（${F>0?'買盤':'賣盤'}較強）。`+
         (r.shares?(sell?'符合出場條件，持股應<b>全部賣出</b>。':'持有中，等收盤高於分界線且籌碼方向轉負才出場。'):(buy?`符合進場條件，可投入約 ${amt(r.cash)}。`:'目前空手，等收盤低於分界線且籌碼方向轉正。'))}
   }
   else if(s==='tech_bb_rsi_dca')main=`依「${btName()}」：每月底倉 ${amt(B*p.baseRatio)}；%B 低於 ${p.pbLow} 且 RSI 低於 ${p.rsiLow} 時加碼 ${amt(B*p.dipMult)}。`;

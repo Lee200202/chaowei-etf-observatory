@@ -320,6 +320,7 @@ const ChaoweiEngine=(()=>{
     {id:'chandelier',family:'swing',name:'潮位抄底＋移動停利',...P('classic',{entry:'grade',buyGrade:4,step:8,adds:2,exit:'trailing',trail:10,atrMult:3})},
     {id:'pyramid',family:'swing',name:'金字塔分批停利',...P('classic',{entry:'drop',drop:12,step:8,adds:2,exit:'pyramid',rise:15})},
     {id:'ma960',family:'swing',name:'960 分界線＋籌碼方向',...P('ma_offset_flow',{})},
+    {id:'ma4flow',family:'swing',name:'4MA＋13 籌碼方向',...P('ma_offset_flow',{ma:4,offset:13,flow:13})},
     {id:'dca',family:'dca',name:'定期定額（對照）',...P('dca',{})},
     {id:'smartDca',family:'dca',name:'潮位動態加權定投',...P('smart_dca_water',{})},
     {id:'va',family:'dca',name:'定期定值',...P('value_averaging',{})},
