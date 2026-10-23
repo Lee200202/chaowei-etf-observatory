@@ -21,6 +21,7 @@
     "holders:update": "node scripts/update-holders.mjs",
     "test:engine": "node scripts/test-engine.mjs",
     "test:wave": "node scripts/test-wave.mjs",
-    "source:finmind:check": "node scripts/validate-finmind.mjs"
+    "source:finmind:check": "node scripts/validate-finmind.mjs",
+    "test:bank": "node scripts/test-bank-history.mjs"
   }
 }
