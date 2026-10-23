@@ -1,0 +1,1 @@
+{"code":"00625K","source":{"trades":"TWSE T86","foreignOwnership":"TWSE MI_QFIIS"},"unit":"shares","fields":["date","foreignNet","trustNet","dealerNet","totalNet","foreignHeld","issued"],"first":"2026-09-11","latest":"2026-10-16","rows":[["2026-09-11",0,0,0,0,0,333000],["2026-09-16",0,0,0,0,0,333000],["2026-10-16",0,0,0,0,0,333000]]}

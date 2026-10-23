@@ -73,6 +73,11 @@ function installChaoweiApi(base,serverFallback){
     if(path==='/api/market')return market();
     if(path==='/api/intraday-profile')return file('data/history/intraday-volume.json');
     if(path==='/api/dividends')return file('data/history/dividends.json');
+    if(path==='/api/chips'){
+      const code=params.get('code');
+      if(!/^[0-9A-Z]{4,6}$/.test(code||''))return{error:'代號格式錯誤'};
+      return file(`data/chips/${code}.json`).catch(()=>({code,rows:[],source:null,latest:null}));
+    }
     if(path==='/api/radar')return file('data/history/radar.json');
     return{error:'未知 API'};
   }

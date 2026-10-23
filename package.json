@@ -16,6 +16,8 @@
     "intraday:update": "node scripts/update-intraday.mjs",
     "test:store": "node scripts/test-store.mjs",
     "dividends:update": "node scripts/update-dividends.mjs",
-    "test:engine": "node scripts/test-engine.mjs"
+    "chips:update": "node scripts/update-chips.mjs",
+    "test:engine": "node scripts/test-engine.mjs",
+    "test:wave": "node scripts/test-wave.mjs"
   }
 }

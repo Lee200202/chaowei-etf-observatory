@@ -1,6 +1,6 @@
 import {mkdir,readFile,writeFile,copyFile,readdir,rm} from 'node:fs/promises';
 const root=new URL('../',import.meta.url),read=p=>readFile(new URL(p,root),'utf8');
-const [page,css,client,enhancements,dataLayer,quoteLayer,identityLayer,liveLayer]=await Promise.all([read('worker/page.html'),Promise.all([read('worker/style.css'),read('worker/story.css')]).then(parts=>parts.join('\n')),read('worker/client.js'),read('worker/chart-enhancements.js').then(async s=>s+'\n'+await read('worker/strategy-engine.js')+'\n'+await read('worker/backtest.js')+'\n'+await read('worker/tour.js')+'\n'+await read('worker/custom.js')+'\n'+await read('worker/analytics.js')+'\n'+await read('worker/novice.js')+'\n'+await read('worker/experience.js')),read('pages-src/data-layer.js'),read('pages-src/quote-layer.js'),read('pages-src/identity-layer.js'),read('pages-src/live-layer.js')]);
+const [page,css,client,enhancements,dataLayer,quoteLayer,identityLayer,liveLayer]=await Promise.all([read('worker/page.html'),Promise.all([read('worker/style.css'),read('worker/story.css'),read('worker/research.css')]).then(parts=>parts.join('\n')),read('worker/client.js'),read('worker/chart-enhancements.js').then(async s=>s+'\n'+await read('worker/wave-research-core.js')+'\n'+await read('worker/research-extras.js')+'\n'+await read('worker/research-wave-ui.js')+'\n'+await read('worker/strategy-engine.js')+'\n'+await read('worker/backtest.js')+'\n'+await read('worker/tour.js')+'\n'+await read('worker/custom.js')+'\n'+await read('worker/analytics.js')+'\n'+await read('worker/novice.js')+'\n'+await read('worker/experience.js')),read('pages-src/data-layer.js'),read('pages-src/quote-layer.js'),read('pages-src/identity-layer.js'),read('pages-src/live-layer.js')]);
 const GAS_URL='https://script.google.com/macros/s/AKfycbwea2kGu7UX0RPfUYW2IaMmtar5_LitJth3mQ_c5uGOtgeihU_nmkM3uNw1CnddLdd6Kw/exec';
 const shim=`${dataLayer}\n${quoteLayer}\n${identityLayer}\n${liveLayer}\nwindow.CHAOWEI_STATIC=true;installChaoweiApi('./');installChaoweiQuote('${GAS_URL}');installChaoweiIdentity('pages');installChaoweiLive('${GAS_URL}');\n`;
 const html=page.replace('__CSS__',()=>css).replace('__JS__',()=>shim+client.replace('__ENHANCEMENTS__',()=>enhancements));
@@ -9,6 +9,11 @@ await writeFile(new URL('docs/index.html',root),html);
 await writeFile(new URL('docs/.nojekyll',root),'');
 await copyFile(new URL('worker/etf-catalog.json',root),new URL('docs/etf-catalog.json',root));
 for(const file of ['brent.json','fx.json'])await copyFile(new URL(`pages-data/${file}`,root),new URL(`docs/data/${file}`,root));
+await mkdir(new URL('docs/data/chips/',root),{recursive:true});
+const chipSrc=new URL('pages-data/chips/',root),chipDst=new URL('docs/data/chips/',root);
+const chipFiles=new Set((await readdir(chipSrc).catch(()=>[])).filter(file=>/^[0-9A-Z]{4,6}\.json$/.test(file)));
+for(const file of await readdir(chipDst))if(!chipFiles.has(file))await rm(new URL(file,chipDst));
+for(const file of chipFiles)await copyFile(new URL(file,chipSrc),new URL(file,chipDst));
 // Today's radar summary is derived from the history files, so it is rebuilt on every deploy.
 const {buildRadar}=await import('./build-radar.mjs');await buildRadar();
 // Long history: mirror pages-data/history into docs/data/history (stale files removed).
@@ -16,4 +21,4 @@ const src=new URL('pages-data/history/',root),dst=new URL('docs/data/history/',r
 const wanted=new Set((await readdir(src).catch(()=>[])).filter(f=>f.endsWith('.json')));
 for(const f of await readdir(dst))if(!wanted.has(f))await rm(new URL(f,dst));
 for(const f of wanted)await copyFile(new URL(f,src),new URL(f,dst));
-console.log(`Built GitHub Pages website with ${wanted.size} history files`);
+console.log(`Built GitHub Pages website with ${wanted.size} history files and ${chipFiles.size} ETF chip files`);

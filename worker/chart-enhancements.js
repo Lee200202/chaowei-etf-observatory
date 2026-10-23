@@ -279,6 +279,7 @@ function buildCharts(){
     lwc.syncing=false;
   });
   main.subscribeCrosshairMove(p=>{updateLegend(p?.logical);showTip(p)});
+  main.subscribeClick(p=>window.chaoweiPins?.onChartClick(p));
   vol.subscribeCrosshairMove(p=>{updateLegend(p?.logical);showTip(p&&p.point?{...p,point:{x:p.point.x,y:$('chart').clientHeight-10}}:p)});
   for(const k of OSC_KEYS)oscCharts[k].subscribeCrosshairMove(p=>updateLegend(p?.logical));
   return lwc;
@@ -316,6 +317,7 @@ drawChart=function(keepView=false){
   const old=keepView?main.timeScale().getVisibleLogicalRange():null;
   lwc.data=all;lwc.tech=tech;
   s.candle.setData(all.map(b=>({time:b.date,open:b.open,high:b.high,low:b.low,close:b.close})));
+  window.chaoweiPins?.render();
   s.volume.setData(all.map(b=>({time:b.date,value:b.volume/1000,color:(b.close>=b.open)!==(settings.colorScheme==='intl')?'rgba(229,72,77,.45)':'rgba(18,160,107,.45)'})));
   for(const k of ['ma5','ma20','ma60']){s[k].setData(seriesData(all,tech[k]));s[k].applyOptions({visible:!!ov[k]})}
   s.bollUp.setData(seriesData(all,tech.upper));s.bollLow.setData(seriesData(all,tech.lower));
@@ -525,9 +527,10 @@ window.chaoweiSetMember=signedIn=>{
   isMember=!!signedIn;document.body.classList.toggle('member',isMember);
   // Blurred content must not be reachable by keyboard or screen reader either.
   document.querySelectorAll('.member-only').forEach(card=>{for(const el of card.children)if(!el.classList.contains('member-lock'))el.inert=!isMember});
+  window.chaoweiResearchMemberChanged?.(isMember);
   applyMarkers();updateWeights();
 };
-document.querySelectorAll('[data-open-account]').forEach(b=>b.addEventListener('click',openAccount));
+document.addEventListener('click',e=>{if(e.target.closest('[data-open-account]'))openAccount()});
 window.chaoweiSetMember(false);
 /* ---------- Daily change next to the latest close, and on the chart's price label ---------- */
 function dayChange(){
@@ -576,7 +579,7 @@ function syncCrosshair(){
   });
 }
 const crossDrawChart=drawChart;
-drawChart=function(keepView){crossDrawChart(keepView);syncCrosshair();labelLastBar()};
+drawChart=function(keepView){crossDrawChart(keepView);syncCrosshair();labelLastBar();window.chaoweiWave?.render()};
 
 /* ---------- Favourites: up to ten saved condition sets for members, one click to apply ---------- */
 settings.favorites=Array.isArray(settings.favorites)?settings.favorites.filter(f=>f&&typeof f.name==='string'&&f.s&&typeof f.s==='object').slice(0,10):[];
