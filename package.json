@@ -17,6 +17,7 @@
     "test:store": "node scripts/test-store.mjs",
     "dividends:update": "node scripts/update-dividends.mjs",
     "chips:update": "node scripts/update-chips.mjs",
+    "margin:update": "node scripts/update-margin.mjs",
     "test:engine": "node scripts/test-engine.mjs",
     "test:wave": "node scripts/test-wave.mjs"
   }

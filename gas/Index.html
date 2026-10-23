@@ -217,6 +217,11 @@ body.novice .bt-steps{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 .toolbar>div:first-child{min-width:0;max-width:100%}
 /* Reveal animations start slightly scaled; never let them widen the page. clip (not hidden) keeps sticky bars working. */
 html,body{overflow-x:clip}
+/* Factor tiles open a trend chart. */
+.factor[data-trend]{cursor:pointer;transition:border-color .15s,box-shadow .15s}.factor[data-trend]:hover,.factor[data-trend]:focus-visible{border-color:#19a7aa}.factor[data-trend].active{border-color:#19a7aa;box-shadow:0 0 0 2px rgba(25,167,170,.25)}
+.factor-more{display:inline-block;margin-top:6px;font-size:12px;font-weight:800;color:#0e7490}.factor[data-trend].active .factor-more{color:var(--ink)}
+.factor-trend{margin-top:14px}.factor-trend-head{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}.factor-trend-head .segment{flex-wrap:wrap}
+.chip-band{font-size:10px;fill:var(--ink);opacity:.75}.weight-bar .w6{background:#8a5a9e}
 
 /* Scroll story redesign: editorial stage, data workspace, accessible motion. */
 :root{--story-ink:#10262a;--story-accent:#0aa6a4;--story-light:#f8faf8;--story-dark:#10242a;--story-radius:30px}
@@ -466,6 +471,7 @@ function installChaoweiApi(base,serverFallback){
     if(path==='/api/market')return market();
     if(path==='/api/intraday-profile')return file('data/history/intraday-volume.json');
     if(path==='/api/dividends')return file('data/history/dividends.json');
+    if(path==='/api/margin')return file('data/history/margin.json');
     if(path==='/api/chips'){
       const code=params.get('code');
       if(!/^[0-9A-Z]{4,6}$/.test(code||''))return{error:'代號格式錯誤'};
@@ -511,7 +517,7 @@ function installChaoweiIdentity(host){
   const base='https://www.gstatic.com/firebasejs/13.0.0/';
   let auth,db,user=null,api,plans=[],saveTimer=0,applying=false,ready=false;
   const profileRef=()=>api.doc(db,'users',user.uid);
-  const safeSettings=s=>({window:s.window,method:s.method,anchorMode:s.anchorMode,anchorCount:s.anchorCount,showLevels:s.showLevels!==false,font:s.font,dark:!!s.dark,weights:s.weights,volumeDirection:s.volumeDirection,watchlist:s.watchlist,overlays:s.overlays,osc:s.osc,oscs:s.oscs,ind:s.ind,chartType:s.chartType,colorScheme:s.colorScheme,tourDone:s.tourDone,uiMode:s.uiMode,marginWeight:s.marginWeight,marginDirection:s.marginDirection,chipRange:s.chipRange,fxDirection:s.fxDirection,paneHeights:s.paneHeights,volumeBasis:s.volumeBasis,bt:s.bt,favorites:s.favorites,preferredWindow:s.preferredWindow,wavePins:Array.isArray(s.wavePins)?s.wavePins.slice(-300):[],waveStudy:s.waveStudy&&typeof s.waveStudy==='object'?s.waveStudy:{}});
+  const safeSettings=s=>({window:s.window,method:s.method,anchorMode:s.anchorMode,anchorCount:s.anchorCount,showLevels:s.showLevels!==false,font:s.font,dark:!!s.dark,weights:s.weights,volumeDirection:s.volumeDirection,watchlist:s.watchlist,overlays:s.overlays,osc:s.osc,oscs:s.oscs,ind:s.ind,chartType:s.chartType,colorScheme:s.colorScheme,tourDone:s.tourDone,uiMode:s.uiMode,marginWeight:s.marginWeight,marginDirection:s.marginDirection,chipRange:s.chipRange,mktMarginWeight:s.mktMarginWeight,mktMarginDirection:s.mktMarginDirection,factorRange:s.factorRange,fxDirection:s.fxDirection,paneHeights:s.paneHeights,volumeBasis:s.volumeBasis,bt:s.bt,favorites:s.favorites,preferredWindow:s.preferredWindow,wavePins:Array.isArray(s.wavePins)?s.wavePins.slice(-300):[],waveStudy:s.waveStudy&&typeof s.waveStudy==='object'?s.waveStudy:{}});
   const getLocal=()=>{try{return safeSettings(JSON.parse(localStorage.getItem('chaowei-settings')||'{}'))}catch{return {}}};
   const showPlans=()=>{const list=$('planList');list.replaceChildren(new Option('選擇方案',''));plans.forEach((p,i)=>list.add(new Option(p.name,String(i))))};
   const write=async settings=>{if(!user||!db)return;try{await api.setDoc(profileRef(),{settings:safeSettings(settings),plans,updatedAt:api.serverTimestamp()},{merge:true});status(`已登入 ${user.email} · 設定已同步`)}catch(e){status(`已登入 ${user.email} · 雲端同步失敗：${e.code||e.message}`)}};
@@ -578,7 +584,7 @@ const fmt=(n,d=0)=>Number.isFinite(n)?Number(n).toLocaleString('zh-TW',{minimumF
 let catalog=[],selected='0050',type='all',bars=[],market=[],brent=[],fx=[],position=null,marketPosition=null,brentPosition=null,fxPosition=null,interval='D',showMA=false,shareView=false,brentSnapshot=false;
 let settings={window:'200',method:'equal',anchorMode:'wick',anchorCount:5,showLevels:true,font:'normal',dark:false,weights:[100,0,0,0,0],volumeDirection:'off'};
 try{Object.assign(settings,JSON.parse(localStorage.getItem('chaowei-settings')||'{}'))}catch{}
-try{const p=new URLSearchParams(location.search);if(p.has('preset')){const s=JSON.parse(atob(p.get('preset')));if(s&&Array.isArray(s.weights)&&s.weights.length<=5&&s.weights.every(x=>Number.isInteger(x)&&x>=0&&x<=100)&&['60','120','200','240','400','600','1200','2400','all'].includes(s.window)&&['equal','fib'].includes(s.method)&&['off','low','high'].includes(s.volumeDirection)&&/^[0-9A-Z]{4,6}$/.test(s.code)){settings.window=s.window;settings.method=s.method;settings.anchorMode=['wick','close','average'].includes(s.anchorMode)?s.anchorMode:'wick';settings.anchorCount=Math.max(1,Math.min(20,Math.round(Number(s.anchorCount)||5)));settings.showLevels=s.showLevels!==false;settings.weights=s.weights;settings.volumeDirection=s.volumeDirection;settings.marginWeight=Number.isInteger(s.marginWeight)?Math.max(0,Math.min(100,s.marginWeight)):0;settings.marginDirection=s.marginDirection==='high'?'high':'low';selected=s.code;shareView=true}}}catch{}
+try{const p=new URLSearchParams(location.search);if(p.has('preset')){const s=JSON.parse(atob(p.get('preset')));if(s&&Array.isArray(s.weights)&&s.weights.length<=5&&s.weights.every(x=>Number.isInteger(x)&&x>=0&&x<=100)&&['60','120','200','240','400','600','1200','2400','all'].includes(s.window)&&['equal','fib'].includes(s.method)&&['off','low','high'].includes(s.volumeDirection)&&/^[0-9A-Z]{4,6}$/.test(s.code)){settings.window=s.window;settings.method=s.method;settings.anchorMode=['wick','close','average'].includes(s.anchorMode)?s.anchorMode:'wick';settings.anchorCount=Math.max(1,Math.min(20,Math.round(Number(s.anchorCount)||5)));settings.showLevels=s.showLevels!==false;settings.weights=s.weights;settings.volumeDirection=s.volumeDirection;settings.marginWeight=Number.isInteger(s.marginWeight)?Math.max(0,Math.min(100,s.marginWeight)):0;settings.marginDirection=s.marginDirection==='high'?'high':'low';settings.mktMarginWeight=Number.isInteger(s.mktMarginWeight)?Math.max(0,Math.min(100,s.mktMarginWeight)):0;settings.mktMarginDirection=s.mktMarginDirection==='high'?'high':'low';selected=s.code;shareView=true}}}catch{}
 function save(){if(!shareView)try{localStorage.setItem('chaowei-settings',JSON.stringify(settings));window.chaoweiProfileChanged?.(settings)}catch{}}
 function notice(t){$('status').textContent=t;$('status').classList.remove('hidden')}
 function renderList(){const q=$('search').value.trim().toLowerCase();const list=catalog.filter(e=>(type==='all'||e.type===type)&&(!q||e.code.toLowerCase().includes(q)||e.name.toLowerCase().includes(q)));$('etfList').replaceChildren();for(const e of list){const b=document.createElement('button');b.type='button';b.className=e.code===selected?'selected':'';const strong=document.createElement('strong');strong.textContent=e.code+' · '+e.name;const small=document.createElement('small');small.textContent=(e.type==='active'?'主動型':'被動型')+' / '+e.note;b.append(strong,small);b.addEventListener('click',()=>{selected=e.code;renderList();loadBars()});$('etfList').append(b)}if(!list.length)$('etfList').textContent='沒有符合的首批標的'}
@@ -595,7 +601,7 @@ async function loadBars(){const code=selected;notice('正在讀取 '+code+' 的�
 async function loadMarket(){try{const res=await fetch('/api/market'),d=await res.json();if(!res.ok)throw Error(d.error||'大盤資料讀取失敗');market=d.days;computeMarket();updateWeights();if(d.missingMonths)notice('大盤資料有 '+d.missingMonths+' 個月份暫缺，量能評分請暫勿作判斷。')}catch(e){market=[];marketPosition=null;$('indexMeta').textContent='資料暫不可用：'+e.message;$('volumeMeta').textContent='資料暫不可用：'+e.message;updateWeights()}}
 async function loadBrent(){try{const res=await fetch('/api/brent'),d=await res.json();if(!res.ok)throw Error(d.error||'布蘭特資料讀取失敗');brent=d.days;brentSnapshot=!!d.snapshot;computeBrent();updateWeights()}catch(e){brent=[];brentPosition=null;$('brentScore').textContent='—';$('brentMeta').textContent='資料暫不可用：'+e.message;updateWeights()}}
 async function loadFx(){try{const res=await fetch('/api/fx'),d=await res.json();if(!res.ok)throw Error(d.error||'央行匯率讀取失敗');fx=d.days;computeFx();updateWeights()}catch(e){fx=[];fxPosition=null;$('fxScore').textContent='—';$('fxMeta').textContent='資料暫不可用：'+e.message;updateWeights()}}
-function share(){const data={code:selected,window:settings.window,method:settings.method,anchorMode:settings.anchorMode,anchorCount:settings.anchorCount,showLevels:settings.showLevels,weights:settings.weights,volumeDirection:settings.volumeDirection,marginWeight:settings.marginWeight||0,marginDirection:settings.marginDirection||'low'},url=new URL(location.pathname,location.origin);url.searchParams.set('preset',btoa(JSON.stringify(data)));navigator.clipboard.writeText(url.toString()).then(()=>{$('share').textContent='✓ 已複製';setTimeout(()=>$('share').textContent='複製方案連結',2500)},()=>prompt('複製這個檢視連結',url.toString()))}
+function share(){const data={code:selected,window:settings.window,method:settings.method,anchorMode:settings.anchorMode,anchorCount:settings.anchorCount,showLevels:settings.showLevels,weights:settings.weights,volumeDirection:settings.volumeDirection,marginWeight:settings.marginWeight||0,marginDirection:settings.marginDirection||'low',mktMarginWeight:settings.mktMarginWeight||0,mktMarginDirection:settings.mktMarginDirection||'low'},url=new URL(location.pathname,location.origin);url.searchParams.set('preset',btoa(JSON.stringify(data)));navigator.clipboard.writeText(url.toString()).then(()=>{$('share').textContent='✓ 已複製';setTimeout(()=>$('share').textContent='複製方案連結',2500)},()=>prompt('複製這個檢視連結',url.toString()))}
 function prefs(){document.body.classList.toggle('dark',!!settings.dark);document.body.classList.remove('large','xlarge');if(settings.font!=='normal')document.body.classList.add(settings.font);$('fontSize').value=settings.font;$('window').value=settings.window;$('method').value=settings.method;$('volumeDirection').value=settings.volumeDirection;if($('anchorMode'))updateAnchorControls();const w=[100,0,0,0,0].map((v,i)=>settings.weights?.[i]??v);['wEtf','wIndex','wVolume','wBrent','wFx'].forEach((k,i)=>$(k).value=w[i]);updateWeights()}
 $('search').addEventListener('input',()=>renderList());$('typeChips').addEventListener('click',e=>{const b=e.target.closest('button[data-type]');if(!b)return;type=b.dataset.type;$('typeChips').querySelectorAll('button').forEach(x=>x.classList.toggle('active',x===b));renderList()});$('window').addEventListener('change',function(){settings.window=this.value;computePosition();renderPosition();computeMarket();computeBrent();computeFx();updateWeights();save()});$('method').addEventListener('change',function(){settings.method=this.value;computePosition();renderPosition();computeMarket();computeBrent();computeFx();updateWeights();save()});$('intervalSeg').addEventListener('click',e=>{const b=e.target.closest('button[data-interval]');if(!b)return;interval=b.dataset.interval;$('intervalSeg').querySelectorAll('button').forEach(x=>x.classList.toggle('active',x===b));drawChart()});['wEtf','wIndex','wVolume','wBrent','wFx'].forEach(k=>$(k).addEventListener('input',updateWeights));$('volumeDirection').addEventListener('change',function(){settings.volumeDirection=this.value;updateWeights()});$('normalize').addEventListener('click',()=>{const available=[true,!!marketPosition,!!marketPosition&&settings.volumeDirection!=='off',!!brentPosition,!!fxPosition],count=available.filter(Boolean).length,v=[0,0,0,0,0];let left=100;available.forEach((yes,i)=>{if(yes){const chunk=Math.floor(100/count/5)*5;v[i]=chunk;left-=chunk}});v[0]+=left;['wEtf','wIndex','wVolume','wBrent','wFx'].forEach((k,i)=>$(k).value=v[i]);updateWeights()});$('share').addEventListener('click',share);$('fontSize').addEventListener('change',function(){settings.font=this.value;prefs();save()});['theme'].forEach(k=>$(k).addEventListener('click',()=>{settings.dark=!settings.dark;prefs();save()}));
 prefs();fetch('/api/etfs').then(r=>r.json()).then(d=>{catalog=d.etfs;if(!catalog.some(x=>x.code===selected))selected='0050';renderList();loadBars();loadMarket();loadBrent();loadFx()}).catch(e=>notice('ETF 名單無法取得：'+e.message));function refresh(){if(document.hidden)return;$('refreshClock').textContent=new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Taipei'});loadBars(true);loadMarket();loadBrent();loadFx()}setInterval(refresh,300000);$('refreshClock').textContent=new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Taipei'});if(shareView){$('share').textContent='檢視中的方案';$('share').disabled=true;$('normalize').disabled=true;['wEtf','wIndex','wVolume','wBrent','wFx','window','method','volumeDirection'].forEach(k=>$(k).disabled=true)}
@@ -1452,20 +1458,20 @@ function renderChip(){
 /* Small SVG trend chart drawn at the card's real pixel width, so labels stay legible on phones.
    kind 'stack': series stacked above/below zero plus an optional total line; kind 'area': one filled line
    plus an optional dashed comparison line on its own right-hand scale. Hover or tap shows that day. */
-function chipChart({title,unit,width,dates,kind,series,line,right,note}){
+function chipChart({title,unit,width,dates,kind,series,line,right,note,bands=[],format}){
   const NS='http://www.w3.org/2000/svg',wrap=document.createElement('div');wrap.className='chip-trend';
   const head=document.createElement('div');head.className='chip-trend-head';head.innerHTML=`<strong></strong><span></span>`;
   head.querySelector('strong').textContent=title;head.querySelector('span').textContent=`${dates[0]||'—'} 至 ${dates.at(-1)||'—'} · 單位：${unit}${note?' · '+note:''}`;wrap.append(head);
-  const all=series.flatMap(s=>s.data).filter(Number.isFinite);
+  const all=series.flatMap(s=>s.data).filter(Number.isFinite),valueText=format||(v=>fmt(v,0)+' 張');
   if(!all.length){const p=document.createElement('p');p.className='small';p.textContent='此期間尚無可用資料';wrap.append(p);return wrap}
   const W=width-34,H=width<480?170:200,L=width<480?46:58,R=right?(width<480?40:50):10,T=12,B=24,n=dates.length,step=(W-L-R)/Math.max(1,n);
   let lo,hi;
   if(kind==='stack'){lo=0;hi=0;dates.forEach((_,i)=>{let p=0,q=0;for(const s of series){const v=s.data[i];if(v>0)p+=v;else if(v<0)q+=v}hi=Math.max(hi,p,line?.data[i]??0);lo=Math.min(lo,q,line?.data[i]??0)})}
-  else{lo=Math.min(...all);hi=Math.max(...all);const pad=(hi-lo)*0.12||Math.abs(hi)*0.05||1;lo-=pad;hi+=pad}
+  else{const ref=[...all,...bands.map(b=>b.value)];lo=Math.min(...ref);hi=Math.max(...ref);const pad=(hi-lo)*0.12||Math.abs(hi)*0.05||1;lo-=pad;hi+=pad}
   const span=hi-lo||1,y=v=>T+(hi-v)/span*(H-T-B),x=i=>L+step*(i+0.5);
   const svg=document.createElementNS(NS,'svg');svg.setAttribute('viewBox',`0 0 ${W} ${H}`);svg.setAttribute('width',W);svg.setAttribute('height',H);svg.setAttribute('role','img');svg.setAttribute('aria-label',`${title}，${dates.length} 個交易日`);
   const el=(tag,attrs,parent=svg)=>{const e=document.createElementNS(NS,tag);for(const [k,v] of Object.entries(attrs))e.setAttribute(k,String(v));parent.append(e);return e};
-  const short=v=>Math.abs(v)>=10000?fmt(v/10000,1)+'萬':fmt(v,0);
+  const short=v=>Math.abs(v)>=10000?fmt(v/10000,1)+'萬':fmt(v,Math.abs(v)>=100?0:Math.abs(v)>=10?1:2);
   // Gridlines with labels: top, middle, bottom (and zero for stacked bars).
   const ticks=kind==='stack'?[hi,0,lo].filter((v,i,a)=>a.indexOf(v)===i):[hi,(hi+lo)/2,lo];
   // A label too close to one already drawn (zero next to a small maximum) is skipped; zero wins.
@@ -1478,19 +1484,21 @@ function chipChart({title,unit,width,dates,kind,series,line,right,note}){
   }else{
     const s=series[0],pts=s.data.map((v,i)=>Number.isFinite(v)?[x(i),y(v)]:null).filter(Boolean);
     if(pts.length>1){el('path',{d:`M${pts[0][0]},${H-B} `+pts.map(p=>`L${p[0]},${p[1]}`).join(' ')+` L${pts.at(-1)[0]},${H-B} Z`,fill:s.color,opacity:.14});el('polyline',{points:pts.map(p=>p.join(',')).join(' '),fill:'none',stroke:s.color,'stroke-width':2.4,'stroke-linejoin':'round'})}
+    // Reference lines (for example the observation window's high and low).
+    for(const b of bands){el('line',{x1:L,x2:W-R,y1:y(b.value),y2:y(b.value),stroke:s.color,'stroke-dasharray':'6 4',opacity:.7});const below=bands.length>1&&b.value===Math.min(...bands.map(x=>x.value)),t=el('text',{x:L+6,y:y(b.value)+(below?13:-5),class:'chip-axis chip-band'});t.textContent=b.label+' '+valueText(b.value)}
     if(right){const rv=right.data.filter(Number.isFinite);if(rv.length>1){const rl=Math.min(...rv),rh=Math.max(...rv),rs=rh-rl||1,ry=v=>T+(rh-v)/rs*(H-T-B);
       const rp=right.data.map((v,i)=>Number.isFinite(v)?`${x(i)},${ry(v)}`:null).filter(Boolean);el('polyline',{points:rp.join(' '),fill:'none',stroke:right.color,'stroke-width':1.6,'stroke-dasharray':'5 4'});
       for(const v of [rh,rl]){const t=el('text',{x:W-R+6,y:ry(v)+4,class:'chip-axis'});t.textContent=fmt(v,v>=100?0:1)}}}
   }
   // Date labels: first, middle, last.
-  for(const i of [...new Set([0,Math.floor((n-1)/2),n-1])]){const t=el('text',{x:x(i),y:H-6,'text-anchor':i===0?'start':i===n-1?'end':'middle',class:'chip-axis'});t.textContent=dates[i].slice(5)}
+  for(const i of [...new Set([0,Math.floor((n-1)/2),n-1])]){const t=el('text',{x:x(i),y:H-6,'text-anchor':i===0?'start':i===n-1?'end':'middle',class:'chip-axis'});t.textContent=n>260?dates[i].slice(0,7):dates[i].slice(5)}
   const guide=el('line',{x1:0,x2:0,y1:T,y2:H-B,stroke:'var(--muted)','stroke-width':1,opacity:0});
   wrap.append(svg);
   const legend=document.createElement('p');legend.className='chip-legend';
   legend.innerHTML=[...series.map(s=>`<span style="color:${s.color}">● ${s.name}</span>`),line?`<span>━ ${line.name}</span>`:'',right?`<span style="color:${right.color}">┅ ${right.name}（右軸）</span>`:''].join('');wrap.append(legend);
   const tip=document.createElement('p');tip.className='chip-tip';tip.setAttribute('aria-live','polite');wrap.append(tip);
   const signed=v=>Number.isFinite(v)?(v>0?'+':'')+fmt(v,0):'—';
-  const show=i=>{tip.textContent=`${dates[i]}　`+[...series.map(s=>`${s.name} ${kind==='stack'?signed(s.data[i]):Number.isFinite(s.data[i])?fmt(s.data[i],0):'—'} 張`),line?`${line.name} ${signed(line.data[i])} 張`:'',right&&Number.isFinite(right.data[i])?`${right.name} ${fmt(right.data[i],2)}`:''].filter(Boolean).join(' · ');guide.setAttribute('x1',x(i));guide.setAttribute('x2',x(i));guide.setAttribute('opacity',.45)};
+  const show=i=>{tip.textContent=`${dates[i]}　`+[...series.map(s=>`${s.name} ${kind==='stack'?signed(s.data[i]):Number.isFinite(s.data[i])?valueText(s.data[i]):'—'}${kind==='stack'?' 張':''}`),line?`${line.name} ${signed(line.data[i])} 張`:'',right&&Number.isFinite(right.data[i])?`${right.name} ${fmt(right.data[i],2)}`:''].filter(Boolean).join(' · ');guide.setAttribute('x1',x(i));guide.setAttribute('x2',x(i));guide.setAttribute('opacity',.45)};
   const pick=e=>{const r=svg.getBoundingClientRect(),px=(e.clientX-r.left)*W/r.width;show(Math.max(0,Math.min(n-1,Math.floor((px-L)/step))))};
   svg.addEventListener('pointermove',pick);svg.addEventListener('pointerdown',pick);svg.addEventListener('pointerleave',()=>{guide.setAttribute('opacity',0);show(n-1)});
   show(n-1);return wrap;
@@ -2585,18 +2593,114 @@ const chartCard=document.querySelector('.chart-card');let toTopFrame=0;
 const placeToTop=()=>{toTopFrame=0;toTop.classList.toggle('hidden',!chartCard||chartCard.getBoundingClientRect().bottom>0)};
 window.addEventListener('scroll',()=>{if(!toTopFrame)toTopFrame=requestAnimationFrame(placeToTop)},{passive:true});placeToTop();
 
-/* Optional margin-balance factor; absent data never becomes a zero score. */
-const marginRow=document.createElement('div');marginRow.className='weight';
-marginRow.innerHTML='<label for="wMargin">本檔融資餘額</label><input id="wMargin" type="range" min="0" max="100" step="1" value="0"><input class="w-num" type="number" min="0" max="100" step="1" data-for="wMargin" aria-label="融資權重數值"><output id="oMargin">0%</output>';
-$('weights').querySelector('.weights').append(marginRow);
+/* ---------- Market-wide margin balance (TWSE 信用交易統計) as a market factor ---------- */
+// Scored like the other factors: today's margin amount within the observation window. By default a lower
+// balance (less retail leverage) scores higher; the direction is the user's choice.
+let marginDays=[],mktMarginPosition=null;
+settings.mktMarginDirection=settings.mktMarginDirection==='high'?'high':'low';
+{
+  const tile=document.createElement('div');tile.className='factor';
+  tile.innerHTML='<span class="factor-icon">▤</span><h4>大盤融資餘額 · 證交所</h4><select id="mktMarginDirection" class="factor-dir" aria-label="大盤融資計分方向"><option value="low">融資越低分越高（預設）</option><option value="high">融資越高分越高</option></select><strong id="mktMarginScore">—</strong><p id="mktMarginMeta">讀取全市場融資餘額中</p>';
+  $('refreshClock').closest('.factor').before(tile);
+  $('mktMarginDirection').value=settings.mktMarginDirection;
+  $('mktMarginDirection').addEventListener('click',e=>e.stopPropagation());
+  $('mktMarginDirection').addEventListener('change',function(){settings.mktMarginDirection=this.value;save();computeMktMargin();updateWeights()});
+}
+function computeMktMargin(){
+  const usable=bars.length?marginDays.filter(x=>x.date<=bars.at(-1).date):marginDays,n=settings.window==='all'?usable.length-1:Number(settings.window);
+  const prior=usable.slice(Math.max(0,usable.length-1-n),-1),last=usable.at(-1);
+  if(!last||prior.length<20||settings.window!=='all'&&prior.length<n){mktMarginPosition=null;$('mktMarginScore').textContent='—';$('mktMarginMeta').textContent=last?'觀察窗資料不足':'全市場融資資料暫不可用';return}
+  const age=bars.length?(Date.parse(bars.at(-1).date)-Date.parse(last.date))/86400000:0;
+  if(age>10){mktMarginPosition=null;$('mktMarginScore').textContent='逾期';$('mktMarginMeta').textContent=last.date+' 之後沒有新資料，暫停計分';return}
+  const range=scalarRange(prior.map(x=>x.value));if(!range){mktMarginPosition=null;return}
+  const r=(last.value-range.low)/(range.high-range.low),s=scoreFor(settings.mktMarginDirection==='low'?r:1-r,settings.method),prev=usable.at(-2);
+  mktMarginPosition={...s,last,r};
+  $('mktMarginScore').textContent=fmt(s.core,1)+' / 5';
+  $('mktMarginMeta').textContent=`${fmt(last.value,1)} 億元 · ${last.date.slice(5)}`+(prev?` · 較前日 ${last.value>=prev.value?'+':''}${fmt(last.value-prev.value,1)} 億`:'');
+}
+async function loadMktMargin(){
+  try{const r=await fetch('/api/margin'),d=await r.json();if(!r.ok||!Array.isArray(d.rows))throw Error(d.error||'讀取失敗');
+    // Margin amount is reported in thousand TWD; 1 億 = 100,000 thousand.
+    const rows=d.rows.filter(x=>Number.isFinite(x[3])).map(x=>({date:x[0],value:x[3]/1e5,lots:x[1],short:x[2]}));
+    // History is filled newest first; use only the unbroken recent stretch (no gap over 14 calendar days).
+    let from=0;for(let i=rows.length-1;i>0;i--)if(Date.parse(rows[i].date)-Date.parse(rows[i-1].date)>14*86400000){from=i;break}
+    marginDays=rows.slice(from);}
+  catch(e){marginDays=[];$('mktMarginMeta').textContent='資料暫不可用：'+e.message}
+  computeMktMargin();updateWeights();if(factorTrendKey==='margin')renderFactorTrend();
+}
+const mmComputeMarket=computeMarket;computeMarket=function(){mmComputeMarket();computeMktMargin()};
+
+/* ---------- Tap a factor tile: its trend as a line chart ---------- */
+// The observation window's high and low are drawn as dashed lines, so the score above can be read off the chart.
+const FACTOR_TRENDS={
+  index:{title:'台灣加權指數',unit:'點',color:'#0e7490',data:()=>market.map(x=>[x.date,x.index]),fmt:v=>fmt(v,0)+' 點'},
+  volume:{title:'大盤成交股數',unit:'億股',color:'#6aa9b8',data:()=>market.map(x=>[x.date,x.volume/1e8]),fmt:v=>fmt(v,1)+' 億股'},
+  brent:{title:'布蘭特原油（EIA 現貨）',unit:'美元／桶',color:'#c98a2b',data:()=>brent.map(x=>[x.date,x.value]),fmt:v=>fmt(v,2)+' 美元'},
+  fx:{title:'美元／新台幣（央行收盤）',unit:'新台幣',color:'#7c6bb0',data:()=>fx.map(x=>[x.date,x.value]),fmt:v=>fmt(v,3)},
+  margin:{title:'大盤融資餘額',unit:'億元',color:'#b4566e',data:()=>marginDays.map(x=>[x.date,x.value]),fmt:v=>fmt(v,1)+' 億元'}
+};
+const FACTOR_RANGES=[['3m','3 個月',3],['6m','6 個月',6],['1y','1 年',12],['3y','3 年',36],['5y','5 年',60],['all','全部',0]];
+let factorTrendKey=null;
+const trendPanel=document.createElement('div');trendPanel.className='factor-trend hidden';trendPanel.id='factorTrend';trendPanel.setAttribute('aria-live','polite');
+$('market').querySelector('.factor-rail-nav').after(trendPanel);
+const tileFor={index:'indexScore',volume:'volumeScore',brent:'brentScore',fx:'fxScore',margin:'mktMarginScore'};
+for(const [key,id] of Object.entries(tileFor)){
+  const tile=$(id).closest('.factor');tile.dataset.trend=key;tile.tabIndex=0;tile.setAttribute('role','button');tile.setAttribute('aria-expanded','false');
+  tile.setAttribute('aria-label',FACTOR_TRENDS[key].title+'：查看趨勢圖');
+  const hint=document.createElement('span');hint.className='factor-more';hint.textContent='看趨勢 ›';tile.append(hint);
+}
+function openFactorTrend(key){
+  factorTrendKey=factorTrendKey===key?null:key;
+  $('market').querySelectorAll('[data-trend]').forEach(t=>{const on=t.dataset.trend===factorTrendKey;t.classList.toggle('active',on);t.setAttribute('aria-expanded',String(on))});
+  trendPanel.classList.toggle('hidden',!factorTrendKey);if(factorTrendKey)renderFactorTrend();
+}
+$('factorRail').addEventListener('click',e=>{if(e.target.closest('select'))return;const t=e.target.closest('[data-trend]');if(t)openFactorTrend(t.dataset.trend)});
+$('factorRail').addEventListener('keydown',e=>{const t=e.target.closest('[data-trend]');if(t&&(e.key==='Enter'||e.key===' ')&&e.target===t){e.preventDefault();openFactorTrend(t.dataset.trend)}});
+function renderFactorTrend(){
+  const key=factorTrendKey;if(!key)return;const def=FACTOR_TRENDS[key],range=FACTOR_RANGES.some(r=>r[0]===settings.factorRange)?settings.factorRange:'1y';
+  const all=def.data().filter(x=>Number.isFinite(x[1]));trendPanel.replaceChildren();
+  const head=document.createElement('div');head.className='factor-trend-head';
+  head.innerHTML=`<div class="segment" role="group" aria-label="趨勢期間">${FACTOR_RANGES.map(([id,label])=>`<button type="button" data-frange="${id}" class="${id===range?'active':''}" aria-pressed="${id===range}">${label}</button>`).join('')}</div><button class="pill mini" type="button" data-fclose>收合</button>`;
+  head.addEventListener('click',e=>{const b=e.target.closest('[data-frange]');if(b){settings.factorRange=b.dataset.frange;save();renderFactorTrend()}if(e.target.closest('[data-fclose]'))openFactorTrend(key)});
+  trendPanel.append(head);
+  if(all.length<2){const p=document.createElement('p');p.className='small';p.textContent='資料讀取中或暫不可用。';trendPanel.append(p);return}
+  const months=FACTOR_RANGES.find(r=>r[0]===range)[2];let rows=all;
+  if(months){const d=new Date(all.at(-1)[0]+'T00:00:00Z');d.setUTCMonth(d.getUTCMonth()-months);const from=d.toISOString().slice(0,10);rows=all.filter(x=>x[0]>=from)}
+  // Observation-window high/low used by the score (bars before the last one, same as the tile).
+  const n=settings.window==='all'?all.length-1:Number(settings.window),win=all.slice(Math.max(0,all.length-1-n),-1).map(x=>x[1]);
+  const bands=win.length>=20?[{value:Math.max(...win),label:'觀察窗高點'},{value:Math.min(...win),label:'觀察窗低點'}]:[];
+  const first=rows[0][1],last=rows.at(-1)[1];
+  trendPanel.append(chipChart({title:def.title,unit:def.unit,width:Math.max(280,Math.round(trendPanel.clientWidth||600)),dates:rows.map(x=>x[0]),kind:'area',
+    series:[{name:def.title,color:def.color,data:rows.map(x=>x[1])}],bands,format:def.fmt,
+    note:`區間 ${last>=first?'+':''}${fmt((last/first-1)*100,1)}%`}));
+}
+let factorWidth=0;window.addEventListener('resize',()=>{const w=trendPanel.clientWidth;if(factorTrendKey&&Math.abs(w-factorWidth)>40){factorWidth=w;clearTimeout(window.__factorResize);window.__factorResize=setTimeout(renderFactorTrend,150)}});
+// Keep an open chart current when the window, Brent or FX data change.
+const ftApplyLive=applyLive;applyLive=function(){ftApplyLive();if(factorTrendKey)renderFactorTrend()};
+$('window').addEventListener('change',()=>setTimeout(()=>{if(factorTrendKey)renderFactorTrend()},0));
+loadMktMargin();
+
+/* Optional margin factors next to the five base weights: this ETF's margin balance and the market-wide balance.
+   Absent data never becomes a zero score; a factor with weight but no data pauses the combined score. */
+const EXTRA_FACTORS=[
+  {id:'wMargin',setting:'marginWeight',label:'本檔融資餘額',name:'本檔融資',score:()=>marginScore()},
+  {id:'wMktMargin',setting:'mktMarginWeight',label:'大盤融資餘額',name:'大盤融資',score:()=>mktMarginPosition?.core??null}
+];
+for(const f of EXTRA_FACTORS){
+  const row=document.createElement('div');row.className='weight';
+  row.innerHTML=`<label for="${f.id}">${f.label}</label><input id="${f.id}" type="range" min="0" max="100" step="1" value="0"><input class="w-num" type="number" min="0" max="100" step="1" data-for="${f.id}" aria-label="${f.label}權重數值"><output id="o${f.id.slice(1)}">0%</output>`;
+  $('weights').querySelector('.weights').append(row);f.row=row;
+  settings[f.setting]=Math.max(0,Math.min(100,Number(settings[f.setting])||0));
+  $(f.id).value=settings[f.setting];$(f.id).disabled=shareView;row.querySelector('.w-num').value=$(f.id).value;
+  $(f.id).addEventListener('input',()=>{row.querySelector('.w-num').value=$(f.id).value;updateWeights()});
+  row.querySelector('.w-num').addEventListener('input',e=>{$(f.id).value=Math.max(0,Math.min(100,Number(e.target.value)||0));updateWeights()});
+}
 const marginControls=document.createElement('div');marginControls.className='controls';
-marginControls.innerHTML='<label>融資解讀<select id="marginDirection"><option value="low">融資越低分越高</option><option value="high">融資越高分越高</option></select></label><span class="small">看今日融資餘額落在近 60 個交易日的高低位置；資料不足 20 天時停算。</span>';
+marginControls.innerHTML='<label>本檔融資解讀<select id="marginDirection"><option value="low">融資越低分越高</option><option value="high">融資越高分越高</option></select></label><span class="small">本檔：今日融資餘額在近 60 個交易日的位置，資料不足 20 天停算。大盤：與上方「大盤融資餘額」卡同一分數，方向在該卡設定。</span>';
 $('weights').querySelector('.weights').after(marginControls);
 const bankHint=document.createElement('p');bankHint.className='small';bankHint.textContent='八大官股：尚無授權逐檔資料，暫不開放加權。';marginControls.after(bankHint);
-settings.marginWeight=Math.max(0,Math.min(100,Number(settings.marginWeight)||0));
 settings.marginDirection=settings.marginDirection==='high'?'high':'low';
-$('wMargin').value=settings.marginWeight;$('marginDirection').value=settings.marginDirection;
-$('wMargin').disabled=shareView;$('marginDirection').disabled=shareView;
+$('marginDirection').value=settings.marginDirection;$('marginDirection').disabled=shareView;
 function marginScore(){
   if(chipCode!==selected)return null;
   const through=$('chipDate').value||chipRows.at(-1)?.[0];
@@ -2609,29 +2713,32 @@ function marginScore(){
 const fiveFactorWeights=updateWeights;
 updateWeights=function(){
   fiveFactorWeights();
-  const five=settings.weights||[],extra=Number($('wMargin').value)||0,sum=five.reduce((a,b)=>a+Number(b||0),0)+extra;
-  settings.marginWeight=extra;settings.marginDirection=$('marginDirection').value;
-  ['oEtf','oIndex','oVolume','oBrent','oFx'].forEach((id,i)=>$(id).textContent=sum?Math.round((Number(five[i])||0)/sum*100)+'%':'0%');
-  $('oMargin').textContent=sum?Math.round(extra/sum*100)+'%':'0%';
-  const names=['本檔 ETF','大盤價格','大盤量能','布蘭特原油','美元／新台幣','融資餘額'];
-  $('weightBar').innerHTML=[...five,extra].map((w,i)=>w>0&&sum>0?`<span class="w${i}" style="width:${(w/sum*100).toFixed(2)}%" title="${names[i]} ${Math.round(w/sum*100)}%">${w/sum>=0.12?names[i]+' '+Math.round(w/sum*100)+'%':''}</span>`:'').join('');
+  const five=(settings.weights||[]).map(x=>Number(x)||0),extra=EXTRA_FACTORS.map(f=>Number($(f.id).value)||0),weights=[...five,...extra],sum=weights.reduce((a,b)=>a+b,0);
+  EXTRA_FACTORS.forEach((f,i)=>settings[f.setting]=extra[i]);settings.marginDirection=$('marginDirection').value;
+  const outs=['oEtf','oIndex','oVolume','oBrent','oFx',...EXTRA_FACTORS.map(f=>'o'+f.id.slice(1))];
+  outs.forEach((id,i)=>$(id).textContent=sum?Math.round(weights[i]/sum*100)+'%':'0%');
+  const names=['本檔 ETF','大盤價格','大盤量能','布蘭特原油','美元／新台幣',...EXTRA_FACTORS.map(f=>f.name)];
+  $('weightBar').innerHTML=weights.map((w,i)=>w>0&&sum>0?`<span class="w${i}" style="width:${(w/sum*100).toFixed(2)}%" title="${names[i]} ${Math.round(w/sum*100)}%">${w/sum>=0.12?names[i]+' '+Math.round(w/sum*100)+'%':''}</span>`:'').join('');
   $('weightStatus').textContent=sum===100?'權重合計 100%':sum>0?`權重合計 ${sum}%，依比例換算成 100%`:'請至少設定一項權重';
   const base=[position?.core,marketPosition?.index?.core,marketPosition?.volumeGrade==null||settings.volumeDirection==='off'?null:settings.volumeDirection==='low'?5-marketPosition.volumeScore:marketPosition.volumeScore,brentPosition?.core,fxPosition?.core];
-  const chip=marginScore(),scores=[...base,chip],weights=[...five,extra];
-  if(sum<=0||weights.some((w,i)=>w>0&&!Number.isFinite(scores[i]))){$('combined').textContent='—';$('combinedExtra').textContent=extra&&chip==null?'融資可用資料不足，暫停綜合分':'選取的因子資料不足';$('weightPreview').textContent='';return}
+  const scores=[...base,...EXTRA_FACTORS.map(f=>f.score())];
+  const missing=weights.findIndex((w,i)=>w>0&&!Number.isFinite(scores[i]));
+  if(sum<=0||missing>=0||!position){$('combined').textContent='—';$('combinedExtra').textContent=sum<=0?'請至少設定一項權重':missing>=5?`${names[missing]}可用資料不足，暫停綜合分`:'選取的因子資料不足';$('weightPreview').textContent='';save();return}
   const value=weights.reduce((n,w,i)=>n+w*scores[i],0)/sum;
-  $('combined').textContent=fmt(value,1)+' / 5';$('combinedExtra').textContent=extra?`融資水位 ${fmt(chip,1)} 分 · ${settings.marginDirection==='low'?'融資越低分越高':'融資越高分越高'}`:'延伸綜合分請參照各項位置';
+  $('combined').textContent=fmt(value,1)+' / 5';
+  $('combinedExtra').textContent=EXTRA_FACTORS.filter((f,i)=>extra[i]>0).map(f=>`${f.name} ${fmt(f.score(),1)} 分`).join(' · ')||'延伸綜合分請參照各項位置';
   const d=value-position.core;
   $('weightPreview').innerHTML=`只看 ${selected}：<b>${fmt(position.core,1)}</b> 分 → 依你的權重：<b>${fmt(value,1)}</b> 分`+(Math.abs(d)>=0.05?`（${d>0?'偏向加碼':'偏向減碼'} ${fmt(Math.abs(d),1)} 分）`:'');
   save();
 };
-$('wMargin').addEventListener('input',()=>{marginRow.querySelector('.w-num').value=$('wMargin').value;updateWeights()});
-marginRow.querySelector('.w-num').addEventListener('input',e=>{$('wMargin').value=Math.max(0,Math.min(100,Number(e.target.value)||0));updateWeights()});
 $('marginDirection').addEventListener('change',updateWeights);
-marginRow.querySelector('.w-num').value=$('wMargin').value;
-// Settings from the signed-in account arrive later; move the margin controls with them.
+// Settings from the signed-in account arrive later; move the extra controls with them.
 const marginApplyProfile=window.chaoweiApplyProfile;
-window.chaoweiApplyProfile=profile=>{marginApplyProfile(profile);$('wMargin').value=Math.max(0,Math.min(100,Number(settings.marginWeight)||0));$('marginDirection').value=settings.marginDirection==='high'?'high':'low';marginRow.querySelector('.w-num').value=$('wMargin').value;updateWeights()};
+window.chaoweiApplyProfile=profile=>{marginApplyProfile(profile);
+  for(const f of EXTRA_FACTORS){$(f.id).value=Math.max(0,Math.min(100,Number(settings[f.setting])||0));f.row.querySelector('.w-num').value=$(f.id).value}
+  $('marginDirection').value=settings.marginDirection==='high'?'high':'low';
+  if($('mktMarginDirection')){$('mktMarginDirection').value=settings.mktMarginDirection==='high'?'high':'low';computeMktMargin()}
+  updateWeights()};
 updateWeights();
 
 /* Navigation and motion only. Market data and scoring remain in their own modules. */

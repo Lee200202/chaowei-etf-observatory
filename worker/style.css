@@ -209,3 +209,8 @@ body.novice .bt-steps{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 .toolbar>div:first-child{min-width:0;max-width:100%}
 /* Reveal animations start slightly scaled; never let them widen the page. clip (not hidden) keeps sticky bars working. */
 html,body{overflow-x:clip}
+/* Factor tiles open a trend chart. */
+.factor[data-trend]{cursor:pointer;transition:border-color .15s,box-shadow .15s}.factor[data-trend]:hover,.factor[data-trend]:focus-visible{border-color:#19a7aa}.factor[data-trend].active{border-color:#19a7aa;box-shadow:0 0 0 2px rgba(25,167,170,.25)}
+.factor-more{display:inline-block;margin-top:6px;font-size:12px;font-weight:800;color:#0e7490}.factor[data-trend].active .factor-more{color:var(--ink)}
+.factor-trend{margin-top:14px}.factor-trend-head{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}.factor-trend-head .segment{flex-wrap:wrap}
+.chip-band{font-size:10px;fill:var(--ink);opacity:.75}.weight-bar .w6{background:#8a5a9e}

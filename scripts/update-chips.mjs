@@ -1,5 +1,5 @@
 // Daily TWSE institutional trading and foreign/PRC ownership for listed ETFs.
-// Run --days 30 for initial backfill; scheduled updates refresh the latest 6 sessions.
+// Append-only: days already saved are kept and never re-fetched. --days N looks back N trading days for missing ones.
 import {mkdir,readFile,writeFile} from 'node:fs/promises';
 
 const root=new URL('../',import.meta.url);
@@ -10,7 +10,10 @@ const gap=Math.max(1000,Number(flag('--gap')||1500));
 const catalog=await read('worker/etf-catalog.json');
 const codes=new Set(catalog.etfs.map(x=>x.code));
 const market=await read('pages-data/history/market.json');
-const dates=market.rows.slice(-days).map(x=>x[0]);
+// Saved days are never fetched again: only trading days in the window that 0050's file (listed every day) lacks.
+let saved=new Set();try{saved=new Set((await read('pages-data/chips/0050.json')).rows.map(r=>r[0]))}catch{}
+const dates=market.rows.slice(-days).map(x=>x[0]).filter(d=>!saved.has(d));
+if(!dates.length){console.log('Chip snapshots already include the latest trading days; nothing to fetch.');process.exit(0)}
 const output=new URL('pages-data/chips/',root);
 await mkdir(output,{recursive:true});
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));

@@ -1,7 +1,7 @@
 // 潮位 ETF 觀測所：Apps Script 入口。
 // 網頁在瀏覽器直接讀 GitHub Pages 的每日快照（一檔 ETF 一個檔案）；瀏覽器讀不到時才由這裡代讀。
 const PAGES_BASE='__PAGES_BASE__';
-const ALLOWED=/^(etf-catalog\.json|data\/(brent|fx)\.json|data\/history\/(market|intraday-volume|dividends|radar|[0-9A-Z]{4,6})\.json|data\/chips\/[0-9A-Z]{4,6}\.json)$/;
+const ALLOWED=/^(etf-catalog\.json|data\/(brent|fx)\.json|data\/history\/(market|margin|intraday-volume|dividends|radar|[0-9A-Z]{4,6})\.json|data\/chips\/[0-9A-Z]{4,6}\.json)$/;
 
 function doGet(e){
   if(e&&e.parameter&&e.parameter.api==='quote'){
