@@ -22,6 +22,7 @@
     "test:engine": "node scripts/test-engine.mjs",
     "test:wave": "node scripts/test-wave.mjs",
     "source:finmind:check": "node scripts/validate-finmind.mjs",
-    "test:bank": "node scripts/test-bank-history.mjs"
+    "test:bank": "node scripts/test-bank-history.mjs",
+    "test:finmind": "node scripts/test-finmind-check.mjs"
   }
 }
