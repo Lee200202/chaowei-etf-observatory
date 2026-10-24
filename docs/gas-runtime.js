@@ -2858,7 +2858,7 @@ const ChartMeasurement=(()=>{
     if(source==='ohlc')source=['open','high','low','close'].reduce((a,b)=>Math.abs(bar[a]-raw)<=Math.abs(bar[b]-raw)?a:b);
     const price=source==='free'?Math.round(raw*1e6)/1e6:bar[source];return price>0?{date:bar.date,price,source}:null;
   }
-  function mode(on){active=!!on&&isMember&&!shareView;surface.classList.toggle('hidden',!active);$('measureToggle').setAttribute('aria-pressed',String(active));$('measureToggle').textContent=active?'✕ 取消繪圖':'📐 在圖上量測';$('measureHint').textContent=active?'拖曳兩端，或依序點選。Esc 取消；繪圖時暫停圖表平移。':'開啟後拖出區間；也可依序點選起點、終點。';if(active&&pinMode){pinMode=false;pinModeButton.setAttribute('aria-pressed','false')}}
+  function mode(on){active=!!on&&isMember&&!shareView;surface.classList.toggle('hidden',!active);$('measureToggle').setAttribute('aria-pressed',String(active));$('measureToggle').textContent=active?'✕ 取消繪圖':'📐 在圖上量測';$('measureHint').textContent=active?'拖曳兩端，或依序點選。Esc 取消；繪圖時暫停圖表平移。':'開啟後拖出區間；也可依序點選起點、終點。';if(active){chart.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'});if(pinMode){pinMode=false;pinModeButton.setAttribute('aria-pressed','false')}}}
   function provisional(d){return [d.a,d.b].some(p=>liveQuote?.available&&p.date===liveQuote.date&&liveQuote.date>(bars.at(-1)?.date||''))}
   function fields(){if(!draft?.b)return;$('measureFrom').value=draft.a.date;$('measureTo').value=draft.b.date;$('measurePriceA').value=draft.a.price;$('measurePriceB').value=draft.b.price}
   function reading(){

@@ -358,7 +358,7 @@ body:not(.member) .wave-pin-panel.member-only{max-height:220px;min-height:180px}
 .factor-grid.is-grid .factor{width:auto;min-width:0;max-width:none;flex-basis:auto;min-height:200px}
 .factor-card:has(.is-grid) .factor-progress{display:none}.grid-progress-hidden{display:none}
 .wave-bridge,.resonance-panel{border:1px solid var(--line);background:var(--mist);border-radius:24px;padding:16px;margin:18px 0}.wave-bridge button{margin-top:6px}.resonance-panel h4{margin:0 0 12px}.wave-origin{border-left:3px solid #26a5a4;padding-left:12px}
-#chartCard,#measurePanel,#market,#waveStudy,#holderCard,#chipCard,#backtestCard,#weights,#method-story{scroll-margin-top:var(--anchor-clearance,200px)}
+#chartCard,#chart,#measurePanel,#market,#waveStudy,#holderCard,#chipCard,#backtestCard,#weights,#method-story{scroll-margin-top:var(--anchor-clearance,200px)}
 #explore{scroll-margin-top:var(--header-clearance,84px)}
 .to-top{width:44px;height:44px;padding:0!important;font-size:22px!important;bottom:max(14px,env(safe-area-inset-bottom))}
 @media(max-width:600px){.direction-presets .segment{border-radius:24px}.market-view-tools{gap:7px}.market-view-tools .segment button{padding:7px 10px}.resonance-panel .controls label{flex:1;min-width:125px}}
@@ -3296,7 +3296,7 @@ const ChartMeasurement=(()=>{
     if(source==='ohlc')source=['open','high','low','close'].reduce((a,b)=>Math.abs(bar[a]-raw)<=Math.abs(bar[b]-raw)?a:b);
     const price=source==='free'?Math.round(raw*1e6)/1e6:bar[source];return price>0?{date:bar.date,price,source}:null;
   }
-  function mode(on){active=!!on&&isMember&&!shareView;surface.classList.toggle('hidden',!active);$('measureToggle').setAttribute('aria-pressed',String(active));$('measureToggle').textContent=active?'✕ 取消繪圖':'📐 在圖上量測';$('measureHint').textContent=active?'拖曳兩端，或依序點選。Esc 取消；繪圖時暫停圖表平移。':'開啟後拖出區間；也可依序點選起點、終點。';if(active&&pinMode){pinMode=false;pinModeButton.setAttribute('aria-pressed','false')}}
+  function mode(on){active=!!on&&isMember&&!shareView;surface.classList.toggle('hidden',!active);$('measureToggle').setAttribute('aria-pressed',String(active));$('measureToggle').textContent=active?'✕ 取消繪圖':'📐 在圖上量測';$('measureHint').textContent=active?'拖曳兩端，或依序點選。Esc 取消；繪圖時暫停圖表平移。':'開啟後拖出區間；也可依序點選起點、終點。';if(active){chart.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'});if(pinMode){pinMode=false;pinModeButton.setAttribute('aria-pressed','false')}}}
   function provisional(d){return [d.a,d.b].some(p=>liveQuote?.available&&p.date===liveQuote.date&&liveQuote.date>(bars.at(-1)?.date||''))}
   function fields(){if(!draft?.b)return;$('measureFrom').value=draft.a.date;$('measureTo').value=draft.b.date;$('measurePriceA').value=draft.a.price;$('measurePriceB').value=draft.b.price}
   function reading(){
