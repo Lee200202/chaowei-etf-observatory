@@ -4,6 +4,7 @@ import vm from 'node:vm';
 
 const source=await readFile(new URL('../gas/Code.gs',import.meta.url),'utf8');
 const html=await readFile(new URL('../gas/Index.html',import.meta.url),'utf8');
+const runtime=await readFile(new URL('../docs/gas-runtime.js',import.meta.url),'utf8');
 const cache=new Map(),fetched=[],props=new Map([['FUGLE_API_KEY','test-only-secret']]);
 const box={
   JSON,String,Number,Date,
@@ -23,7 +24,9 @@ box.readSnapshot('data/history/009816.json');assert.equal(fetched.length,1,'seco
 assert.equal(box.readSnapshot('../secret').error,'不支援的資料路徑');
 assert.equal(box.readSnapshot('https://evil.example/x.json').error,'不支援的資料路徑');
 assert.match(box.doGet().title,/潮位 ETF 觀測所/);
-assert.ok(html.includes("installChaoweiApi('https://lee200202.github.io/chaowei-etf-observatory/'"));
+assert.ok(runtime.includes("installChaoweiApi('https://lee200202.github.io/chaowei-etf-observatory/'"));
+assert.match(html,/gas-runtime\.js\?v=[a-f0-9]{16}/);
+new vm.Script(runtime);
 assert.ok(html.includes('lightweight-charts@4.1.3'));
 assert.doesNotMatch(html,/`https:\/\//,'HtmlService truncates URL template literals at //');
 for(const match of html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g))new vm.Script(match[1]);

@@ -1,4 +1,5 @@
 import {mkdir,readFile,writeFile} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
 const root=new URL('../',import.meta.url),read=p=>readFile(new URL(p,root),'utf8');
 const PAGES_BASE='https://lee200202.github.io/chaowei-etf-observatory/';
 const [page,css,client,enhancements,dataLayer,quoteLayer,identityLayer,liveLayer,backend]=await Promise.all([
@@ -8,7 +9,13 @@ const [page,css,client,enhancements,dataLayer,quoteLayer,identityLayer,liveLayer
 // The page reads the Pages snapshots directly (CORS is open); google.script.run is only the fallback.
 const fallback=`path=>new Promise((resolve,reject)=>google.script.run.withSuccessHandler(d=>d&&d.error?reject(Error(d.error)):resolve(d)).withFailureHandler(reject).readSnapshot(path))`;
 const shim=`${dataLayer}\n${quoteLayer}\n${identityLayer}\n${liveLayer}\nwindow.CHAOWEI_STATIC=true;window.CHAOWEI_HOST='apps-script';installChaoweiApi('${PAGES_BASE}',${fallback});installChaoweiQuote('');installChaoweiIdentity('apps-script');installChaoweiLive('');\n`;
-const html=page.replace('__CSS__',()=>css).replace('__JS__',()=>shim+client.replace('__ENHANCEMENTS__',()=>enhancements));
+// HtmlService's inline-JS sanitizer can truncate URL strings after modern template literals.
+// Serve the same committed runtime over HTTPS; the content hash prevents stale cross-deployment caches.
+const runtime=shim+client.replace('__ENHANCEMENTS__',()=>enhancements),hash=createHash('sha256').update(runtime).digest('hex').slice(0,16);
+await mkdir(new URL('docs/',root),{recursive:true});
+await writeFile(new URL('docs/gas-runtime.js',root),runtime);
+const html=page.replace('__CSS__',()=>css).replace('<script>__JS__</script>',()=>'<script src="'+PAGES_BASE+'gas-runtime.js?v='+hash+'"></script>');
+if(html.includes('__JS__'))throw Error('Apps Script runtime placeholder not replaced');
 await mkdir(new URL('gas/',root),{recursive:true});
 await writeFile(new URL('gas/Index.html',root),html);
 await writeFile(new URL('gas/Code.gs',root),backend.replace('__PAGES_BASE__',PAGES_BASE));
