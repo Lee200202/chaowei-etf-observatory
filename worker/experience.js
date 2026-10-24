@@ -38,7 +38,7 @@
     nav.querySelector('div').append(button);
     const caption=nav.querySelector('span');
     const syncButton=()=>{
-      button.textContent=paused?'▶':'Ⅱ';
+      button.textContent=paused?'播放':'暫停';
       button.setAttribute('aria-label',(paused?'播放':'暫停')+label+'輪播');
       button.setAttribute('aria-pressed',String(paused));
       button.classList.toggle('hidden',reduced.matches);
@@ -107,7 +107,7 @@
     const paused=document.body.classList.toggle('motion-paused');
     toggle.setAttribute('aria-pressed',String(paused));
     toggle.setAttribute('aria-label',paused?'播放頁面動畫':'暫停頁面動畫');
-    toggle.innerHTML=paused?'▷ <span>播放動態</span>':'Ⅱ <span>暫停動態</span>';
+    toggle.innerHTML=paused?' <span>播放動態</span>':' <span>暫停動態</span>';
     if(paused)document.querySelectorAll('.reveal').forEach(el=>el.classList.add('is-visible'));
   });
   toggle.setAttribute('aria-label','暫停頁面動畫');

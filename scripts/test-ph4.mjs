@@ -1,0 +1,31 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+const read=p=>fs.readFileSync(new URL('../'+p,import.meta.url),'utf8');
+const engineSource=read('worker/strategy-engine.js'),E=new Function(engineSource+';return ChaoweiEngine')();
+const rows=JSON.parse(read('pages-data/history/0050.json')).rows,bars=rows.map(([date,open,high,low,close,volume])=>({date,open,high,low,close,volume}));
+const near=(a,b)=>{if(Number.isNaN(a)&&Number.isNaN(b))return;assert.ok(Math.abs(a-b)<1e-8,`${a} != ${b}`)};
+const small=bars.slice(0,320);small[4]={...small[3],date:small[4].date};
+for(const window of [20,60,240,'all'])for(const mode of ['wick','close','average'])for(const k of [1,5,20]){
+  const ctx={n:small.length,bars:small,refCache:new Map()},out=E.reference(ctx,window,mode,k),need=window==='all'?20:window;
+  for(let i=0;i<small.length;i++){const prior=small.slice(window==='all'?0:Math.max(0,i-window),i);let hi=NaN,lo=NaN;if(i>=need){const H=prior.map(b=>mode==='close'?b.close:b.high).sort((a,b)=>b-a),L=prior.map(b=>mode==='close'?b.close:b.low).sort((a,b)=>a-b);hi=mode==='average'?H.slice(0,k).reduce((a,b)=>a+b,0)/Math.min(k,H.length):H[0];lo=mode==='average'?L.slice(0,k).reduce((a,b)=>a+b,0)/Math.min(k,L.length):L[0]}near(out.hi[i],hi);near(out.lo[i],lo)}
+  const cut=E.reference({n:211,bars:small.slice(0,211),refCache:new Map()},window,mode,k);near(cut.hi[210],out.hi[210]);near(cut.lo[210],out.lo[210]);
+}
+const V=new Function(read('worker/viewport-core.js')+';return ViewportMath')();
+assert.equal(V.clamp(null,100),null);assert.deepEqual(V.clamp({from:-1000,to:-950},100),{from:-.5,to:49.5});assert.deepEqual(V.clamp({from:1000,to:1030},100),{from:72.5,to:102.5});assert.deepEqual(V.clamp({from:0,to:1000},100),{from:-.5,to:102.5});
+const d=['2024-01-02','2024-01-03','2024-01-05','2024-01-08','2024-02-01'].map(date=>({date}));assert.equal(V.anchor(d,d,1),1);assert.equal(V.anchor(d,[d[0],d[3],d[4]],0),2);assert.equal(V.anchor(d,[d[0],d[4]],0),3);assert.equal(V.anchor(d,[d[0],d[4]],1),4);
+// A tiny asynchronous IndexedDB double verifies reload, stale revalidation, deduplication and failure fallback.
+const records=new Map();let gets=0;
+const objectStore={get(key){gets++;const req={};queueMicrotask(()=>{req.result=records.get(key);req.onsuccess?.()});return req},put(r){records.set(r.path,r)},getAll(){const req={};queueMicrotask(()=>{req.result=[...records.values()];req.onsuccess?.()});return req},delete(key){records.delete(key)}};
+const db={transaction:()=>({objectStore:()=>objectStore})};
+const idb={open(){const req={result:db};queueMicrotask(()=>req.onsuccess?.());return req}};
+function cache(){const events=[],window={dispatchEvent:e=>events.push(e)},context={window,indexedDB:idb,Map,performance,setTimeout,Date,CustomEvent:class{constructor(type,o){this.type=type;this.detail=o.detail}}};vm.runInNewContext(read('pages-src/snapshot-cache.js')+';installChaoweiSnapshotCache()',context);return{...window.CHAOWEI_SNAPSHOT_CACHE,events}}
+const a=cache();let calls=0;const initial=()=>{calls++;return Promise.resolve({rows:[1],latest:'2024-01-01'})};assert.equal((await a.load('a',initial)).latest,'2024-01-01');await Promise.resolve();assert.equal((await a.load('a',initial))._snapshotCache.source,'memory');assert.equal(calls,1);
+const b=cache();let release;const fetcher=()=>{calls++;return new Promise(r=>release=r)};const stale=await b.load('a',fetcher);assert.equal(stale.latest,'2024-01-01');assert.equal(stale._snapshotCache.source,'indexeddb');await b.load('a',fetcher);assert.equal(calls,2);release({rows:[2],latest:'2024-01-02'});await new Promise(r=>setTimeout(r,0));assert.equal((await b.load('a',fetcher)).latest,'2024-01-02');assert.ok(b.events.some(e=>e.type==='chaowei-snapshot-updated'));
+const c=cache();assert.equal((await c.load('a',()=>Promise.reject(Error('offline')))).latest,'2024-01-02');await new Promise(r=>setTimeout(r,0));assert.ok(c.events.some(e=>e.detail.source==='stale'));assert.ok(gets>=3);
+// Fallback computation and cancellation must preserve strategy results and stop between candidates.
+const context={performance,setTimeout,Map,Blob,URL:{createObjectURL(){throw Error('worker disabled')}},Worker:undefined};vm.createContext(context);vm.runInContext(engineSource+';const E=ChaoweiEngine;'+read('worker/optimizer-worker.js')+';this.runner=OptimizerRunner;this.engine=E;',context);const ctx=E.prepare(bars,[]),preset=E.PRESETS[0],cfg={ref:{window:'600',anchorMode:'average',anchorCount:5,method:'equal'},capital:1200000,dcaPeriods:12,fee:.1425,discount:100,tax:.1,wholeShares:false,parking:0,drip:true,strategy:preset.strategy,params:preset.params};const candidates=[{p:{id:preset.id},w:600,cfg}];const start=bars.length-400,result=await context.runner.run('test',ctx,candidates,start,bars.length-1);near(result.rows[0].r.xirr,E.run(ctx,cfg,start).xirr);assert.equal(result.executor,'chunked');assert.equal((await context.runner.run('test',ctx,candidates,start,bars.length-1)).executor,'memory');const pending=context.runner.run('cancel',ctx,[...candidates,...candidates,...candidates],start,bars.length-1,()=>context.runner.cancel());await assert.rejects(pending,e=>e.name==='AbortError');
+const html=read('docs/index.html');for(const m of html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g))new vm.Script(m[1]);assert.ok(!/\p{Emoji_Presentation}/u.test(html));assert.ok(html.includes('data-study-mode="basic"'));assert.ok(html.includes('id="fitViewport"'));assert.ok(!html.includes('stripDecorativeEmojisFromDOM'));
+const times=[];for(let j=0;j<15;j++){const ctx={n:bars.length,bars,refCache:new Map()},t=performance.now();E.reference(ctx,'600','average',5);times.push(performance.now()-t)}times.sort((a,b)=>a-b);
+const t=performance.now();for(let i=600;i<bars.length;i++){bars.slice(i-600,i).map(b=>b.high).sort((a,b)=>b-a).slice(0,5);bars.slice(i-600,i).map(b=>b.low).sort((a,b)=>a-b).slice(0,5)}const brute=performance.now()-t;
+console.log(JSON.stringify({passed:'prior-window parity (including mean-of-k), no look-ahead, viewport edges and D/W/M anchors, IndexedDB SWR/failure/deduplication, optimizer fallback/cancel/parity, generated JS/no emojis',bars:bars.length,meanK600MedianMs:times[7],sortedWindowMs:brute}));

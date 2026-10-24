@@ -4,12 +4,12 @@
    Uninvested cash earns the parking yield; cash dividends are always credited (DRIP reinvests them).
    All orders fill at the day's close with fees and tax. Indicators at day i use bars up to i;
    the water-level range at day i uses bars before i only. */
-const ChaoweiEngine=(()=>{
+function createChaoweiEngine(){
   const DAY=86400000;
   /* ---------- indicators ---------- */
   function sma(a,n){const out=new Float64Array(a.length).fill(NaN);let s=0;for(let i=0;i<a.length;i++){s+=a[i];if(i>=n)s-=a[i-n];if(i>=n-1)out[i]=s/n}return out}
   function prepare(bars,dividends,macro){
-    const n=bars.length,close=bars.map(b=>b.close),high=bars.map(b=>b.high),low=bars.map(b=>b.low),vol=bars.map(b=>b.volume);
+    const n=bars.length,close=Float64Array.from(bars,b=>b.close),high=Float64Array.from(bars,b=>b.high),low=Float64Array.from(bars,b=>b.low),vol=Float64Array.from(bars,b=>b.volume);
     const ma20=sma(close,20),ma60=sma(close,60),ma120=sma(close,120),ma200=sma(close,200),volMa20=sma(vol,20);
     const bbUp=new Float64Array(n).fill(NaN),bbLo=new Float64Array(n).fill(NaN),bw=new Float64Array(n).fill(NaN),bwRank=new Float64Array(n).fill(NaN);
     for(let i=19;i<n;i++){let s=0;for(let j=i-19;j<=i;j++)s+=(close[j]-ma20[i])**2;const sd=Math.sqrt(s/20);bbUp[i]=ma20[i]+2*sd;bbLo[i]=ma20[i]-2*sd;bw[i]=(bbUp[i]-bbLo[i])/ma20[i]}
@@ -31,12 +31,16 @@ const ChaoweiEngine=(()=>{
     const {n,bars}=ctx,W=window==='all'?Infinity:Number(window),hi=new Float64Array(n).fill(NaN),lo=new Float64Array(n).fill(NaN),need=W===Infinity?20:W;
     const byClose=anchorMode==='close',H=bars.map(b=>byClose?b.close:b.high),L=bars.map(b=>byClose?b.close:b.low);
     if(anchorMode!=='average'){
-      const qh=[],ql=[];let x=0,y=0;
-      for(let i=1;i<n;i++){const j=i-1;while(qh.length>x&&H[qh[qh.length-1]]<=H[j])qh.pop();qh.push(j);while(ql.length>y&&L[ql[ql.length-1]]>=L[j])ql.pop();ql.push(j);
-        while(qh[x]<i-W)x++;while(ql[y]<i-W)y++;if(i>=need){hi[i]=H[qh[x]];lo[i]=L[ql[y]]}}
+      const qh=new Int32Array(n),ql=new Int32Array(n);let x=0,y=0,eh=0,el=0;
+      for(let i=1;i<n;i++){const j=i-1;while(eh>x&&H[qh[eh-1]]<=H[j])eh--;qh[eh++]=j;while(el>y&&L[ql[el-1]]>=L[j])el--;ql[el++]=j;
+        while(x<eh&&qh[x]<i-W)x++;while(y<el&&ql[y]<i-W)y++;if(i>=need){hi[i]=H[qh[x]];lo[i]=L[ql[y]]}}
     }else{
       const k=Math.max(1,Math.min(20,Math.round(anchorCount)||5));
-      for(let i=need;i<n;i++){const s=Math.max(0,i-W),hs=Float64Array.from(H.slice(s,i)).sort(),ls=Float64Array.from(L.slice(s,i)).sort(),kk=Math.min(k,hs.length);let p=0,q=0;for(let j=0;j<kk;j++){p+=hs[hs.length-1-j];q+=ls[j]}hi[i]=p/kk;lo[i]=q/kk}
+      // Order statistics preserve the mean-of-k definition without sorting every window.
+      function tree(values){const sorted=[...new Set(values)].sort((a,b)=>a-b),index=new Map(sorted.map((v,i)=>[v,i+1])),counts=new Int32Array(sorted.length+1),sums=new Float64Array(sorted.length+1);let total=0;
+        return{add(v,d){total+=v*d;for(let j=index.get(v);j<counts.length;j+=j&-j){counts[j]+=d;sums[j]+=v*d}},smallest(t){if(t<=0)return 0;let at=0,c=0,s=0,bit=2**Math.floor(Math.log2(sorted.length||1));for(;bit;bit>>=1){const j=at+bit;if(j<counts.length&&c+counts[j]<t){at=j;c+=counts[j];s+=sums[j]}}return s+(t-c)*sorted[at]},sum(){return total}}}
+      const th=tree(H),tl=tree(L);
+      for(let i=1;i<n;i++){th.add(H[i-1],1);tl.add(L[i-1],1);if(i>W){th.add(H[i-W-1],-1);tl.add(L[i-W-1],-1)}if(i>=need){const count=Math.min(i,W),kk=Math.min(k,count);hi[i]=(th.sum()-th.smallest(count-kk))/kk;lo[i]=tl.smallest(kk)/kk}}
     }
     const out={hi,lo};ctx.refCache.set(key,out);return out;
   }
@@ -334,4 +338,5 @@ const ChaoweiEngine=(()=>{
     {id:'rebalance',family:'mix',name:'50:50 動態再平衡',...P('rebalance_50_50',{})}
   ];
   return{prepare,reference,water,score,lineFlow,run,xirr,STRATEGIES,PARAMS,PRESETS,FAMILIES};
-})();
+}
+const ChaoweiEngine=createChaoweiEngine();

@@ -21,16 +21,19 @@ function installChaoweiApi(base,serverFallback){
     if(!versionPromise||Date.now()-versionAt>300000){versionAt=Date.now();versionPromise=getJson(base+'data/history/_meta.json',300000).then(m=>encodeURIComponent(m.updated||m.latest||'0')).catch(()=>null)}
     return versionPromise;
   }
-  async function file(path){
+  async function remoteFile(path){
     try{const v=await version();return await getJson(base+path+(v?'?v='+v:''),600000,v?'force-cache':'no-cache')}
     catch(e){if(serverFallback)return serverFallback(path);throw e}
   }
   // Chip snapshots can change without the history manifest changing. Revalidate this small
   // per-ETF file so a returning visitor does not keep an older institutional/margin row.
-  async function freshFile(path){
+  async function remoteFreshFile(path){
     try{return await getJson(base+path,300000,'no-cache')}
     catch(e){if(serverFallback)return serverFallback(path);throw e}
   }
+  const file=path=>window.CHAOWEI_SNAPSHOT_CACHE?window.CHAOWEI_SNAPSHOT_CACHE.load(path,()=>remoteFile(path)):remoteFile(path);
+  const freshFile=path=>window.CHAOWEI_SNAPSHOT_CACHE?window.CHAOWEI_SNAPSHOT_CACHE.load(path,()=>remoteFreshFile(path)):remoteFreshFile(path);
+  const liveHistory=new Map(),liveChecked=new Map();
   async function twseMonth(report,code){
     const month=taipei().toISOString().slice(0,7).replace('-','')+'01';
     // HtmlService treats // inside a template literal as a comment when sanitizing inline JS.
@@ -44,8 +47,12 @@ function installChaoweiApi(base,serverFallback){
     let snap=null,snapError='';
     try{snap=await file(`data/history/${code}.json`)}catch(e){snapError=e.message}
     const bars=(snap?.rows||[]).map(([date,open,high,low,close,volume])=>({date,open,high,low,close,volume}));
-    let live=0,liveNote='';
-    if(!bars.length||bars.at(-1).date<expectedLatest()){
+    let live=0,liveNote='';const supplemental=liveHistory.get(code)||[];
+    for(const b of supplemental)if(!bars.length||b.date>bars.at(-1).date){bars.push(b);live++}
+    if((!bars.length||bars.at(-1).date<expectedLatest())&&Date.now()-(liveChecked.get(code)||0)>300000){
+      liveChecked.set(code,Date.now());
+      const supplement=async()=>{
+      const added=[];
       try{
         const last=bars.at(-1);
         for(const r of await twseMonth('STOCK_DAY',code)){
@@ -53,20 +60,24 @@ function installChaoweiApi(base,serverFallback){
           if(!date||![volume,open,high,low,close].every(Number.isFinite)||last&&date<=last.date)continue;
           // An unadjusted split day must not be glued to adjusted history.
           if(last&&(close/last.close>1.8||close/last.close<0.55)){liveNote='最新交易日疑似分割，待快照校正後顯示';break}
-          bars.push({date,open,high,low,close,volume});live++;
+          added.push({date,open,high,low,close,volume});
         }
       }catch(e){liveNote='證交所即時補充暫不可用：'+e.message}
+      if(added.length){liveHistory.set(code,[...(liveHistory.get(code)||[]),...added]);window.dispatchEvent(new CustomEvent('chaowei-history-live',{detail:{code}}))}
+      };
+      if(bars.length)supplement();else{await supplement();for(const b of liveHistory.get(code)||[]){bars.push(b);live++}}
     }
     if(!bars.length)return{error:snapError?`歷史快照讀取失敗（${snapError}）`:'證交所尚無可用的上市後日 K'};
     return{code,bars,latest:bars.at(-1).date,first:bars[0].date,source:snap?.source||'TWSE STOCK_DAY',
-      basis:snap?.basis||'raw-price',adjustments:snap?.adjustments||[],snapshotLatest:snap?.latest||null,live,liveNote};
+      basis:snap?.basis||'raw-price',adjustments:snap?.adjustments||[],snapshotLatest:snap?.latest||null,live,liveNote,cache:snap?._snapshotCache||null};
   }
   async function market(){
     const snap=await file('data/history/market.json').catch(()=>null);
     const days=(snap?.rows||[]).map(([date,volume,value,index])=>({date,volume,value,index}));
-    let live=0;
-    if(!days.length||days.at(-1).date<expectedLatest()){
-      try{for(const r of await twseMonth('FMTQIK')){const date=roc(r[0]),volume=n(r[1]),value=n(r[2]),index=n(r[4]);if(date&&[volume,value,index].every(Number.isFinite)&&(!days.length||date>days.at(-1).date)){days.push({date,volume,value,index});live++}}}catch{}
+    let live=0;for(const d of liveHistory.get('market')||[])if(!days.length||d.date>days.at(-1).date){days.push(d);live++}
+    if((!days.length||days.at(-1).date<expectedLatest())&&Date.now()-(liveChecked.get('market')||0)>300000){
+      liveChecked.set('market',Date.now());const supplement=async()=>{const added=[];try{for(const r of await twseMonth('FMTQIK')){const date=roc(r[0]),volume=n(r[1]),value=n(r[2]),index=n(r[4]);if(date&&[volume,value,index].every(Number.isFinite)&&(!days.length||date>days.at(-1).date))added.push({date,volume,value,index})}}catch{}if(added.length){liveHistory.set('market',added);window.dispatchEvent(new CustomEvent('chaowei-snapshot-updated',{detail:{path:'data/history/market.json'}}))}};
+      if(days.length)supplement();else{await supplement();for(const d of liveHistory.get('market')||[]){days.push(d);live++}}
     }
     if(!days.length)return{error:'大盤資料暫不可用'};
     return{days,latest:days.at(-1).date,source:'TWSE FMTQIK',live};

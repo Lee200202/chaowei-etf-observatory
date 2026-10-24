@@ -1,6 +1,6 @@
 /* Official weekly TDCC holder distribution for the selected ETF. */
 const holderCard=document.createElement('section');holderCard.className='holder-card card member-only';holderCard.id='holderCard';
-holderCard.innerHTML='<div class="card-heading"><div><h3>ETF 大戶持有分布</h3><p class="small">集保結算所每週資料 · ETF 本身</p></div></div><div id="holderContents" class="holder-contents"><p class="small">讀取集保資料中…</p></div><p class="small">持有 400 張以上的集保戶比例，不等於法人或八大官股持股，也不是每日買賣超。<a target="_blank" rel="noopener noreferrer">集保來源 ↗</a></p>';
+holderCard.innerHTML='<div class="card-heading"><div><h3>ETF 大戶持有分布</h3><p class="small">集保結算所每週資料 · ETF 本身</p></div></div><div id="holderContents" class="holder-contents"><p class="small">讀取集保資料中…</p></div><p class="small">持有 400 張以上的集保戶比例，不等於法人或八大官股持股，也不是每日買賣超。<a target="_blank" rel="noopener noreferrer">集保來源 </a></p>';
 holderCard.querySelector('a').href='https://www.tdcc.com.tw/portal/zh/smWeb/qryStock';
 chipCard.after(holderCard);
 holderCard.insertAdjacentHTML('afterbegin','<div class="member-lock"><div class="member-lock-box"><span class="member-badge">會員專屬</span><h4>查看大戶持有分布</h4><p>登入後查看 ETF 集保戶 400 張以上與千張以上的持有比例。</p><button class="action" type="button" data-open-account>用 Google 登入解鎖</button></div></div>');

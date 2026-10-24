@@ -3,7 +3,7 @@
 let marginDays=[],mktMarginPosition=null;
 {
   const tile=document.createElement('div');tile.className='factor';
-  tile.innerHTML='<span class="factor-icon">▤</span><h4>大盤融資 · 每日增減</h4><strong id="mktMarginScore">—</strong><p id="mktMarginMeta">讀取證交所盤後資料中</p><div class="factor-spark" id="marginSpark"></div>';
+  tile.innerHTML='<span class="factor-icon"></span><h4>大盤融資 · 每日增減</h4><strong id="mktMarginScore">—</strong><p id="mktMarginMeta">讀取證交所盤後資料中</p><div class="factor-spark" id="marginSpark"></div>';
   $('refreshClock').closest('.factor').before(tile);
 }
 function computeMktMargin(){

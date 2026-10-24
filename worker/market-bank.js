@@ -1,5 +1,5 @@
 // HiStock market-wide daily bank flows. Read the existing 20:00 store, never scrape once per visitor.
-const bankTile=document.createElement('div');bankTile.className='factor';bankTile.innerHTML='<span class="factor-icon">▥</span><h4>八大官股 · 全市場</h4><strong id="bankScore">—</strong><p id="bankMeta">讀取 HiStock 日資料中</p><div class="factor-spark" id="bankSpark"></div><small>買超加分、賣超減分 · 平日約 20:00 單次擷取</small>';$('refreshClock').closest('.factor').before(bankTile);
+const bankTile=document.createElement('div');bankTile.className='factor';bankTile.innerHTML='<span class="factor-icon"></span><h4>八大官股 · 全市場</h4><strong id="bankScore">—</strong><p id="bankMeta">讀取 HiStock 日資料中</p><div class="factor-spark" id="bankSpark"></div><small>買超加分、賣超減分 · 平日約 20:00 單次擷取</small>';$('refreshClock').closest('.factor').before(bankTile);
 const bankPanel=document.createElement('section');bankPanel.className='bank-market-trend';bankPanel.id='bankMarketTrend';trendPanel.after(bankPanel);
 function computeBank(){
   const last=bankDays.at(-1),s=factorScore(bankDays.map(x=>x.value),true,true);bankPosition=s?{...s,last}:null;

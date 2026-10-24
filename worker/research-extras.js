@@ -5,7 +5,7 @@ settings.wavePins=Array.isArray(settings.wavePins)?settings.wavePins.filter(p=>p
 
 const pinPanel=document.createElement('section');
 pinPanel.className='wave-pin-panel member-only';
-pinPanel.innerHTML='<div class="research-head"><div><h4>圖釘標記</h4><p class="small">只整理研究樣本，不改評分或回測。</p></div><button class="pill chip" type="button" id="pinMode" aria-pressed="false">📌 標記 K 棒</button></div><div class="pin-controls"><label>標記用途<select id="pinKind"><option value="valley">參考波谷</option><option value="peak">參考波峰</option><option value="exclude">略過此處</option></select></label><label>簡短備註<input id="pinNote" type="text" maxlength="40" placeholder="例如：除息、雜訊"></label><button class="pill mini" type="button" id="pinExport">匯出標記</button></div><p class="small" id="pinHint">開啟圖釘後，點選圖上的 K 棒；日、週、月分別標記。</p><div class="pin-list" id="pinList"></div>';
+pinPanel.innerHTML='<div class="research-head"><div><h4>圖釘標記</h4><p class="small">只整理研究樣本，不改評分或回測。</p></div><button class="pill chip" type="button" id="pinMode" aria-pressed="false"> 標記 K 棒</button></div><div class="pin-controls"><label>標記用途<select id="pinKind"><option value="valley">參考波谷</option><option value="peak">參考波峰</option><option value="exclude">略過此處</option></select></label><label>簡短備註<input id="pinNote" type="text" maxlength="40" placeholder="例如：除息、雜訊"></label><button class="pill mini" type="button" id="pinExport">匯出標記</button></div><p class="small" id="pinHint">開啟圖釘後，點選圖上的 K 棒；日、週、月分別標記。</p><div class="pin-list" id="pinList"></div>';
 $('chartCard').querySelector('.chart-foot').after(pinPanel);
 pinPanel.insertAdjacentHTML('afterbegin','<div class="member-lock"><div class="member-lock-box"><span class="member-badge">會員專屬</span><h4>標記你的參考波段</h4><p>登入後可在 K 線標出峰谷、略過雜訊，並同步到其他裝置。</p><button class="action" type="button" data-open-account>用 Google 登入解鎖</button></div></div>');
 const pinModeButton=$('pinMode'),pinList=$('pinList'),pinHint=$('pinHint');
@@ -150,7 +150,7 @@ function chipChart({title,unit,width,dates,kind,series,line,right,note,bands=[],
   const guide=el('line',{x1:0,x2:0,y1:T,y2:H-B,stroke:'var(--muted)','stroke-width':1,opacity:0});
   wrap.append(svg);
   const legend=document.createElement('p');legend.className='chip-legend';
-  legend.innerHTML=[...series.map(s=>`<span style="color:${s.color}">● ${s.name}</span>`),line?`<span>━ ${line.name}</span>`:'',right?`<span style="color:${right.color}">┅ ${right.name}（右軸）</span>`:''].join('');wrap.append(legend);
+  legend.innerHTML=[...series.map(s=>`<span style="color:${s.color}"> ${s.name}</span>`),line?`<span>━ ${line.name}</span>`:'',right?`<span style="color:${right.color}">┅ ${right.name}（右軸）</span>`:''].join('');wrap.append(legend);
   const tip=document.createElement('p');tip.className='chip-tip';tip.setAttribute('aria-live','polite');wrap.append(tip);
   const signed=v=>Number.isFinite(v)?(v>0?'+':'')+fmt(v,0):'—';
   const show=i=>{tip.textContent=`${dates[i]}　`+[...series.map(s=>`${s.name} ${Number.isFinite(s.data[i])?valueText(s.data[i]):'—'}`),line?`${line.name} ${valueText(line.data[i])}`:'',right&&Number.isFinite(right.data[i])?`${right.name} ${fmt(right.data[i],2)}`:''].filter(Boolean).join(' · ');guide.setAttribute('x1',x(i));guide.setAttribute('x2',x(i));guide.setAttribute('opacity',.45)};

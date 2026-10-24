@@ -7,7 +7,7 @@ const WaveBacktestBridge=(()=>{
   }
   return{summarize};
 })();
-const bridge=document.createElement('div');bridge.className='wave-bridge';bridge.innerHTML='<p class="small" id="waveBridgeNote">完成波段計算後，可帶入回測。</p><button type="button" class="pill" id="waveToBacktest" disabled>↘ 將平均波段帶入回測</button>';$('waveSummary').after(bridge);
+const bridge=document.createElement('div');bridge.className='wave-bridge';bridge.innerHTML='<p class="small" id="waveBridgeNote">完成波段計算後，可帶入回測。</p><button type="button" class="pill" id="waveToBacktest" disabled>套用平均波段至回測</button>';$('waveSummary').after(bridge);
 function refreshWaveBridge(){
   const d=waveBridgeData,s=d&&d.code===selected?WaveBacktestBridge.summarize(d.segments,d.params.cutoff):null;
   const enoughTest=!d?.params.cutoff||bars.filter(b=>b.date>=d.params.cutoff).length>=41;

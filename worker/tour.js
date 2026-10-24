@@ -1,12 +1,8 @@
-/* ---------- Guided tour: shown once after a member's first sign-in, replayable from the display menu ---------- */
+/* ---------- Three-step introduction, replayable from the view bar or display menu ---------- */
 const TOUR_STEPS=[
-  ['#openSearch','找一檔 ETF','輸入名稱、代號或追蹤指數（例如 0050、高股息），按 Enter 選第一筆。按鍵盤「/」也能叫出搜尋。'],
-  ['.toolbar','看懂水位分數','分數 0–5：越接近 5 代表價格在區間低處、越適合加碼；越接近 0 代表在高處、宜減碼。往下捲時這一列會固定在上方。'],
-  ['.view-card','設定觀察條件','觀察窗決定看多久的高低點，刻度方式與高低點算法決定怎麼分段。常用的組合按「＋ 收藏目前條件」，之後一鍵套用。'],
-  ['#chartCard','價格走勢與技術面','滑鼠移到 K 棒看當天開高低收；滾輪縮放、拖曳平移。副圖可同時開 MACD、RSI、KD，圖下方的橫條可拖曳調整高度。'],
-  ['.factor-card','市場的其他刻度','大盤、成交量、原油、匯率各自算分。原油越便宜分越高；台幣越升值分越低。每 5 分鐘自動更新。'],
-  ['#backtestCard','回檔加碼回測','照 1 到 4 步設定「跌多少買、漲多少賣」，下方會算出報酬、最大回落，並和買進持有、定期定額比較；買賣點會標在 K 線上。'],
-  ['.weights-card','我的權重方案','調整 ETF、大盤、量能、原油、匯率的比重，合計 100% 後得到綜合分數。設定會同步到你的 Google 帳號。']
+  ['.water-copy','先看本檔分數','分數為 0–5，依你選的方向判讀配置傾向。預設價格低分高，也可以改成價格高分高；分數不是勝率。'],
+  ['.direction-presets','再看市場方向','大盤、量能、原油、匯率、融資與官股都能選計分方向。「計算細節」可展開公式與參考值；資料日期依來源顯示。'],
+  ['#backtestCard','最後用歷史驗證','Google 登入後，可展開波段研究、帶入訓練期參數至回測，或試算歷史策略排行。較晚的測試期才適合檢查是否延續；沒有獲利保證。']
 ];
 let tourIndex=-1;
 function tourEls(){
@@ -18,7 +14,7 @@ function tourEls(){
     $('tourSkip').addEventListener('click',()=>endTour());
     $('tourPrev').addEventListener('click',()=>showTourStep(tourIndex-1));
     $('tourNext').addEventListener('click',()=>tourIndex>=TOUR_STEPS.length-1?endTour():showTourStep(tourIndex+1));
-    document.addEventListener('keydown',e=>{if(tourIndex<0)return;if(e.key==='Escape')endTour();if(e.key==='ArrowRight')$('tourNext').click();if(e.key==='ArrowLeft'&&tourIndex>0)showTourStep(tourIndex-1)});
+    document.addEventListener('keydown',e=>{if(tourIndex<0)return;if(e.key==='Escape')endTour();if(e.key==='ArrowRight')$('tourNext').click();if(e.key==='ArrowLeft'&&tourIndex>0)showTourStep(tourIndex-1);if(e.key==='Tab'){const buttons=[...$('tourCard').querySelectorAll('button:not([disabled])')],first=buttons[0],last=buttons.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}}});
     window.addEventListener('resize',()=>{if(tourIndex>=0)placeTour()});
     window.addEventListener('scroll',()=>{if(tourIndex>=0)placeTour()},{passive:true});
   }
@@ -51,11 +47,11 @@ function startTour(){closeDisplay?.();closeSearch?.();tourEls().classList.remove
 function endTour(){
   tourIndex=-1;$('tourShade')?.classList.add('hidden');document.body.classList.remove('touring');
   if(!settings.tourDone){settings.tourDone=new Date().toISOString().slice(0,10);save()}
+  $('quickTour')?.focus({preventScroll:true});
 }
 $('startTour').addEventListener('click',startTour);
 // First sign-in: wait for the cloud profile to load (it may say the tour was already done on another device).
-const tourSetMember=window.chaoweiSetMember;
-window.chaoweiSetMember=signedIn=>{tourSetMember(signedIn);if(signedIn&&!settings.tourDone)setTimeout(()=>{if(isMember&&!settings.tourDone&&tourIndex<0)startTour()},1800)};
+// The study-layout module offers the same three-step introduction to guests and members.
 
 /* ---------- Tide-wave gauge colours: low tide (cheap) green, mid-tide blue, high tide (dear) coral ---------- */
 function tideColors(score){

@@ -41,7 +41,7 @@ function renderQuick(){
   for(const id of ['quickPicks','quickInline']){
     const box=$(id);box.replaceChildren();
     for(const code of settings.watchlist){const e=catalog.find(x=>x.code===code);if(!e)continue;const b=document.createElement('button');b.type='button';b.className='pill mini'+(code===selected?' on':'');b.textContent=`${code} ${e.name}`;const rb=riskBadge(code);if(rb)b.append(rb);b.addEventListener('click',()=>pick(code));box.append(b)}
-    if(!box.children.length){const p=document.createElement('span');p.className='small';p.textContent='點候選卡片上的☆建立追蹤清單';box.append(p)}
+    if(!box.children.length){const p=document.createElement('span');p.className='small';p.textContent='點候選卡片上的追蹤按鈕建立清單';box.append(p)}
   }
 }
 for(const id of ['openSearch','openSearchTop'])$(id).addEventListener('click',openSearch);
@@ -74,7 +74,7 @@ renderList=function(){
     b.append(strong,small);
     if(e.note&&e.note!=='主動管理'){const idx=document.createElement('small');idx.className='index';idx.textContent=e.note;b.append(idx)}
     b.addEventListener('click',()=>pick(e.code));
-    const star=document.createElement('button');star.type='button';star.className='watch-star';star.setAttribute('aria-label',settings.watchlist.includes(e.code)?`取消追蹤 ${e.code}`:`追蹤 ${e.code}`);star.setAttribute('aria-pressed',String(settings.watchlist.includes(e.code)));star.textContent=settings.watchlist.includes(e.code)?'★':'☆';
+    const star=document.createElement('button');star.type='button';star.className='watch-star';star.setAttribute('aria-label',settings.watchlist.includes(e.code)?`取消追蹤 ${e.code}`:`追蹤 ${e.code}`);star.setAttribute('aria-pressed',String(settings.watchlist.includes(e.code)));star.textContent=settings.watchlist.includes(e.code)?'已追蹤':'追蹤';
     star.addEventListener('click',()=>{settings.watchlist=settings.watchlist.includes(e.code)?settings.watchlist.filter(x=>x!==e.code):[...settings.watchlist,e.code].slice(0,50);save();renderList()});
     row.append(b,star);$('etfList').append(row);
   }
@@ -208,7 +208,7 @@ loadBars=async function(keepView=false){
     const res=await fetch(`/api/history?code=${encodeURIComponent(code)}`),data=await res.json();
     if(code!==selected||generation!==historyGeneration)return;
     if(!res.ok)throw Error(data.error||'資料讀取失敗');
-    if(keepView&&bars.length&&data.latest===bars.at(-1)?.date)return;
+    if(keepView&&bars.length&&data.latest===bars.at(-1)?.date&&JSON.stringify(data.bars)===JSON.stringify(bars))return;
     bars=data.bars;historyMeta=data;
     const auto=autoWindow(code);
     computePosition();computeBrent();computeFx();renderPosition();drawChart(keepView);updateWeights();
@@ -313,11 +313,11 @@ drawChart=function(keepView=false){
     low:Math.min(liveQuote.low||liveQuote.price,liveQuote.price,liveQuote.open||liveQuote.price),
     close:liveQuote.price,volume:liveQuote.volumeShares||0
   }:null;
-  const all=aggregate(withVolumeBasis(quoteBar?[...bars,quoteBar]:bars),interval);
+  const daily=withVolumeBasis(quoteBar?[...bars,quoteBar]:bars),all=aggregate(daily,interval);
   if(!buildCharts())return drawSvgFallback(all);
   const {main,s}=lwc,tech=technical(all),ov=settings.overlays;
   const old=keepView?main.timeScale().getVisibleLogicalRange():null;
-  lwc.data=all;lwc.tech=tech;
+  lwc.data=all;lwc.daily=daily;lwc.tech=tech;
   s.candle.setData(all.map(b=>({time:b.date,open:b.open,high:b.high,low:b.low,close:b.close})));
   window.chaoweiPins?.render();
   s.volume.setData(all.map(b=>({time:b.date,value:b.volume/1000,color:(b.close>=b.open)!==(settings.colorScheme==='intl')?'rgba(229,72,77,.45)':'rgba(18,160,107,.45)'})));
@@ -336,13 +336,6 @@ drawChart=function(keepView=false){
   if(oscOn('rsi')){guide(s.rsi,70,'70');guide(s.rsi,30,'30')}
   if(oscOn('kd')){guide(s.k,80,'80');guide(s.k,20,'20')}
   if(oscOn('macd'))guide(s.dif,0,'');
-  if(settings.showLevels&&position){
-    const fractions=settings.method==='fib'?[0,.236,.382,.618,.786,1]:[0,.2,.4,.6,.8,1];
-    for(const f of fractions){
-      const price=position.low+(position.high-position.low)*f;
-      lwc.guides.push({series:s.candle,line:s.candle.createPriceLine({price,color:f===0||f===1?'#438d98':'#9abfc0',lineWidth:f===0||f===1?2:1,lineStyle:2,axisLabelVisible:true,title:`${Number((f*100).toFixed(1))}%`})});
-    }
-  }
   if(old)main.timeScale().setVisibleLogicalRange(old);else setVisible(chartRange);
   requestAnimationFrame(()=>{const r=main.timeScale().getVisibleLogicalRange();if(!r)return;for(const c of visiblePanes())if(c!==main)c.timeScale().setVisibleLogicalRange(r)});
   $('chartCaption').textContent=`紅漲綠跌 · 量：張${volumeAdjusted()?'（分割前已換算）':''}${provisional?' · 末根為盤中暫值':''} · 滾輪縮放、拖曳平移`;
@@ -351,7 +344,7 @@ drawChart=function(keepView=false){
 };
 function updateLegend(logical){
   if(!lwc)return;const all=lwc.data,t=lwc.tech;if(!all.length){$('chartLegend').textContent='—';return}
-  const i=Number.isFinite(logical)?Math.max(0,Math.min(all.length-1,Math.round(logical))):all.length-1,b=all[i],prev=all[i-1];
+  const i=Number.isFinite(logical)?Math.max(0,Math.min(all.length-1,Math.round(logical))):(lwc.visibleAnchor??all.length-1),b=all[i],prev=all[i-1];
   const chg=prev?b.close-prev.close:null,pct=prev?chg/prev.close*100:null,cls=chg>0?'up':chg<0?'down':'';
   const item=(label,val,color)=>`<span${color?` style="--c:${color}"`:''} class="${color?'dot':''}"><small>${label}</small>${val}</span>`;
   let h=item('日期',b.date)+item('開',fmt(b.open,2))+item('高',fmt(b.high,2))+item('低',fmt(b.low,2))+`<span class="${cls}"><small>收</small>${fmt(b.close,2)}${chg==null?'':` <em>${chg>=0?'+':''}${fmt(chg,2)}（${chg>=0?'+':''}${fmt(pct,2)}%）</em>`}</span>`+item('量',lots(b.volume));
@@ -444,7 +437,7 @@ settings.volumeBasis=settings.volumeBasis==='adjusted'?'adjusted':'raw';
 $('volumeBasis').value=settings.volumeBasis;
 $('volumeBasis').addEventListener('change',function(){settings.volumeBasis=this.value==='adjusted'?'adjusted':'raw';save();drawChart(true)});
 function volumeAdjusted(){return settings.volumeBasis==='adjusted'&&(historyMeta?.adjustments||[]).length>0}
-// A 1→4 split (factor 4) means one old lot equals four of today's lots, so earlier volume is multiplied by 4.
+// A 1 至 4 split (factor 4) means one old lot equals four of today's lots, so earlier volume is multiplied by 4.
 function withVolumeBasis(list){
   if(!volumeAdjusted())return list;
   const adj=historyMeta.adjustments;
@@ -555,7 +548,7 @@ function renderChange(){
     const el=$(id);el.classList.remove('up','down');
     if(!d){el.textContent=id==='barChange'?'—':'';continue}
     if(d.chg)el.classList.add(d.chg>0?'up':'down');
-    el.textContent=(id==='priceChange'?(d.chg>0?'▲ ':d.chg<0?'▼ ':''):'')+changeText(d);
+    el.textContent=(id==='priceChange'?(d.chg>0?' ':d.chg<0?' ':''):'')+changeText(d);
   }
   // One status label instead of three: the data date and whether it is a close or an intraday price.
   const last=bars.at(-1),provisional=liveQuote?.available&&last&&liveQuote.date>last.date;
@@ -604,12 +597,12 @@ function renderFavs(){
   settings.favorites.forEach((f,i)=>{
     const chip=document.createElement('span');chip.className='fav-chip'+(favSame(f.s,cur)?' on':'');
     const go=document.createElement('button');go.type='button';go.textContent=f.name;go.title=favLabel(f.s);go.addEventListener('click',()=>applyFav(f));
-    const del=document.createElement('button');del.type='button';del.className='fav-del';del.textContent='×';del.setAttribute('aria-label','刪除收藏「'+f.name+'」');
+    const del=document.createElement('button');del.type='button';del.className='fav-del';del.textContent='移除';del.setAttribute('aria-label','刪除收藏「'+f.name+'」');
     del.addEventListener('click',()=>{settings.favorites.splice(i,1);save();renderFavs()});
     chip.append(go,del);box.append(chip);
   });
   $('favAdd').disabled=settings.favorites.length>=10;
-  $('favAdd').textContent=settings.favorites.length>=10?'已達 10 組上限':'＋ 收藏目前條件';
+  $('favAdd').textContent=settings.favorites.length>=10?'已達 10 組上限':'收藏目前條件';
 }
 function applyFav(f){
   const s=f.s;

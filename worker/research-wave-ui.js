@@ -14,7 +14,7 @@ waveCard.innerHTML=`<div class="member-lock"><div class="member-lock-box"><span 
 </div>
 <p class="small wave-rule">拉回速度＝峰到谷的跌幅絕對值 ÷ 經過的 K 棒數。日、週、月各有獨立設定；自動峰谷以收盤極值判定，達到反向幅度後才確認，確認日之前不可拿它做交易訊號。開啟圖上轉折後，標籤顯示該根 K 棒的收盤價；同畫面最多標示 24 個，放大或左右移動可查看其他波段。</p>
 <div class="wave-summary" id="waveSummary" aria-live="polite">讀取波段資料中…</div>
-<details class="wave-details"><summary>查看完整波與計算說明</summary><p class="small">谷→峰是上漲段；峰→谷是拉回段。大／小波依每段絕對漲跌幅分類；「快速」依每根 K 的平均跌幅分類。訓練／測試按轉折確認日切開，只描述歷史分布；交易策略仍用下方獨立回測工具。手動圖釘可標除息等雜訊，不會悄悄改動網站的 0–5 分或交易結果。</p><div class="wave-table-wrap"><table class="wave-table"><thead><tr><th>期間</th><th>類型</th><th>幅度</th><th>時間</th><th>速度</th><th>確認日</th></tr></thead><tbody id="waveRows"></tbody></table></div></details>`;
+<details class="wave-details"><summary>查看完整波與計算說明</summary><p class="small">谷 至 峰是上漲段；峰 至 谷是拉回段。大／小波依每段絕對漲跌幅分類；「快速」依每根 K 的平均跌幅分類。訓練／測試按轉折確認日切開，只描述歷史分布；交易策略仍用下方獨立回測工具。手動圖釘可標除息等雜訊，不會悄悄改動網站的 0–5 分或交易結果。</p><div class="wave-table-wrap"><table class="wave-table"><thead><tr><th>期間</th><th>類型</th><th>幅度</th><th>時間</th><th>速度</th><th>確認日</th></tr></thead><tbody id="waveRows"></tbody></table></div></details>`;
 chipCard.after(waveCard);
 let waveDividends=null,waveDivPromise=null,waveLastKey='',waveShowMarks=false,wavePivots=[];
 const waveControl={basis:'waveBasis',minBars:'waveMinBars',reversal:'waveReversal',large:'waveLarge',fast:'waveFast',cutoff:'waveCutoff'};
@@ -71,7 +71,7 @@ function waveRender(){
   const split=document.createElement('p');split.className='small wave-split';split.textContent=p.cutoff?`訓練期 ${stat.training.count} 段 · 測試期 ${stat.testing.count} 段（按確認日 ${p.cutoff} 分界） · 大波 ${stat.all.large} 段${stat.excluded?` · 略過 ${stat.excluded} 段`:''}。這是描述統計，尚非策略報酬。`:`大波 ${stat.all.large} 段 · 小波 ${stat.all.count-stat.all.large} 段${stat.excluded?` · 略過 ${stat.excluded} 段`:''}。可設定測試期起日，檢查較晚時段。`;
   box.append(split);
   $('waveRows').replaceChildren();for(const s of result.segments.slice(-100).reverse()){
-    const tr=document.createElement('tr');const row=[`${s.from.date} → ${s.to.date}`,`${s.change>0?'上漲':'拉回'} · ${s.size}`,`${s.change>0?'+':''}${fmt(s.change,2)}%`,`${s.bars} 根 ${unit}`,`${fmt(s.speed,2)}%／根 · ${s.pace}`,s.availableDate];
+    const tr=document.createElement('tr');const row=[`${s.from.date}  至  ${s.to.date}`,`${s.change>0?'上漲':'拉回'} · ${s.size}`,`${s.change>0?'+':''}${fmt(s.change,2)}%`,`${s.bars} 根 ${unit}`,`${fmt(s.speed,2)}%／根 · ${s.pace}`,s.availableDate];
     for(const value of row){const td=document.createElement('td');td.textContent=value;tr.append(td)}$('waveRows').append(tr)
   }
   waveRefreshMarkers();

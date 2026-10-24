@@ -34,7 +34,7 @@ const etfAction=document.createElement('p');etfAction.className='direction-actio
 for(const[key,id]of Object.entries({etf:'wEtf',index:'wIndex',volume:'wVolume',oil:'wBrent',fx:'wFx',margin:'wMktMargin',bank:'wBank'})){const row=$(id).closest('.weight'),wrap=document.createElement('div');wrap.className='weight-direction';makeDirection(key,wrap);row.append(wrap)}
 // Keep old controls for existing saved plans and backtest code, but expose only the explicit wording above.
 $('fxDirection').classList.add('hidden');$('volumeDirection').closest('label').classList.add('hidden');
-const logic=document.createElement('div');logic.className='direction-presets';logic.innerHTML='<p class="small">分數高＝依你的規則偏向增加配置；分數低＝偏向降低。這是位置／規則讀數，不是勝率或固定持股比例。</p><div class="segment" role="group" aria-label="指標方向預設包"><button type="button" data-direction-preset="value">🛡 價值低接</button><button type="button" data-direction-preset="trend">↗ 順勢觀察</button><button type="button" data-direction-preset="hedge">▥ 債券／避險參考</button></div>';
+const logic=document.createElement('div');logic.className='direction-presets';logic.innerHTML='<p class="small">分數高＝依你的規則偏向增加配置；分數低＝偏向降低。這是位置／規則讀數，不是勝率或固定持股比例。</p><div class="segment" role="group" aria-label="指標方向預設包"><button type="button" data-direction-preset="value"> 價值低接</button><button type="button" data-direction-preset="trend"> 順勢觀察</button><button type="button" data-direction-preset="hedge"> 債券／避險參考</button></div>';
 $('market').querySelector('.card-heading').after(logic);
 logic.addEventListener('click',e=>{const b=e.target.closest('[data-direction-preset]');if(!b||shareView)return;settings.factorModes={...DM.presets[b.dataset.directionPreset]};applyDirections()});
 if(shareView)logic.querySelectorAll('button').forEach(b=>b.disabled=true);

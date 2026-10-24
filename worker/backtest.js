@@ -36,7 +36,7 @@ const BT_SCHEMA={
     ['trail','自高點回落','num',{min:2,max:40,step:1,unit:'%'},p=>p.exit==='trailing'],['atrMult','吊燈 ATR 倍數','num',{min:0,max:6,step:0.5,unit:'倍'},p=>p.exit==='trailing'],
     ['stop','停損','num',{min:0,max:90,step:1,unit:'%'}],['maxDays','最長持有','num',{min:0,max:2400,step:10,unit:'日'}]],
   dca:[],
-  smart_dca_water:[['mult','各水位扣款倍數（1→5 分）','array5',{step:0.1}],['trim','高檔減碼','check'],['trimBias','MA60 乖離超過','num',{min:5,max:60,step:1,unit:'%'},p=>p.trim],['trimPct','減碼比例','num',{min:5,max:50,step:5,unit:'%'},p=>p.trim]],
+  smart_dca_water:[['mult','各水位扣款倍數（1 至 5 分）','array5',{step:0.1}],['trim','高檔減碼','check'],['trimBias','MA60 乖離超過','num',{min:5,max:60,step:1,unit:'%'},p=>p.trim],['trimPct','減碼比例','num',{min:5,max:50,step:5,unit:'%'},p=>p.trim]],
   value_averaging:[['growth','目標市值月成長','num',{min:0,max:3,step:0.1,unit:'%'}],['cap','單月最多投入','num',{min:1,max:10,step:0.5,unit:'倍'}],['allowSell','超出目標時賣出','check']],
   bias_tiered_dca:[['tiers','扣款倍數：乖離 >15%、−5~15%、−10~−5%、−15~−10%、<−15%','array5',{step:0.1}]],
   tech_bb_rsi_dca:[['baseRatio','每月底倉比例','num',{min:0,max:1,step:0.1,unit:'倍'}],['dipMult','超賣加碼','num',{min:0.5,max:5,step:0.5,unit:'倍'}],['pbLow','%B 低於','num',{min:-0.5,max:0.5,step:0.05}],['rsiLow','RSI 低於','num',{min:10,max:50,step:1}],['pbHigh','%B 高於','num',{min:0.8,max:1.5,step:0.05}],['rsiHigh','RSI 高於','num',{min:60,max:95,step:1}],['trimPct','過熱減碼','num',{min:0,max:50,step:5,unit:'%'}]],
@@ -229,7 +229,7 @@ function btNow(r){
   else if(s==='tech_bb_rsi_dca'){const pb=(c-ctx.bbLo[i])/(ctx.bbUp[i]-ctx.bbLo[i]);rows.push(['%B／RSI',fmt(pb,2)+'／'+fmt(ctx.rsi[i],0)+'（加碼門檻 %B<'+p.pbLow+' 且 RSI<'+p.rsiLow+'）'])}
   else if(s==='dual_momentum'&&i>=120){const mom=0.5*(c/ctx.close[i-60]-1)+0.5*(c/ctx.close[i-120]-1);rows.push(['動能',pctText(mom)+(c>ctx.ma120[i]?'，在 MA120 之上':'，在 MA120 之下')+(st.on?'（滿倉中）':'（持現金）')])}
   else if(s==='macro_regime'&&ctx.ma200[i]>0){rows.push(['市場體制',c>ctx.ma200[i]&&ctx.ma200[i]>ctx.ma200[i-20]?'多頭（MA200 之上且上彎）':'空頭或盤整']);if(ctx.macro)rows.push(['原油＋匯率分數',Number.isFinite(ctx.macro[i])?fmt(ctx.macro[i],1)+' 分':'—'])}
-  else if(s==='vol_targeting'){rows.push(['近 20 日年化波動',fmt(ctx.sigma[i]*100,0)+'% → 目標持股 '+fmt(Math.max(p.minW,Math.min(100,p.target/ctx.sigma[i])),0)+'%'])}
+  else if(s==='vol_targeting'){rows.push(['近 20 日年化波動',fmt(ctx.sigma[i]*100,0)+'%  至  目標持股 '+fmt(Math.max(p.minW,Math.min(100,p.target/ctx.sigma[i])),0)+'%'])}
   else if(s==='bb_squeeze'){rows.push(['布林帶寬','近 120 日第 '+fmt(ctx.bwRank[i]*100,0)+' 百分位'+(r.shares?'；持有中，跌破 MA20 '+fmt(ctx.ma20[i],2)+' 賣出':'')])}
   else if(s==='ma_offset_flow'){const lf=E.lineFlow(ctx,p);rows.push(['分界線／籌碼方向',(Number.isFinite(lf.line[i])?fmt(lf.line[i],2):'—')+'／'+(Number.isFinite(lf.flow[i])?(lf.flow[i]>0?'+':'')+fmt(lf.flow[i],2):'—')])}
   else if(s==='rebalance_50_50'){const v=r.shares*c,eq=v+r.cash;rows.push(['持股比例',fmt(v/eq*100,0)+'%（目標 '+p.weight+'%，±'+p.band+'% 時再平衡）'])}
@@ -296,7 +296,7 @@ function renderBacktest(){
   // Verdict: name the metric; never call it a win when the return is behind.
   const dx=r.xirr-r.dca.xirr,dm=r.dca.mdd-r.mdd,calS=r.calmar,calD=r.dca.mdd>0?r.dca.cagr/r.dca.mdd:null;
   $('btVerdict').innerHTML=r.cfg.strategy==='dca'?'<span class="bt-tag">這就是定期定額本身，可作為其他策略的比較基準。</span>':
-    (dx>0?`<span class="bt-tag win">🏆 年化報酬勝過定期定額 ${fmt(dx*100,1)} 個百分點</span>`:`<span class="bt-tag lose">年化報酬落後定期定額 ${fmt(-dx*100,1)} 個百分點</span>`)+
+    (dx>0?`<span class="bt-tag win"> 年化報酬勝過定期定額 ${fmt(dx*100,1)} 個百分點</span>`:`<span class="bt-tag lose">年化報酬落後定期定額 ${fmt(-dx*100,1)} 個百分點</span>`)+
     (dm>0.005?`<span class="bt-tag win">最大回落少 ${fmt(dm*100,1)} 個百分點</span>`:'')+(calS!=null&&calD!=null&&calS>calD?`<span class="bt-tag win">風險調整後（Calmar）較佳：${fmt(calS,2)} vs ${fmt(calD,2)}</span>`:'')+
     // Mostly-cash strategies: the pot's return understates what the invested part earned; say both.
     (r.cfg.strategy!=='dca'&&r.utilization<0.5?`<span class="bt-tag shield">低曝險防禦型：平均只動用 ${fmt(r.utilization*100,0)}% 資金${r.dca.mdd>0&&r.mdd<r.dca.mdd?'，最大回落比定期定額少 '+fmt((1-r.mdd/r.dca.mdd)*100,0)+'%':''}；實動資金年化 ${pctText(r.roic)}</span>`:'');
@@ -346,26 +346,24 @@ $('btCsv').addEventListener('click',()=>{
 });
 
 /* ---------- optimizer: every preset, three water-level windows, ranked three ways ---------- */
-$('btOptimize').addEventListener('click',()=>{
-  if(!bars.length)return;const ctx=btContext(),start=btStart(settings.bt.period),end=btEnd(),base=btCfg(),rows=[];
-  $('btOptSheet').classList.remove('hidden');document.body.classList.add('searching');$('btOptBody').innerHTML='<p class="small">計算中…</p>';
-  setTimeout(()=>{
-    let dcaRef=null;
-    for(const p of E.PRESETS){
-      const usesWater=['classic','smart_dca_water','core_satellite','macro_regime'].includes(p.strategy);
-      for(const w of usesWater?['60','120','240']:[base.ref.window]){
-        const cfg={...base,strategy:p.strategy,params:JSON.parse(JSON.stringify({...E.PARAMS[p.strategy],...p.params})),ref:{...base.ref,window:w}},r=E.run(ctx,cfg,start,end);
-        dcaRef=dcaRef||r.dca;rows.push({p,w,usesWater,r});
-      }
-    }
-    const calD=dcaRef.mdd>0?dcaRef.cagr/dcaRef.mdd:0,board=(title,key,dir,fmtv)=>{const seen=new Set(),list=[...rows].filter(x=>x.p.strategy!=='dca').sort((a,b)=>dir*((b.r[key]??-9)-(a.r[key]??-9))).filter(x=>!seen.has(x.p.id)&&seen.add(x.p.id)).slice(0,3);
+$('btOptimize').addEventListener('click',async()=>{
+  if(!isMember){$('accountTop').click();return}if(!bars.length)return;
+  await btEnsureDividends();const ctx=btContext(),start=btStart(settings.bt.period),end=btEnd(),base=btCfg(),code=selected,candidates=[];
+  for(const p of E.PRESETS){const usesWater=['classic','smart_dca_water','core_satellite','macro_regime'].includes(p.strategy);for(const w of usesWater?[...new Set(['60','120','240',base.ref.window])]:[base.ref.window])candidates.push({p,w,usesWater,cfg:{...base,strategy:p.strategy,params:JSON.parse(JSON.stringify({...E.PARAMS[p.strategy],...p.params})),ref:{...base.ref,window:w}}})}
+  $('btOptSheet').classList.remove('hidden');document.body.classList.add('searching');$('btOptBody').innerHTML='<p class="small">正在背景試算，其他介面仍可操作。</p>';$('btOptimize').disabled=true;
+  const key=JSON.stringify([code,ctx.bars,start,end,base,Array.from(ctx.div),Array.from(ctx.macro||[])]);
+  try{
+    const out=await OptimizerRunner.run(key,ctx,candidates,start,end,(done,total)=>{$('btOptNote').textContent=`背景試算 ${done} / ${total} 組`});
+    if(selected!==code||bars!==ctx.bars){$('btOptBody').textContent='資料或標的已更新，請重新試算。';return}
+    const {rows,dcaRef}=out,calD=dcaRef.mdd>0?dcaRef.cagr/dcaRef.mdd:0,board=(title,key,dir,fmtv)=>{const seen=new Set(),list=[...rows].filter(x=>x.p.strategy!=='dca').sort((a,b)=>dir*((b.r[key]??-9)-(a.r[key]??-9))).filter(x=>!seen.has(x.p.id)&&seen.add(x.p.id)).slice(0,3);
       return `<section class="bt-board"><h4>${title}</h4>${list.map((x,j)=>`<button class="bt-rank" type="button" data-preset="${x.p.id}" data-window="${x.w}"><b>${j+1}</b><span>${x.p.name}${x.usesWater?'（'+x.w+' 日）':''}</span><em>${fmtv(x.r)}</em></button>`).join('')}</section>`};
-    $('btOptNote').textContent=`${selected}，${settings.bt.period==='custom'?bars[start].date+' 至 '+bars[end].date:settings.bt.period==='all'?'全部資料':'近 '+settings.bt.period+' 年'}，資金 ${fmt(settings.bt.capital/10000,0)} 萬元、定期定額分 ${btN()} 期；共試算 ${rows.length} 組。定期定額：年化 ${pctText(dcaRef.xirr)}、最大回落 −${fmt(dcaRef.mdd*100,1)}%、Calmar ${fmt(calD,2)}。`;
-    $('btOptBody').innerHTML='<div class="bt-boards">'+board('年化報酬最高','xirr',1,r=>pctText(r.xirr)+(r.xirr>r.dca.xirr?' 🏆':''))+board('風險調整後（Calmar）最高','calmar',1,r=>fmt(r.calmar,2)+(r.calmar>calD?' 🏆':''))+board('最大回落最小','mdd',-1,r=>'−'+fmt(r.mdd*100,1)+'%，年化 '+pctText(r.xirr))+'</div><p class="small">🏆 表示該指標勝過定期定額。歷史最佳參數未必在未來有效，請搭配「滾動期間勝率」一起判斷。點任一列即可套用。</p>';
-  },30);
+    $('btOptNote').textContent=`${code}，${bars[start].date} 至 ${bars[end].date}，共試算 ${rows.length} 組。定期定額：年化 ${pctText(dcaRef.xirr)}、最大回落 ${fmt(dcaRef.mdd*100,1)}%、Calmar ${fmt(calD,2)}。${out.executor==='memory'?'相同條件快取':out.executor==='worker'?'背景運算':'分批運算'} ${fmt(out.elapsedMs,0)} ms。`;
+    $('btOptBody').dataset.executor=out.executor;$('btOptBody').dataset.elapsedMs=out.elapsedMs.toFixed(2);
+    $('btOptBody').innerHTML='<div class="bt-boards">'+board('年化報酬最高','xirr',1,r=>pctText(r.xirr))+board('Calmar 最高','calmar',1,r=>fmt(r.calmar,2))+board('最大回落最小','mdd',-1,r=>fmt(r.mdd*100,1)+'%，年化 '+pctText(r.xirr))+'</div><p class="small">這是本區間的歷史排行，不代表未來最佳策略。點選結果可帶入；仍需另以較晚區間驗證。</p>';
+  }catch(e){if(e.name!=='AbortError')$('btOptBody').textContent='本次試算未完成，請重試。'}finally{$('btOptimize').disabled=false}
 });
 $('btOptBody').addEventListener('click',e=>{const t=e.target.closest('.bt-rank');if(!t)return;btCloseSheet();const cur=btRef(),ref={...cur,window:t.dataset.window};btApplyPreset(t.dataset.preset,ref.window===cur.window?{ref}:{ref,sync:false});$('backtestCard').scrollIntoView({behavior:'smooth',block:'start'})});
-function btCloseSheet(){$('btOptSheet').classList.add('hidden');document.body.classList.remove('searching')}
+function btCloseSheet(){OptimizerRunner.cancel();$('btOptSheet').classList.add('hidden');document.body.classList.remove('searching')}
 $('btOptClose').addEventListener('click',btCloseSheet);$('btOptSheet').addEventListener('click',e=>{if(e.target===$('btOptSheet'))btCloseSheet()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('btOptSheet').classList.contains('hidden'))btCloseSheet()});
 
