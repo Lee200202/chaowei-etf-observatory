@@ -1100,9 +1100,11 @@ function applyLive(){
   if(live?.fx?.days?.length&&fx.length)fx=mergeDays(fx,live.fx.days);
   computeMarket();computeBrent();computeFx();updateWeights();
 }
+let liveFailure=null;
 function renderLiveMeta(){
   if(!liveAt)return;
   $('refreshClock').textContent=hhmm(liveAt);
+  if(liveFailure){$('liveMeta').textContent=`台股 ${market.at(-1)?.date||'—'} 收盤 · 線上檢查失敗（${liveFailure}），沿用每日快照`;return}
   const parts=[];
   if(live?.intraday)parts.push('大盤盤中 '+live.intraday.time.slice(0,5));
   else if(market.at(-1)?.date)parts.push('台股 '+shortDate(market.at(-1).date));
@@ -1113,11 +1115,13 @@ function renderLiveMeta(){
 }
 async function loadLive(){
   if(!window.CHAOWEI_LIVE){$('liveMeta').textContent='此版本未連接即時市場資料';return}
-  try{live=await window.CHAOWEI_LIVE();liveAt=new Date()}
-  catch(e){liveAt=new Date();$('refreshClock').textContent=hhmm(liveAt);$('liveMeta').textContent=`台股 ${market.at(-1)?.date||'—'} 收盤 · 線上檢查失敗（${e.message}），沿用每日快照`;return}
+  try{live=await window.CHAOWEI_LIVE();liveAt=new Date();liveFailure=null}
+  catch(e){liveAt=new Date();liveFailure=e.message;renderLiveMeta();return}
   if(live?.intraday&&!intradayProfile)await loadIntradayProfile();
   applyLive();renderLiveMeta();
 }
+const baseLoadMarket=loadMarket;
+loadMarket=async function(){await baseLoadMarket();renderLiveMeta()};
 const baseLoadBrent=loadBrent,baseLoadFx=loadFx;
 loadBrent=async function(){await baseLoadBrent();applyLive()};
 loadFx=async function(){await baseLoadFx();applyLive()};
