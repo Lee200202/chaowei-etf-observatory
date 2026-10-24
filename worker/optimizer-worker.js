@@ -3,7 +3,7 @@ function optimizerBatch(engine,ctx,candidates,start,end,onProgress){
   for(let i=0;i<candidates.length;i++){const c=candidates[i],r=engine.run(ctx,c.cfg,start,end);dcaRef=dcaRef||{xirr:r.dca.xirr,mdd:r.dca.mdd,cagr:r.dca.cagr};rows.push({p:c.p,w:c.w,usesWater:c.usesWater,r:{xirr:r.xirr,mdd:r.mdd,calmar:r.calmar,dca:{xirr:r.dca.xirr}}});if(i%3===0||i===candidates.length-1)onProgress?.(i+1,candidates.length)}
   return{rows,dcaRef,computeMs:performance.now()-begun};
 }
-const OptimizerRunner=(()=>{
+function createOptimizerRunner(){
   let worker=null,rejectCurrent=null,generation=0;const memo=new Map();
   function aborted(){const e=Error('cancelled');e.name='AbortError';return e}
   function cancel(){generation++;worker?.terminate();worker=null;if(rejectCurrent){rejectCurrent(aborted());rejectCurrent=null}}
@@ -19,4 +19,5 @@ const OptimizerRunner=(()=>{
     result.elapsedMs=performance.now()-begun;memo.set(key,result);if(memo.size>4)memo.delete(memo.keys().next().value);return result;
   }
   return{run,cancel};
-})();
+}
+const OptimizerRunner=createOptimizerRunner();

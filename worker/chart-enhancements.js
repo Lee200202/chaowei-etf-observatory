@@ -247,7 +247,7 @@ function technical(all){
 
 /* ---------- Chart ---------- */
 function themeColors(){const dark=document.body.classList.contains('dark');return{text:dark?'#a5c0c1':'#617982',grid:dark?'#24434b':'#e7efef',border:dark?'#34525a':'#dce8e8',bg:'transparent'}}
-function uiFontScale(){return settings.font==='xlarge'?1.24:settings.font==='large'?1.12:1}
+function uiFontScale(){return settings.font==='xlarge'?1.48:settings.font==='large'?1.36:1.24}
 function chartOptions(){
   const c=themeColors();
   return{autoSize:true,layout:{background:{type:'solid',color:c.bg},textColor:c.text,fontSize:Math.round(13*uiFontScale()),fontFamily:'-apple-system,BlinkMacSystemFont,"Noto Sans TC","Microsoft JhengHei",sans-serif'},
@@ -576,12 +576,13 @@ function syncCrosshair(){
     const o=OSC_KEYS.find(k=>oscCharts[k]===chart);if(!oscOn(o))return null;
     const key=seriesKey[o];return{series:s[key],val:i=>lwc.tech?.[key]?.[i]};
   };
-  for(const from of panes)from.subscribeCrosshairMove(p=>{
+  let moving=false;for(const from of panes)from.subscribeCrosshairMove(p=>{
+    if(moving)return;moving=true;try{
     for(const to of panes){
       if(to===from)continue;const t=target(to);if(!t)continue;
       const i=p&&p.time&&Number.isFinite(p.logical)?Math.round(p.logical):-1,v=i>=0?t.val(i):null;
       if(v==null||!Number.isFinite(v))to.clearCrosshairPosition();else to.setCrosshairPosition(v,p.time,t.series);
-    }
+    }}finally{moving=false}
   });
 }
 const crossDrawChart=drawChart;

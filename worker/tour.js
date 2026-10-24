@@ -1,8 +1,15 @@
 /* ---------- Three-step introduction, replayable from the view bar or display menu ---------- */
 const TOUR_STEPS=[
-  ['.water-copy','先看本檔分數','分數為 0–5，依你選的方向判讀配置傾向。預設價格低分高，也可以改成價格高分高；分數不是勝率。'],
-  ['.direction-presets','再看市場方向','大盤、量能、原油、匯率、融資與官股都能選計分方向。「計算細節」可展開公式與參考值；資料日期依來源顯示。'],
-  ['#backtestCard','最後用歷史驗證','Google 登入後，可展開波段研究、帶入訓練期參數至回測，或試算歷史策略排行。較晚的測試期才適合檢查是否延續；沒有獲利保證。']
+ ['#matrixView','1. 從總覽選 ETF','首頁是候選 ETF 的盤後總覽。點卡片可進入觀測；主動型與被動型可以分開看，資料日期列在卡片內。'],
+ ['#openSearch','2. 搜尋與換檔','用名稱、代號或追蹤指數搜尋，也可按鍵盤 /。選取後，價格、技術面與回測會一起切換；關閉搜尋可回到原頁。'],
+ ['.water-copy','3. 先認識分數','水位是歷史價格位置，分數為 0–5。預設價格低分高，也可反向；它不是勝率。上方可選觀察天數、黃金分割或等距刻度。'],
+ ['#chartCard','4. 操作價格與技術圖','滾輪縮放、拖曳平移，按貼合畫面恢復。日、週、月 K 可切換；均線、布林、MACD 等需自行開啟，量測工具可查看漲跌幅與天數。'],
+ ['#market','5. 補看市場背景','市場刻度獨立成頁。每張卡可展開計分方向、範圍與來源日期；盤後或週資料不會因五分鐘檢查就變成即時行情。'],
+ ['#drawer-weights','6. 設定自己的權重','登入後展開權重設定，調整各因子係數與方向。綜合分數會依有效資料重算；設定可保存，也能分享檢視連結。'],
+ ['#drawer-waveStudy','7. 研究波段與圖釘','登入後可設定轉折最少間隔、反向幅度與大波門檻。已確認峰谷可畫到 K 線；圖釘用於人工研究，不會把未確認轉折當成已知。'],
+ ['#trainingLab','8. 固定訓練，再驗證','登入後選訓練與驗證日期。系統只用訓練期挑一次規則，再鎖定到後段；可查看鎖定參數，也可把驗證帶到回測圖。'],
+ ['#subperiodControls','9. 對照歷史水位與交易','在回測的放大查看某段時間內，開啟每日水位與進出點。資產、回落、水位三圖共用時間軸與游標；紅點買、綠點賣，資料不足時留白。'],
+ ['#technicalGuide','10. 需要時再查說明','方法說明頁保留公式、價格口徑與技術指標解釋。帳號與外觀集中於右上角人像圖示，可調字級、深淺色，並隨時重播教學。']
 ];
 let tourIndex=-1;
 function tourEls(){
@@ -33,21 +40,22 @@ function placeTour(){
 function showTourStep(i){
   if(i<0||i>=TOUR_STEPS.length)return;
   tourIndex=i;const [sel,title,text]=TOUR_STEPS[i],target=document.querySelector(sel);
+  window.chaoweiTourTarget?.(target);
   $('tourCount').textContent=(i+1)+' / '+TOUR_STEPS.length;$('tourTitle').textContent=title;$('tourText').textContent=text;
   $('tourPrev').disabled=i===0;$('tourNext').textContent=i===TOUR_STEPS.length-1?'開始使用':'下一步';
   if(target){
     // Tall cards are aligned to their top edge (below the pinned summary bar); short ones are centred.
-    const r=target.getBoundingClientRect(),bar=document.querySelector('.toolbar').getBoundingClientRect().height+16;
+    const r=target.getBoundingClientRect(),bar=$('siteHeader').getBoundingClientRect().height+24;
     const y=r.height>innerHeight*.6?r.top+scrollY-bar:r.top+scrollY-(innerHeight-r.height)/2;
     window.scrollTo({top:Math.max(0,sel==='.toolbar'?r.top+scrollY-120:y),behavior:'instant'});
   }
   requestAnimationFrame(placeTour);$('tourNext').focus({preventScroll:true});
 }
-function startTour(){closeDisplay?.();closeSearch?.();closeAccount?.();tourEls().classList.remove('hidden');document.body.classList.add('touring');showTourStep(0)}
+function startTour(){window.chaoweiBeginTour?.();closeDisplay?.();closeSearch?.();closeAccount?.();tourEls().classList.remove('hidden');document.body.classList.add('touring');showTourStep(0)}
 function endTour(){
   tourIndex=-1;$('tourShade')?.classList.add('hidden');document.body.classList.remove('touring');
   if(!settings.tourDone){settings.tourDone=new Date().toISOString().slice(0,10);save()}
-  $('quickTour')?.focus({preventScroll:true});
+  window.chaoweiEndTour?.();if($('quickTour')?.getClientRects().length)$('quickTour').focus({preventScroll:true});
 }
 $('startTour').addEventListener('click',startTour);
 // First sign-in: wait for the cloud profile to load (it may say the tour was already done on another device).

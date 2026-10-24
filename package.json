@@ -28,6 +28,6 @@
     "oil:update": "node scripts/update-oil-spot.mjs",
     "holders:backfill": "node scripts/backfill-holders.mjs",
     "test:market": "node scripts/test-market-factors.mjs && node scripts/test-market-sources.mjs",
-    "test:upgrade": "node scripts/test-upgrade.mjs && node scripts/test-measurement.mjs && node scripts/test-ph4.mjs && node scripts/test-ph5.mjs"
+    "test:upgrade": "node scripts/test-upgrade.mjs && node scripts/test-measurement.mjs && node scripts/test-ph4.mjs && node scripts/test-ph5.mjs && node scripts/test-ph6.mjs"
   }
 }
