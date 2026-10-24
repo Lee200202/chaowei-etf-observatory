@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {performance} from 'node:perf_hooks';
+const core=await readFile(new URL('../worker/measurement-core.js',import.meta.url),'utf8'),M=new Function(core+';return ChartMeasurement')();
+const rows=[{date:'2026-01-02',open:100,high:105,low:99,close:100,volume:1000},{date:'2026-01-05',open:100,high:115,low:98,close:110,volume:1500},{date:'2026-01-06',open:110,high:122,low:108,close:120,volume:2000}],a={date:rows[0].date,price:100},b={date:rows[2].date,price:120};
+const m=M.measure(rows,a,b);assert.ok(Math.abs(m.percent-20)<1e-10);assert.equal(m.change,20);assert.equal(m.bars,2);assert.equal(m.inclusive,3);assert.equal(m.days,4);assert.equal(m.high,122);assert.equal(m.low,98);assert.equal(m.volume,4500);
+const rev=M.measure(rows,b,a);assert.ok(Math.abs(rev.percent+100/6)<1e-10);assert.equal(rev.bars,-2);assert.equal(rev.days,-4);
+assert.equal(M.measure(rows,a,{...b,date:'2026-01-03'}),null);assert.equal(M.measure(rows,{...a,price:0},b),null);assert.equal(M.measure(rows,a,{...b,price:NaN}),null);
+const same=M.measure(rows,a,{...a,price:110});assert.equal(same.bars,0);assert.equal(same.days,0);assert.equal(same.inclusive,1);
+assert.equal(M.risk(100,90,120).r,2);assert.equal(M.risk(100,110,80,'short').r,2);assert.equal(M.risk(100,105,120),null);assert.equal(M.risk(0,90,120),null);
+assert.equal(M.normalize([{code:'0050',interval:'D',a,b},{code:'0050',interval:'D',a,b:{...b,price:Infinity}}]).length,1);
+const hist=JSON.parse(await readFile(new URL('../pages-data/history/0050.json',import.meta.url),'utf8')),series=hist.rows.map(r=>Object.fromEntries(hist.fields.map((f,i)=>[f,r[i]]))),start=series.find(x=>x.date==='2026-10-01'),end=series.find(x=>x.date==='2026-10-22'),real=M.measure(series,{date:start.date,price:start.close},{date:end.date,price:end.close});
+assert.equal(end.close,106.9);assert.equal(real.bars,series.indexOf(end)-series.indexOf(start));
+const p=performance.now();for(let i=0;i<1000;i++)M.measure(series,{date:series[0].date,price:series[0].close},{date:series.at(-1).date,price:series.at(-1).close});const ms=(performance.now()-p)/1000;
+console.log(`Measurement verified: directional return, signed K intervals vs calendar days, inclusive extrema, same bar, missing/invalid endpoints, long/short risk ratio. 0050 ${start.date} ${start.close} → ${end.date} ${end.close}: ${real.percent.toFixed(6)}%, ${real.bars} bars, ${real.days} calendar days. Average full-history compute ${ms.toFixed(3)} ms (Node, not browser latency).`);

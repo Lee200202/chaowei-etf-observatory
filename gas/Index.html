@@ -358,10 +358,13 @@ body:not(.member) .wave-pin-panel.member-only{max-height:220px;min-height:180px}
 .factor-grid.is-grid .factor{width:auto;min-width:0;max-width:none;flex-basis:auto;min-height:200px}
 .factor-card:has(.is-grid) .factor-progress{display:none}.grid-progress-hidden{display:none}
 .wave-bridge,.resonance-panel{border:1px solid var(--line);background:var(--mist);border-radius:24px;padding:16px;margin:18px 0}.wave-bridge button{margin-top:6px}.resonance-panel h4{margin:0 0 12px}.wave-origin{border-left:3px solid #26a5a4;padding-left:12px}
-#chartCard,#market,#waveStudy,#holderCard,#chipCard,#backtestCard,#weights,#method-story{scroll-margin-top:var(--anchor-clearance,200px)}
+#chartCard,#measurePanel,#market,#waveStudy,#holderCard,#chipCard,#backtestCard,#weights,#method-story{scroll-margin-top:var(--anchor-clearance,200px)}
 #explore{scroll-margin-top:var(--header-clearance,84px)}
 .to-top{width:44px;height:44px;padding:0!important;font-size:22px!important;bottom:max(14px,env(safe-area-inset-bottom))}
 @media(max-width:600px){.direction-presets .segment{border-radius:24px}.market-view-tools{gap:7px}.market-view-tools .segment button{padding:7px 10px}.resonance-panel .controls label{flex:1;min-width:125px}}
+.chart{position:relative}.measure-overlay{position:absolute;inset:0;z-index:5;pointer-events:none;width:100%;height:100%;overflow:hidden}.measure-surface{position:absolute;inset:0 72px 0 0;z-index:7;cursor:crosshair;touch-action:none;user-select:none}
+.measure-panel{background:var(--mist);border:1px solid var(--line);border-radius:26px;padding:18px;margin:18px 0}.measure-panel h4{margin:0;font-size:19px}.measure-panel .kicker{font-size:10px;margin:0 0 5px}.measure-panel details{margin:12px 0;border-top:1px solid var(--line);padding-top:12px}.measure-panel summary{cursor:pointer;font-size:13px;font-weight:750}.measure-help ol{font-size:13px;line-height:1.8;padding-left:22px}.measure-inputs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:12px 0}.measure-inputs label{display:grid;gap:6px;font-size:12px;color:var(--muted)}.measure-inputs input{width:100%;min-width:0;background:var(--paper);color:var(--ink);border:1px solid var(--line);border-radius:999px;padding:10px;font:inherit;min-height:42px}.measure-inputs input:read-only{opacity:.65}.measure-inputs select{width:100%;min-width:0}.measure-reading{padding:14px 0;min-height:72px}.measure-reading strong{font-size:24px;letter-spacing:-.04em}.measure-reading p{margin:5px 0}.measure-actions{display:flex;gap:8px;flex-wrap:wrap}.measure-row{display:flex;gap:7px;align-items:center;flex-wrap:wrap;border-top:1px solid var(--line);padding:10px 0;font-size:12px}.measure-row span{flex:1;min-width:180px}.measure-panel button:disabled{opacity:.45}
+@media(max-width:760px){.measure-inputs{grid-template-columns:repeat(2,minmax(0,1fr))}.measure-panel .research-head{align-items:start;gap:8px;flex-wrap:wrap}}
 </style>
 </head>
 <body>
@@ -433,6 +436,6 @@ body:not(.member) .wave-pin-panel.member-only{max-height:220px;min-height:180px}
     <footer><div>潮位 ETF 觀測所 · ETF 與大盤資料來自<a href="https://www.twse.com.tw/zh/ETFortune/products" target="_blank" rel="noopener noreferrer">臺灣證券交易所</a>；油價計分使用 FinMind Brent 現貨日資料（美元／桶）；盤中期貨參考為 Yahoo Finance BZ=F（延遲行情），兩者分開。另保存 <a href="https://www.taifex.com.tw/cht/2/bRF" target="_blank" rel="noopener noreferrer">臺灣期貨交易所布蘭特原油期貨（BRF）</a>近月結算歷史（新台幣／桶），資料來源 <a href="https://finmindtrade.com/" target="_blank" rel="noopener noreferrer">FinMind</a>；匯率來自<a href="https://data.gov.tw/dataset/7232" target="_blank" rel="noopener noreferrer">中央銀行開放資料</a>。<br>本站是位置觀測工具，非投資建議。本站記錄匿名使用統計（搜尋字詞、查看的 ETF、停留時間），不含姓名或 email，可在「外觀」關閉。</div><div>歷史日 K 為每日盤後快照（約十年）· 圖表使用 <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer">TradingView</a> Lightweight Charts™ · 2026</div></footer>
   </div>
   <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
-  <script src="https://lee200202.github.io/chaowei-etf-observatory/gas-runtime.js?v=5289e6005e2efdd1"></script>
+  <script src="https://lee200202.github.io/chaowei-etf-observatory/gas-runtime-bd5400be7bfdc15e.js"></script>
 </body>
 </html>

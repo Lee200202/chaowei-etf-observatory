@@ -73,6 +73,8 @@ jobs:
       - run: npm run history:validate
       - run: npm run build:pages
       - run: npm run build:gas
+      - run: npm run test:upgrade
+      - run: npm run test:gas
       - name: Save refreshed snapshots
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         run: |

@@ -27,3 +27,4 @@ $('waveToBacktest').addEventListener('click',()=>{
 const origin=document.createElement('p');origin.id='btWaveOrigin';origin.className='small wave-origin';$('btParams').after(origin);
 function renderWaveOrigin(){const o=settings.bt.waveOrigin;origin.textContent=o&&settings.bt.strategy==='classic'?`參數來源：${o.code} ${o.interval} K 的 ${o.upCount} 段上漲／${o.downCount} 段拉回。${o.cutoff?'只用 '+o.cutoff+' 前確認資料；下方起日已設為測試期。':'全段樣本內統計，未構成樣本外驗證。'}帶入後可自行調整；方向選單不會改寫回測內原有的水位交易條件。`:''}
 const bridgeFill=btFillForm;btFillForm=function(){bridgeFill();renderWaveOrigin()};refreshWaveBridge();renderWaveOrigin();
+const bridgePreset=btApplyPreset;btApplyPreset=function(...args){delete settings.bt.waveOrigin;bridgePreset(...args)};
