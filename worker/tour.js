@@ -43,7 +43,7 @@ function showTourStep(i){
   }
   requestAnimationFrame(placeTour);$('tourNext').focus({preventScroll:true});
 }
-function startTour(){closeDisplay?.();closeSearch?.();tourEls().classList.remove('hidden');document.body.classList.add('touring');showTourStep(0)}
+function startTour(){closeDisplay?.();closeSearch?.();closeAccount?.();tourEls().classList.remove('hidden');document.body.classList.add('touring');showTourStep(0)}
 function endTour(){
   tourIndex=-1;$('tourShade')?.classList.add('hidden');document.body.classList.remove('touring');
   if(!settings.tourDone){settings.tourDone=new Date().toISOString().slice(0,10);save()}

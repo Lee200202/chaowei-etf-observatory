@@ -201,7 +201,7 @@ function installChaoweiIdentity(host){
   window.chaoweiProfileChanged=settings=>{if(!user||applying)return;clearTimeout(saveTimer);saveTimer=setTimeout(()=>write(settings),900)};
   $('savePlan').addEventListener('click',async()=>{if(!user)return;const name=$('planName').value.trim();if(!name){status('請先輸入方案名稱');return}const settings=getLocal();const existing=plans.findIndex(p=>p.name===name);const item={name,settings,createdAt:new Date().toISOString()};if(existing>=0)plans[existing]=item;else plans.push(item);plans=plans.slice(-12);showPlans();$('planList').value=String(plans.findIndex(p=>p.name===name));await write(settings)});
   $('applyPlan').addEventListener('click',()=>{if(!user)return;const p=plans[Number($('planList').value)];if(!p)return;window.chaoweiApplyProfile?.({settings:p.settings});status(`已套用「${p.name}」`)});
-  async function signedIn(next){user=next;clearTimeout(saveTimer);window.chaoweiSetMember?.(!!user);$('googleSignIn').classList.toggle('hidden',!!user);$('googleSignOut').classList.toggle('hidden',!user);$('accountPlans').classList.toggle('hidden',!user);($('accountTop').querySelector('.nav-label')||$('accountTop')).textContent=user?'我的帳號':'登入';$('accountTop').setAttribute('aria-label',user?'我的帳號':'Google 登入');$('displaySyncNote').textContent=user?'外觀、權重與追蹤清單會同步到你的 Google 帳號。':'外觀與權重目前存在此瀏覽器；登入後可跨裝置同步。';
+  async function signedIn(next){user=next;clearTimeout(saveTimer);window.chaoweiSetMember?.(!!user);$('googleSignIn').classList.toggle('hidden',!!user);$('googleSignOut').classList.toggle('hidden',!user);$('accountPlans').classList.toggle('hidden',!user);const label=user?'我的帳號與外觀':'登入與外觀';$('accountTop').querySelector('.nav-label').textContent=label;$('accountTop').setAttribute('aria-label',label);$('accountTop').title=label;$('displaySyncNote').textContent=user?'外觀、權重與追蹤清單會同步到你的 Google 帳號。':'外觀與權重目前存在此瀏覽器；登入後可跨裝置同步。';
     if(!user){retry.classList.add('hidden');status(ready?'尚未登入；可繼續使用免費行情與本機設定。':'正在檢查登入服務…');plans=[];showPlans();return}
     status(`已登入 ${user.email} · 正在讀取同步設定…`);
     try{const snap=await api.getDoc(profileRef());if(user!==auth.currentUser)return;
@@ -358,10 +358,7 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){closeSearch();closeDisplay();closeAccount()}
   else if(e.key==='/'&&!/INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName||'')){e.preventDefault();openSearch()}
 });
-function closeDisplay(){$('displayMenu').classList.add('hidden');$('themeTop').setAttribute('aria-expanded','false')}
-$('themeTop').addEventListener('click',e=>{e.stopPropagation();const open=$('displayMenu').classList.toggle('hidden')===false;$('themeTop').setAttribute('aria-expanded',String(open))});
-$('displayMenu').addEventListener('click',e=>e.stopPropagation());
-document.addEventListener('click',closeDisplay);
+function closeDisplay(){} // Appearance is now a tab inside the account dialog.
 renderList=function(){
   if(catalog.length&&!catalog.sorted){sortCatalog();catalog.sorted=true}
   const q=$('search').value.trim().toLocaleLowerCase('zh-TW');
@@ -391,8 +388,13 @@ renderList=function(){
 };
 $('search').addEventListener('keydown',e=>{if(e.key==='Enter'){const first=$('etfList').querySelector('.candidate-pick');if(first){e.preventDefault();first.click()}}});
 
-function openAccount(){closeDisplay();$('accountOverlay').classList.remove('hidden');document.body.classList.add('account-open');$('googleSignIn').focus()}
-function closeAccount(){$('accountOverlay').classList.add('hidden');document.body.classList.remove('account-open')}
+let accountReturnFocus=null;
+function accountPane(name){const appearance=name==='appearance';$('accountProfilePane').classList.toggle('hidden',appearance);$('accountAppearancePane').classList.toggle('hidden',!appearance);document.querySelectorAll('[data-account-pane]').forEach(b=>{const on=(b.dataset.accountPane==='appearance')===appearance;b.setAttribute('aria-selected',String(on));b.tabIndex=on?0:-1})}
+function openAccount(){accountReturnFocus=document.activeElement;accountPane('profile');$('accountOverlay').classList.remove('hidden');document.body.classList.add('account-open');$('closeAccount').focus({preventScroll:true})}
+function closeAccount(){const wasOpen=!$('accountOverlay').classList.contains('hidden');$('accountOverlay').classList.add('hidden');document.body.classList.remove('account-open');if(wasOpen)accountReturnFocus?.focus?.({preventScroll:true})}
+document.querySelector('.account-tabs').addEventListener('click',e=>{const b=e.target.closest('[data-account-pane]');if(b)accountPane(b.dataset.accountPane)});
+document.querySelector('.account-tabs').addEventListener('keydown',e=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();const tabs=[...document.querySelectorAll('[data-account-pane]')],at=tabs.indexOf(document.activeElement),next=e.key==='Home'?0:e.key==='End'?1:1-Math.max(0,at);accountPane(tabs[next].dataset.accountPane);tabs[next].focus()});
+$('accountOverlay').addEventListener('keydown',e=>{if(e.key!=='Tab')return;const all=[...$('accountOverlay').querySelectorAll('button,select,input,a[href]')].filter(el=>el.getClientRects().length&&!el.disabled&&el.tabIndex!==-1),first=all[0],last=all.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}});
 for(const id of ['accountTop','memberStart'])$(id)?.addEventListener('click',openAccount);
 $('closeAccount').addEventListener('click',closeAccount);
 $('accountOverlay').addEventListener('click',e=>{if(e.target===$('accountOverlay'))closeAccount()});
@@ -2222,7 +2224,7 @@ function showTourStep(i){
   }
   requestAnimationFrame(placeTour);$('tourNext').focus({preventScroll:true});
 }
-function startTour(){closeDisplay?.();closeSearch?.();tourEls().classList.remove('hidden');document.body.classList.add('touring');showTourStep(0)}
+function startTour(){closeDisplay?.();closeSearch?.();closeAccount?.();tourEls().classList.remove('hidden');document.body.classList.add('touring');showTourStep(0)}
 function endTour(){
   tourIndex=-1;$('tourShade')?.classList.add('hidden');document.body.classList.remove('touring');
   if(!settings.tourDone){settings.tourDone=new Date().toISOString().slice(0,10);save()}

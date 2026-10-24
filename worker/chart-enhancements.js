@@ -52,10 +52,7 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){closeSearch();closeDisplay();closeAccount()}
   else if(e.key==='/'&&!/INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName||'')){e.preventDefault();openSearch()}
 });
-function closeDisplay(){$('displayMenu').classList.add('hidden');$('themeTop').setAttribute('aria-expanded','false')}
-$('themeTop').addEventListener('click',e=>{e.stopPropagation();const open=$('displayMenu').classList.toggle('hidden')===false;$('themeTop').setAttribute('aria-expanded',String(open))});
-$('displayMenu').addEventListener('click',e=>e.stopPropagation());
-document.addEventListener('click',closeDisplay);
+function closeDisplay(){} // Appearance is now a tab inside the account dialog.
 renderList=function(){
   if(catalog.length&&!catalog.sorted){sortCatalog();catalog.sorted=true}
   const q=$('search').value.trim().toLocaleLowerCase('zh-TW');
@@ -85,8 +82,13 @@ renderList=function(){
 };
 $('search').addEventListener('keydown',e=>{if(e.key==='Enter'){const first=$('etfList').querySelector('.candidate-pick');if(first){e.preventDefault();first.click()}}});
 
-function openAccount(){closeDisplay();$('accountOverlay').classList.remove('hidden');document.body.classList.add('account-open');$('googleSignIn').focus()}
-function closeAccount(){$('accountOverlay').classList.add('hidden');document.body.classList.remove('account-open')}
+let accountReturnFocus=null;
+function accountPane(name){const appearance=name==='appearance';$('accountProfilePane').classList.toggle('hidden',appearance);$('accountAppearancePane').classList.toggle('hidden',!appearance);document.querySelectorAll('[data-account-pane]').forEach(b=>{const on=(b.dataset.accountPane==='appearance')===appearance;b.setAttribute('aria-selected',String(on));b.tabIndex=on?0:-1})}
+function openAccount(){accountReturnFocus=document.activeElement;accountPane('profile');$('accountOverlay').classList.remove('hidden');document.body.classList.add('account-open');$('closeAccount').focus({preventScroll:true})}
+function closeAccount(){const wasOpen=!$('accountOverlay').classList.contains('hidden');$('accountOverlay').classList.add('hidden');document.body.classList.remove('account-open');if(wasOpen)accountReturnFocus?.focus?.({preventScroll:true})}
+document.querySelector('.account-tabs').addEventListener('click',e=>{const b=e.target.closest('[data-account-pane]');if(b)accountPane(b.dataset.accountPane)});
+document.querySelector('.account-tabs').addEventListener('keydown',e=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();const tabs=[...document.querySelectorAll('[data-account-pane]')],at=tabs.indexOf(document.activeElement),next=e.key==='Home'?0:e.key==='End'?1:1-Math.max(0,at);accountPane(tabs[next].dataset.accountPane);tabs[next].focus()});
+$('accountOverlay').addEventListener('keydown',e=>{if(e.key!=='Tab')return;const all=[...$('accountOverlay').querySelectorAll('button,select,input,a[href]')].filter(el=>el.getClientRects().length&&!el.disabled&&el.tabIndex!==-1),first=all[0],last=all.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}});
 for(const id of ['accountTop','memberStart'])$(id)?.addEventListener('click',openAccount);
 $('closeAccount').addEventListener('click',closeAccount);
 $('accountOverlay').addEventListener('click',e=>{if(e.target===$('accountOverlay'))closeAccount()});
