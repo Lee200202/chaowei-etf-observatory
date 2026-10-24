@@ -247,10 +247,11 @@ function technical(all){
 
 /* ---------- Chart ---------- */
 function themeColors(){const dark=document.body.classList.contains('dark');return{text:dark?'#a5c0c1':'#617982',grid:dark?'#24434b':'#e7efef',border:dark?'#34525a':'#dce8e8',bg:'transparent'}}
+function uiFontScale(){return settings.font==='xlarge'?1.24:settings.font==='large'?1.12:1}
 function chartOptions(){
   const c=themeColors();
-  return{autoSize:true,layout:{background:{type:'solid',color:c.bg},textColor:c.text,fontFamily:'-apple-system,BlinkMacSystemFont,"Noto Sans TC","Microsoft JhengHei",sans-serif'},
-    grid:{vertLines:{color:c.grid},horzLines:{color:c.grid}},rightPriceScale:{borderColor:c.border,minimumWidth:72},
+  return{autoSize:true,layout:{background:{type:'solid',color:c.bg},textColor:c.text,fontSize:Math.round(13*uiFontScale()),fontFamily:'-apple-system,BlinkMacSystemFont,"Noto Sans TC","Microsoft JhengHei",sans-serif'},
+    grid:{vertLines:{color:c.grid},horzLines:{color:c.grid}},rightPriceScale:{borderColor:c.border,minimumWidth:Math.round(72*uiFontScale())},
     timeScale:{borderColor:c.border,rightOffset:3,minBarSpacing:0.05,fixLeftEdge:true},
     crosshair:{mode:0},localization:{locale:'zh-TW',dateFormat:'yyyy-MM-dd'},
     handleScroll:{mouseWheel:false,pressedMouseMove:true,horzTouchDrag:true,vertTouchDrag:false},handleScale:{mouseWheel:true,pinch:true,axisPressedMouseMove:{time:true,price:false}},kineticScroll:{touch:true,mouse:false}};
@@ -273,6 +274,7 @@ function buildCharts(){
   main.priceScale('right').applyOptions({scaleMargins:{top:.05,bottom:.05}});
   vol.priceScale('right').applyOptions({scaleMargins:{top:.12,bottom:0}});
   lwc={L,main,vol,oscCharts,s,guides:[],syncing:false,data:[],tech:null};
+  $('chart').dataset.axisFontSize=String(main.options().layout.fontSize);
   // Keep the volume and indicator panes aligned bar-for-bar with the price pane.
   const panes=[main,vol,macd,rsi,kd];
   for(const from of panes)from.timeScale().subscribeVisibleLogicalRangeChange(r=>{
@@ -430,7 +432,7 @@ $('oscSeg').addEventListener('click',e=>{
   settings.osc=settings.oscs[0]||'none';applyOverlayButtons();save();drawChart(true);
 });
 const originalPrefs=prefs;
-prefs=function(){originalPrefs();if(lwc){lwc.main.applyOptions({...chartOptions(),timeScale:{...chartOptions().timeScale,visible:false}});lwc.vol.applyOptions(chartOptions());for(const k of OSC_KEYS)lwc.oscCharts[k].applyOptions(chartOptions())}};
+prefs=function(){originalPrefs();if(lwc){lwc.main.applyOptions({...chartOptions(),timeScale:{...chartOptions().timeScale,visible:false}});lwc.vol.applyOptions(chartOptions());for(const k of OSC_KEYS)lwc.oscCharts[k].applyOptions(chartOptions());$('chart').dataset.axisFontSize=String(lwc.main.options().layout.fontSize);window.dispatchEvent(new Event('chaowei-typography-changed'))}};
 
 /* ---------- Volume basis: exchange-reported lots, or converted across splits ---------- */
 // Bollinger bands are opt-in; earlier test builds may have saved them as on.

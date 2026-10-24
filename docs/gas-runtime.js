@@ -560,10 +560,11 @@ function technical(all){
 
 /* ---------- Chart ---------- */
 function themeColors(){const dark=document.body.classList.contains('dark');return{text:dark?'#a5c0c1':'#617982',grid:dark?'#24434b':'#e7efef',border:dark?'#34525a':'#dce8e8',bg:'transparent'}}
+function uiFontScale(){return settings.font==='xlarge'?1.24:settings.font==='large'?1.12:1}
 function chartOptions(){
   const c=themeColors();
-  return{autoSize:true,layout:{background:{type:'solid',color:c.bg},textColor:c.text,fontFamily:'-apple-system,BlinkMacSystemFont,"Noto Sans TC","Microsoft JhengHei",sans-serif'},
-    grid:{vertLines:{color:c.grid},horzLines:{color:c.grid}},rightPriceScale:{borderColor:c.border,minimumWidth:72},
+  return{autoSize:true,layout:{background:{type:'solid',color:c.bg},textColor:c.text,fontSize:Math.round(13*uiFontScale()),fontFamily:'-apple-system,BlinkMacSystemFont,"Noto Sans TC","Microsoft JhengHei",sans-serif'},
+    grid:{vertLines:{color:c.grid},horzLines:{color:c.grid}},rightPriceScale:{borderColor:c.border,minimumWidth:Math.round(72*uiFontScale())},
     timeScale:{borderColor:c.border,rightOffset:3,minBarSpacing:0.05,fixLeftEdge:true},
     crosshair:{mode:0},localization:{locale:'zh-TW',dateFormat:'yyyy-MM-dd'},
     handleScroll:{mouseWheel:false,pressedMouseMove:true,horzTouchDrag:true,vertTouchDrag:false},handleScale:{mouseWheel:true,pinch:true,axisPressedMouseMove:{time:true,price:false}},kineticScroll:{touch:true,mouse:false}};
@@ -586,6 +587,7 @@ function buildCharts(){
   main.priceScale('right').applyOptions({scaleMargins:{top:.05,bottom:.05}});
   vol.priceScale('right').applyOptions({scaleMargins:{top:.12,bottom:0}});
   lwc={L,main,vol,oscCharts,s,guides:[],syncing:false,data:[],tech:null};
+  $('chart').dataset.axisFontSize=String(main.options().layout.fontSize);
   // Keep the volume and indicator panes aligned bar-for-bar with the price pane.
   const panes=[main,vol,macd,rsi,kd];
   for(const from of panes)from.timeScale().subscribeVisibleLogicalRangeChange(r=>{
@@ -743,7 +745,7 @@ $('oscSeg').addEventListener('click',e=>{
   settings.osc=settings.oscs[0]||'none';applyOverlayButtons();save();drawChart(true);
 });
 const originalPrefs=prefs;
-prefs=function(){originalPrefs();if(lwc){lwc.main.applyOptions({...chartOptions(),timeScale:{...chartOptions().timeScale,visible:false}});lwc.vol.applyOptions(chartOptions());for(const k of OSC_KEYS)lwc.oscCharts[k].applyOptions(chartOptions())}};
+prefs=function(){originalPrefs();if(lwc){lwc.main.applyOptions({...chartOptions(),timeScale:{...chartOptions().timeScale,visible:false}});lwc.vol.applyOptions(chartOptions());for(const k of OSC_KEYS)lwc.oscCharts[k].applyOptions(chartOptions());$('chart').dataset.axisFontSize=String(lwc.main.options().layout.fontSize);window.dispatchEvent(new Event('chaowei-typography-changed'))}};
 
 /* ---------- Volume basis: exchange-reported lots, or converted across splits ---------- */
 // Bollinger bands are opt-in; earlier test builds may have saved them as on.
@@ -2931,12 +2933,12 @@ const ChartMeasurement=(()=>{
   function shape(tag,attrs,text){const e=document.createElementNS(svg.namespaceURI,tag);for(const[k,v]of Object.entries(attrs))e.setAttribute(k,String(v));if(text)e.textContent=text;svg.append(e);return e}
   function draw(){
     renderFrame=0;svg.replaceChildren();if(!isMember||!lwc?.data.length)return;
-    const w=Math.max(0,chart.clientWidth-72),h=chart.clientHeight;svg.setAttribute('viewBox',`0 0 ${chart.clientWidth} ${h}`);
+    const scale=uiFontScale(),axis=lwc.main.priceScale('right').width(),w=Math.max(0,chart.clientWidth-axis),h=chart.clientHeight;surface.style.right=axis+'px';svg.setAttribute('viewBox',`0 0 ${chart.clientWidth} ${h}`);
     const drawBox=(d,preview=false)=>{
       const x1=lwc.main.timeScale().timeToCoordinate(d.a.date),x2=lwc.main.timeScale().timeToCoordinate(d.b.date),y1=lwc.s.candle.priceToCoordinate(d.a.price),y2=lwc.s.candle.priceToCoordinate(d.b.price);if([x1,x2,y1,y2].some(x=>x==null))return;
       const m=ChartMeasurement.measure(current(),d.a,d.b);if(!m)return;const color=m.change>=0?RISE:FALL,left=Math.max(0,Math.min(x1,x2)),right=Math.min(w,Math.max(x1,x2));if(right<left)return;
       shape('rect',{x:left,y:Math.min(y1,y2),width:Math.max(1,right-left),height:Math.max(1,Math.abs(y2-y1)),fill:color,'fill-opacity':preview?.13:.06,stroke:color,'stroke-width':preview?1.6:1,'stroke-dasharray':preview?'':'4 3'});
-      if(preview){shape('line',{x1,y1,x2,y2,stroke:color,'stroke-width':1.4});for(const[x,y]of [[x1,y1],[x2,y2]])shape('circle',{cx:x,cy:y,r:4,fill:color,stroke:'white'});const tx=Math.min(w-168,Math.max(4,(left+right)/2-82)),ty=Math.min(h-38,Math.max(8,Math.min(y1,y2)-40));shape('rect',{x:Math.max(2,tx),y:ty,width:166,height:34,rx:12,fill:color});shape('text',{x:Math.max(2,tx)+83,y:ty+14,'text-anchor':'middle',fill:'white','font-size':11,'font-weight':700},`${signNum(m.percent,2)}% · ${m.bars} 根`);shape('text',{x:Math.max(2,tx)+83,y:ty+27,'text-anchor':'middle',fill:'white','font-size':10},`${m.days} 日曆天 · ${signNum(m.change,2)} 元`)}
+      if(preview){shape('line',{x1,y1,x2,y2,stroke:color,'stroke-width':1.4});for(const[x,y]of [[x1,y1],[x2,y2]])shape('circle',{cx:x,cy:y,r:4,fill:color,stroke:'white'});const bw=Math.min(w-4,190*scale),bh=40*scale,tx=Math.max(2,Math.min(w-bw-2,(left+right-bw)/2)),ty=Math.min(h-bh-4,Math.max(8,Math.min(y1,y2)-bh-6));shape('rect',{x:tx,y:ty,width:bw,height:bh,rx:12,fill:color});shape('text',{x:tx+bw/2,y:ty+16*scale,'text-anchor':'middle',fill:'white','font-weight':700},`${signNum(m.percent,2)}% · ${m.bars} 根`);shape('text',{x:tx+bw/2,y:ty+32*scale,'text-anchor':'middle',fill:'white'},`${m.days} 日曆天 · ${signNum(m.change,2)} 元`)}
     };
     for(const d of list().slice(-8))drawBox(d);
     if(draft?.b){const rr=risk();if(rr){const x1=lwc.main.timeScale().timeToCoordinate(draft.a.date),x2=lwc.main.timeScale().timeToCoordinate(draft.b.date);if(x1!=null&&x2!=null){const ye=lwc.s.candle.priceToCoordinate(rr.entry);for(const[p,label]of [[rr.target,'目標'],[rr.stop,'停損']]){const y=lwc.s.candle.priceToCoordinate(p),color=p>=rr.entry?RISE:FALL;if(y!=null&&ye!=null){shape('rect',{x:Math.max(0,Math.min(x1,x2)),y:Math.min(y,ye),width:Math.max(0,Math.min(w,Math.max(x1,x2))-Math.max(0,Math.min(x1,x2))),height:Math.abs(y-ye),fill:color,'fill-opacity':.09});shape('text',{x:Math.max(4,Math.min(x1,x2)+4),y:Math.min(h-4,Math.max(12,y)),fill:color,'font-size':11},`${label} ${fmt(p,2)}`)}}}}drawBox(draft,true)}
@@ -2965,7 +2967,7 @@ const ChartMeasurement=(()=>{
   const prevDraw=drawChart;drawChart=function(...args){prevDraw(...args);sync()};
   const prevMember=window.chaoweiResearchMemberChanged;window.chaoweiResearchMemberChanged=signed=>{prevMember?.(signed);if(!signed){draft=null;complete=false;mode(false)}sync()};
   const prevProfile=window.chaoweiApplyProfile;window.chaoweiApplyProfile=p=>{prevProfile(p);settings.chartMeasures=ChartMeasurement.normalize(settings.chartMeasures);settings.measureSnap=['close','ohlc','free'].includes(settings.measureSnap)?settings.measureSnap:'close';$('measureSnap').value=settings.measureSnap;$('measurePriceA').readOnly=$('measurePriceB').readOnly=settings.measureSnap!=='free';sync()};
-  new ResizeObserver(schedule).observe(chart);sync();
+  window.addEventListener('chaowei-typography-changed',schedule);new ResizeObserver(schedule).observe(chart);sync();
 })();
 
 const ViewportMath=(()=>{
