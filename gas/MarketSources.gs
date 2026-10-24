@@ -39,12 +39,15 @@ function tdccParse_(html,code,date){
   let big=0,count=0;[12,13,14,15].forEach(n=>{if(!levels[n])throw Error('集保分級不足');big+=liveNum_(levels[n][3]);count+=liveNum_(levels[n][2])});
   const iso=date.slice(0,4)+'-'+date.slice(4,6)+'-'+date.slice(6);return[iso,code,storeRound_(big/total*100,2),storeRound_(liveNum_(levels[15][3])/total*100,2),count,liveNum_(levels[15][2])];
 }
-function tdccRow_(code,date){
-  const url='https://www.tdcc.com.tw/portal/zh/smWeb/qryStock',r=UrlFetchApp.fetch(url,{muteHttpExceptions:true});
-  if(r.getResponseCode()!==200)throw Error('集保 HTTP '+r.getResponseCode());const html=r.getContentText('UTF-8'),match=html.match(/name="SYNCHRONIZER_TOKEN" value="([^"]+)/);if(!match)throw Error('集保表單暫不可用');
-  const headers=r.getAllHeaders(),cookies=headers['Set-Cookie']||headers['set-cookie']||[],cookie=(Array.isArray(cookies)?cookies:[cookies]).map(c=>String(c).split(';')[0]).join('; ');
-  const q=UrlFetchApp.fetch(url,{method:'post',headers:{Cookie:cookie},payload:{SYNCHRONIZER_TOKEN:match[1],SYNCHRONIZER_URI:'/portal/zh/smWeb/qryStock',method:'submit',firDate:tdccDates_(html)[0],scaDate:date,sqlMethod:'StockNo',stockNo:code,stockName:''},muteHttpExceptions:true});
-  if(q.getResponseCode()!==200)throw Error('集保查詢 HTTP '+q.getResponseCode());return tdccParse_(q.getContentText('UTF-8'),code,date);
+function tdccRows_(code,dates){
+  const url='https://www.tdcc.com.tw/portal/zh/smWeb/qryStock';
+  const pages=UrlFetchApp.fetchAll(dates.map(()=>({url,muteHttpExceptions:true})));
+  const queries=pages.map((r,i)=>{
+    if(r.getResponseCode()!==200)throw Error('集保 HTTP '+r.getResponseCode());const html=r.getContentText('UTF-8'),match=html.match(/name="SYNCHRONIZER_TOKEN" value="([^"]+)/);if(!match)throw Error('集保表單暫不可用');
+    const headers=r.getAllHeaders(),cookies=headers['Set-Cookie']||headers['set-cookie']||[],cookie=(Array.isArray(cookies)?cookies:[cookies]).map(c=>String(c).split(';')[0]).join('; ');
+    return{url,method:'post',headers:{Cookie:cookie},payload:{SYNCHRONIZER_TOKEN:match[1],SYNCHRONIZER_URI:'/portal/zh/smWeb/qryStock',method:'submit',firDate:tdccDates_(html)[0],scaDate:dates[i],sqlMethod:'StockNo',stockNo:code,stockName:''},muteHttpExceptions:true};
+  });
+  return UrlFetchApp.fetchAll(queries).map((q,i)=>{if(q.getResponseCode()!==200)throw Error('集保查詢 HTTP '+q.getResponseCode());return tdccParse_(q.getContentText('UTF-8'),code,dates[i])});
 }
 function getHolderHistory(code){
   code=String(code||'').toUpperCase();if(!/^[0-9A-Z]{4,6}$/.test(code))return{rows:[],error:'代號格式錯誤'};
@@ -54,7 +57,7 @@ function getHolderHistory(code){
   const url='https://www.tdcc.com.tw/portal/zh/smWeb/qryStock',res=UrlFetchApp.fetch(url,{muteHttpExceptions:true});if(res.getResponseCode()!==200)return{rows:own,error:'集保暫不可用'};
   const dates=tdccDates_(res.getContentText('UTF-8')).filter(d=>!etf.listingDate||d>=etf.listingDate.replace(/-/g,'')),have={};own.forEach(r=>have[r[0].replace(/-/g,'')]=true);
   const missing=dates.filter(d=>!have[d]),batch=missing.slice(0,8),added=[];let error=null;
-  for(let i=0;i<batch.length;i++){try{added.push(tdccRow_(code,batch[i]))}catch(e){error=String(e.message).slice(0,120);break}}
+  for(let i=0;i<batch.length;i+=4){try{added.push.apply(added,tdccRows_(code,batch.slice(i,i+4)))}catch(e){error=String(e.message).slice(0,120);break}}
   if(added.length){const lock=LockService.getScriptLock();if(lock.tryLock(1000)){try{const exists={};storeTail_(sh,60000).forEach(r=>exists[r[0]+'|'+r[1]]=true);storeAppend_(sh,'holders',added.filter(r=>!exists[r[0]+'|'+r[1]]))}finally{lock.releaseLock()}}}
   const rows=own.concat(added).sort((a,b)=>a[0].localeCompare(b[0]));return{rows,code,hasMore:!error&&missing.length>added.length,totalWeeks:dates.length,error,source:'TDCC 官網一年歷史查詢'};
 }

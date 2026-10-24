@@ -6,4 +6,10 @@ const q=box.oilFuture_();assert.equal(q.price,111.66);assert.equal(q.symbol,'BZ=
 const table=total=>'<option value="20260911" selected>'+[12,13,14,15].map((n,i)=>`<tr><td>${n}</td><td>bucket</td><td>${i+1}</td><td>${(i+1)*100000}</td><td>1</td></tr>`).join('')+`<tr><td>${total}</td><td>合 計</td><td>20</td><td>10000000</td><td>100</td></tr>`;
 for(const total of[16,17]){const r=box.tdccParse_(table(total),'0050','20260911');assert.equal(r[0],'2026-09-11');assert.equal(r[2],10);assert.equal(r[3],4);assert.equal(r[4],10);assert.equal(r[5],4)}
 assert.throws(()=>box.tdccParse_(table(17),'0050','20260918'),/日期不符/);
+let batches=0;
+box.UrlFetchApp.fetchAll=queries=>{batches++;return queries.map((q,i)=>{
+  if(q.method==='post'){assert.equal(q.headers.Cookie,'session='+i);assert.equal(q.payload.SYNCHRONIZER_TOKEN,'token'+i);assert.equal(q.payload.stockNo,'0050');return{getResponseCode:()=>200,getContentText:()=>table(17).replaceAll('20260911',q.payload.scaDate)}}
+  return{getResponseCode:()=>200,getContentText:()=>'<input name="SYNCHRONIZER_TOKEN" value="token'+i+'"><option value="20261022">',getAllHeaders:()=>({'Set-Cookie':['session='+i+'; Path=/']})};
+})};
+const parallel=box.tdccRows_('0050',['20260911','20260918','20260924','20261002']);assert.equal(parallel.length,4);assert.equal(parallel[3][0],'2026-10-02');assert.equal(batches,2);
 console.log('Market sources passed: USD spot, server-only token, caching, delayed futures timestamp, TDCC 16/17-row totals and 400/1000-lot aggregation.');
