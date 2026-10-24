@@ -51,6 +51,9 @@ async function etfDay(date){
         const sign=/-/.test(String(r[iSign]).replace(/<[^>]+>/g,''))?-1:1,chg=num(r[iChg]);
         rows[String(r[iCode]).trim()]=[o,h,l,c,v,num(r[iVal]),Number.isFinite(chg)?sign*chg:null,String(r[iName]).trim()];
       }
+      // TWSE may answer stat=OK with an empty ETF table on an exceptional closure.
+      // Do not advance the trading-day cursor or invent an empty trading session.
+      if(!Object.keys(rows).length)rows=null;
     }
   }
   // Past days never change: cache them, including holidays (rows=null). Today is fetched again next run.
@@ -128,5 +131,9 @@ const marketRows=[...byDate.values()].sort((a,b)=>a[0].localeCompare(b[0]));
 await writeFile(marketFile,JSON.stringify({source:'TWSE FMTQIK 市場成交資訊',fields:['date','volume','value','index'],first:marketRows[0]?.[0],latest:marketRows.at(-1)?.[0],rows:marketRows})+'\n');
 
 const files=(await readdir(out)).filter(f=>/^[0-9A-Z]+\.json$/.test(f)&&f!=='market.json');
-await writeFile(new URL('_meta.json',out),JSON.stringify({latest,updated:new Date().toISOString(),etfFiles:files.length,marketLatest:marketRows.at(-1)?.[0]||null})+'\n');
-console.log(`History: ${tradingDays} trading days added through ${latest}; ${series.size} ETF files written; market through ${marketRows.at(-1)?.[0]}.`);
+const actualLatest=(await Promise.all(files.map(async f=>{
+  const code=f.slice(0,-5),s=series.get(code)||await readJson(new URL(f,out),null);
+  return s?.rows?.at(-1)?.[0]||null;
+}))).filter(Boolean).sort().at(-1)||null;
+await writeFile(new URL('_meta.json',out),JSON.stringify({latest:actualLatest,updated:new Date().toISOString(),etfFiles:files.length,marketLatest:marketRows.at(-1)?.[0]||null})+'\n');
+console.log(`History: ${tradingDays} trading days added through ${actualLatest}; ${series.size} ETF files written; market through ${marketRows.at(-1)?.[0]}.`);

@@ -456,6 +456,7 @@ applyOverlayButtons();
 let live=null,liveAt=null,intradayProfile=null;
 function mergeDays(base,extra){const m=new Map(base.map(x=>[x.date,x]));for(const x of extra||[])if(x&&x.date&&Number.isFinite(x.value))m.set(x.date,x);return[...m.values()].sort((a,b)=>a.date.localeCompare(b.date))}
 const hhmm=d=>d.toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Asia/Taipei'});
+const shortDate=d=>String(d||'').slice(5).replace('-','/');
 async function loadIntradayProfile(){try{const r=await fetch('/api/intraday-profile'),d=await r.json();if(r.ok&&Array.isArray(d.days))intradayProfile=d}catch{}}
 function applyLive(){
   // Only merge the BRF near-month series; an older Apps Script version still answers with EIA spot in US dollars.
@@ -468,15 +469,16 @@ function renderLiveMeta(){
   $('refreshClock').textContent=hhmm(liveAt);
   const parts=[];
   if(live?.intraday)parts.push('大盤盤中 '+live.intraday.time.slice(0,5));
-  if(live?.brent?.unit==='TWD/barrel')parts.push('期交所 BRF 結算至 '+live.brent.latest);
-  if(live?.fx)parts.push('央行公布至 '+live.fx.latest);
+  else if(market.at(-1)?.date)parts.push('台股 '+shortDate(market.at(-1).date));
+  if(live?.brent?.unit==='TWD/barrel')parts.push('BRF '+shortDate(live.brent.latest));
+  if(live?.fx)parts.push('匯率 '+shortDate(live.fx.latest));
   if(live?.errors?.length)parts.push('部分來源暫不可用：'+live.errors.join('；'));
-  $('liveMeta').textContent=parts.join(' · ')||'等待下一次更新';
+  $('liveMeta').textContent=parts.join(' · ')||'休市沿用最近收盤；等待下次檢查';
 }
 async function loadLive(){
   if(!window.CHAOWEI_LIVE){$('liveMeta').textContent='此版本未連接即時市場資料';return}
   try{live=await window.CHAOWEI_LIVE();liveAt=new Date()}
-  catch(e){$('liveMeta').textContent='即時市場資料暫不可用：'+e.message+'；暫用每日快照';return}
+  catch(e){liveAt=new Date();$('refreshClock').textContent=hhmm(liveAt);$('liveMeta').textContent=`台股 ${market.at(-1)?.date||'—'} 收盤 · 線上檢查失敗（${e.message}），沿用每日快照`;return}
   if(live?.intraday&&!intradayProfile)await loadIntradayProfile();
   applyLive();renderLiveMeta();
 }
