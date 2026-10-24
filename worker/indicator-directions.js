@@ -9,6 +9,7 @@ function migrateDirections(){
 migrateDirections();
 const DKEYS=['etf','index','volume','oil','fx','margin','bank'];
 function directionScore(key){
+  if(!settings.factorModes||typeof settings.factorModes!=='object')settings.factorModes=DM.normalize();
   if(key==='volume'){
     if(!marketPosition||marketPosition.volumeGrade==null)return null;
     const last=marketPosition.last,n=settings.window==='all'?market.length:Number(settings.window),prior=market.filter(x=>x.date<last.date).slice(-n),range=scalarRange(prior.map(x=>x.index));
