@@ -12,10 +12,15 @@ function installChaoweiQuote(appsScriptUrl){
     const url=new URL(appsScriptUrl);
     url.searchParams.set('api','quote');url.searchParams.set('code',code);url.searchParams.set('callback',callback);
     let done=false;
-    const finish=(error,data)=>{if(done)return;done=true;clearTimeout(timer);delete window[callback];script.remove();error?reject(error):resolve(data)};
+    const finish=(error,data,timedOut=false)=>{
+      if(done)return;done=true;clearTimeout(timer);
+      if(timedOut){window[callback]=()=>{delete window[callback];script.remove()};script.onload=()=>{delete window[callback];script.remove()}}
+      else{delete window[callback];script.remove()}
+      error?reject(error):resolve(data);
+    };
     window[callback]=data=>finish(null,data);
-    script.onerror=()=>finish(Error('Apps Script 報價連線失敗'));
-    const timer=setTimeout(()=>finish(Error('Apps Script 報價逾時')),12000);
+    script.onerror=()=>{if(done){delete window[callback];script.remove()}else finish(Error('Apps Script 報價連線失敗'))};
+    const timer=setTimeout(()=>finish(Error('Apps Script 報價逾時'),null,true),12000);
     script.src=url.toString();document.head.append(script);
   });
 }

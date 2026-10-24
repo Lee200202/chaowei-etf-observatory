@@ -5,8 +5,15 @@ function installChaoweiLive(appsScriptUrl){
   const jsonp=(api,prefix)=>new Promise((resolve,reject)=>{
     const callback=prefix+Date.now().toString(36)+Math.random().toString(36).slice(2,10),script=document.createElement('script'),url=new URL(appsScriptUrl);
     url.searchParams.set('api',api);url.searchParams.set('callback',callback);let done=false;
-    const finish=(error,data)=>{if(done)return;done=true;clearTimeout(timer);delete window[callback];script.remove();error?reject(error):resolve(data)};
-    window[callback]=data=>finish(null,data);script.onerror=()=>finish(Error('連線失敗'));const timer=setTimeout(()=>finish(Error('逾時')),15000);script.src=url.toString();document.head.append(script);
+    const finish=(error,data,timedOut=false)=>{
+      if(done)return;done=true;clearTimeout(timer);
+      // A timed-out JSONP request can still execute after its script tag is removed.
+      // Keep a harmless callback until that late response finishes loading.
+      if(timedOut){window[callback]=()=>{delete window[callback];script.remove()};script.onload=()=>{delete window[callback];script.remove()}}
+      else{delete window[callback];script.remove()}
+      error?reject(error):resolve(data);
+    };
+    window[callback]=data=>finish(null,data);script.onerror=()=>{if(done){delete window[callback];script.remove()}else finish(Error('連線失敗'))};const timer=setTimeout(()=>finish(Error('逾時'),null,true),15000);script.src=url.toString();document.head.append(script);
   });
   if(window.google?.script?.run){
     window.CHAOWEI_LOG=events=>events.forEach(e=>google.script.run.withFailureHandler(()=>{}).logEvent(e));
@@ -28,10 +35,15 @@ function installChaoweiLive(appsScriptUrl){
     const script=document.createElement('script'),url=new URL(appsScriptUrl);
     url.searchParams.set('api','live');url.searchParams.set('callback',callback);
     let done=false;
-    const finish=(error,data)=>{if(done)return;done=true;clearTimeout(timer);delete window[callback];script.remove();error?reject(error):resolve(data)};
+    const finish=(error,data,timedOut=false)=>{
+      if(done)return;done=true;clearTimeout(timer);
+      if(timedOut){window[callback]=()=>{delete window[callback];script.remove()};script.onload=()=>{delete window[callback];script.remove()}}
+      else{delete window[callback];script.remove()}
+      error?reject(error):resolve(data);
+    };
     window[callback]=data=>finish(null,data);
-    script.onerror=()=>finish(Error('Apps Script 市場資料連線失敗'));
-    const timer=setTimeout(()=>finish(Error('Apps Script 市場資料逾時')),20000);
+    script.onerror=()=>{if(done){delete window[callback];script.remove()}else finish(Error('Apps Script 市場資料連線失敗'))};
+    const timer=setTimeout(()=>finish(Error('Apps Script 市場資料逾時'),null,true),20000);
     script.src=url.toString();document.head.append(script);
   });
 }
