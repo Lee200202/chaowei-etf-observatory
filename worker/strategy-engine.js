@@ -127,7 +127,7 @@ function createChaoweiEngine(){
       const dq=dca.value(i);if(dcaPrev>0)dcaNav*=(dq-inflow)/dcaPrev;dcaPrev=dq;dcaPeak=Math.max(dcaPeak,dcaNav);dcaMdd=Math.min(dcaMdd,dcaNav/dcaPeak-1);
       utilSum+=eq>0?acc.shares*c/eq:0;days++;
       series.push({time:ctx.bars[i].date,value:eq,nav,dd:ddown,exposure:eq>0?acc.shares*c/eq:0,contributed});
-      bhSeries.push({time:ctx.bars[i].date,value:bq,dd:bhNav/bhPeak-1});dcaSeries.push({time:ctx.bars[i].date,value:dq,dd:dcaNav/dcaPeak-1});
+      bhSeries.push({time:ctx.bars[i].date,value:bq,nav:bhNav,dd:bhNav/bhPeak-1});dcaSeries.push({time:ctx.bars[i].date,value:dq,nav:dcaNav,dd:dcaNav/dcaPeak-1});
     }
     const tEnd=Date.parse(ctx.bars[end].date),years=Math.max(1/365,(tEnd-Date.parse(ctx.bars[start].date))/(365.25*DAY));
     const summary=(a,navEnd,m,fl,paid)=>{const eq=a.value(end);return{equity:eq,ret:paid?eq/paid-1:0,xirr:xirr([...fl,[tEnd,eq]]),cagr:Math.pow(navEnd,1/years)-1,mdd:-m,fees:a.fees}};

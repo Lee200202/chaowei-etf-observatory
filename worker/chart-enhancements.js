@@ -229,7 +229,7 @@ const IND_DEFAULT={ma:[5,20,60],bb:[20,2],macd:[12,26,9],rsi:14,kd:9};
 function normInd(x){
   x=x&&typeof x==='object'?x:{};const int=(v,lo,hi,d)=>{v=Math.round(Number(v));return Number.isFinite(v)?Math.max(lo,Math.min(hi,v)):d};
   const f=int(x.macd?.[0],2,60,12);let s=int(x.macd?.[1],3,120,26);if(s<=f)s=f+1;
-  return{ma:[0,1,2].map(i=>int(x.ma?.[i],2,400,IND_DEFAULT.ma[i])),bb:[int(x.bb?.[0],5,100,20),Math.max(0.5,Math.min(4,Number(x.bb?.[1])||2))],macd:[f,s,int(x.macd?.[2],2,60,9)],rsi:int(x.rsi,2,60,14),kd:int(x.kd,3,60,9)};
+  return{ma:[0,1,2].map(i=>int(x.ma?.[i],2,2400,IND_DEFAULT.ma[i])),bb:[int(x.bb?.[0],5,100,20),Math.max(0.5,Math.min(4,Number(x.bb?.[1])||2))],macd:[f,s,int(x.macd?.[2],2,60,9)],rsi:int(x.rsi,2,60,14),kd:int(x.kd,3,60,9)};
 }
 settings.ind=normInd(settings.ind);
 const indName={ma:i=>'MA'+settings.ind.ma[i],rsi:()=>'RSI '+settings.ind.rsi,kd:()=>'KD '+settings.ind.kd};
@@ -348,7 +348,7 @@ drawChart=function(keepView=false){
 };
 function updateLegend(logical){
   if(!lwc)return;const all=lwc.data,t=lwc.tech;if(!all.length){$('chartLegend').textContent='—';return}
-  const i=Number.isFinite(logical)?Math.max(0,Math.min(all.length-1,Math.round(logical))):(lwc.visibleAnchor??all.length-1),b=all[i],prev=all[i-1];
+  const raw=Number.isFinite(logical)?Math.round(logical):(lwc.visibleAnchor??all.length-1),i=Math.max(0,Math.min(all.length-1,raw)),b=all[i],prev=all[i-1];
   const chg=prev?b.close-prev.close:null,pct=prev?chg/prev.close*100:null,cls=chg>0?'up':chg<0?'down':'';
   const item=(label,val,color)=>`<span${color?` style="--c:${color}"`:''} class="${color?'dot':''}"><small>${label}</small>${val}</span>`;
   let h=item('日期',b.date)+item('開',fmt(b.open,2))+item('高',fmt(b.high,2))+item('低',fmt(b.low,2))+`<span class="${cls}"><small>收</small>${fmt(b.close,2)}${chg==null?'':` <em>${chg>=0?'+':''}${fmt(chg,2)}（${chg>=0?'+':''}${fmt(pct,2)}%）</em>`}</span>`+item('量',lots(b.volume));
@@ -532,7 +532,7 @@ let isMember=false;
 window.chaoweiSetMember=signedIn=>{
   isMember=!!signedIn;document.body.classList.toggle('member',isMember);
   // Blurred content must not be reachable by keyboard or screen reader either.
-  document.querySelectorAll('.member-only').forEach(card=>{for(const el of card.children)if(!el.classList.contains('member-lock'))el.inert=!isMember});
+  document.querySelectorAll('.member-only').forEach(card=>{for(const el of card.querySelectorAll('[data-member-gated]'))el.inert=!isMember;for(const el of card.children)if(!el.classList.contains('member-lock')){el.dataset.memberGated='';el.inert=!isMember}});
   window.chaoweiResearchMemberChanged?.(isMember);
   applyMarkers();updateWeights();
 };

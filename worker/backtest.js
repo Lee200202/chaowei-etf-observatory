@@ -188,7 +188,7 @@ function btAnimate(el,to,format){
 }
 function btCharts_(){
   if(btCharts||!window.LightweightCharts)return btCharts;
-  const L=window.LightweightCharts,opt={...chartOptions(),handleScroll:false,handleScale:false};
+  const L=window.LightweightCharts,opt={...chartOptions(),handleScroll:chartOptions().handleScroll,handleScale:chartOptions().handleScale};
   const top=L.createChart($('btEquity'),{...opt,timeScale:{...opt.timeScale,visible:false}}),under=L.createChart($('btUnder'),opt);
   const money=v=>fmt(v/10000,v>=1e6?0:1)+' 萬',pc=v=>fmt(v,0)+'%';
   btCharts={top,under,
@@ -212,14 +212,18 @@ function btDrawCharts(r){
   c.e.setData(r.series.map(x=>({time:x.time,value:x.exposure*100})));
   c.top.timeScale().fitContent();c.under.timeScale().fitContent();
 }
+function btNextReference(ctx,cfg,i){
+  const history=ctx.bars.slice(0,i+1),next={n:history.length+1,bars:[...history,{...history.at(-1)}],refCache:new Map()},r=E.reference(next,cfg.ref.window,cfg.ref.anchorMode,cfg.ref.anchorCount);
+  return{hi:r.hi.at(-1),lo:r.lo.at(-1)};
+}
 function btNow(r){
-  const ctx=btCtx,i=ctx.n-1,c=ctx.close[i],p=r.cfg.params,st=r.state,w=E.water(ctx,r.cfg.ref),g=w.grade[i],core=w.core[i],rows=[];
+  const ctx=btCtx,i=Math.max(0,ctx.bars.findIndex(b=>b.date===r.end)),c=ctx.close[i],p=r.cfg.params,st=r.state,w=E.water(ctx,r.cfg.ref),g=w.grade[i],core=w.core[i],rows=[];
   const at=v=>'<b>'+fmt(v,2)+'</b>（較今日 '+pctText(v/c-1)+'）',hold=r.shares>0?'持有 '+fmt(r.shares,0)+' 股、現金 '+money(r.cash):'空手、現金 '+money(r.cash);
   rows.push(['目前',hold]);
   const s=r.cfg.strategy;
   if(s==='classic'){
     // Tomorrow's range includes today; use the engine's own reference for the next bar when it exists.
-    const ref=E.reference(ctx,r.cfg.ref.window,r.cfg.ref.anchorMode,r.cfg.ref.anchorCount),hi=Math.max(ref.hi[i],r.cfg.ref.anchorMode==='close'?c:ctx.high[i]),lo=Math.min(ref.lo[i],r.cfg.ref.anchorMode==='close'?c:ctx.low[i]);
+    const {hi,lo}=btNextReference(ctx,r.cfg,i);
     if(!st.buys){if(p.entry==='drop')rows.push(['下一個買點','收盤跌到 '+at(hi*(1-p.drop/100))]);if(p.entry==='fib')rows.push(['下一個買點','收盤跌到 '+at(hi-p.levels[0]*(hi-lo))]);if(p.entry==='grade')rows.push(['下一個買點','水位達 '+p.buyGrade+' 分（目前 '+(g||'—')+' 分）'])}
     else{const avg=r.cost/r.shares;rows.push(['平均成本',fmt(avg,2)+'，未實現 '+pctText(c/avg-1)]);
       if(p.exit==='gain')rows.push(['賣出點','收盤漲到 '+at(avg*(1+p.rise/100))]);if(p.exit==='trailing')rows.push(['移動停利',st.armed?'收盤跌到 '+at(st.peak*(1-p.trail/100)):'需先回到進場前高點 '+fmt(st.hi,2)+' 才啟動']);
@@ -238,10 +242,9 @@ function btNow(r){
 /* Today's action: the selected rule applied to today's close, in plain words with amounts. */
 const BT_ZONE=['','高水位・偏貴','中段偏高','中段','偏低','低水位・便宜'];
 function btAction(r){
-  const ctx=btCtx,i=ctx.n-1,c=ctx.close[i],cfg=r.cfg,p=cfg.params,s=cfg.strategy,st=r.state,B=r.base,e=catalog.find(x=>x.code===selected);
+  const ctx=btCtx,i=Math.max(0,ctx.bars.findIndex(b=>b.date===r.end)),c=ctx.close[i],cfg=r.cfg,p=cfg.params,s=cfg.strategy,st=r.state,B=r.base,e=catalog.find(x=>x.code===selected);
   // Tomorrow's range includes today's bar, like the water card above.
-  const ref=E.reference(ctx,cfg.ref.window,cfg.ref.anchorMode,cfg.ref.anchorCount),byClose=cfg.ref.anchorMode==='close';
-  const hi=Math.max(ref.hi[i],byClose?c:ctx.high[i]),lo=Math.min(ref.lo[i],byClose?c:ctx.low[i]),sc=hi>lo?E.score((c-lo)/(hi-lo),cfg.ref.method):null,g=sc?.grade;
+  const {hi,lo}=btNextReference(ctx,cfg,i),sc=hi>lo?E.score((c-lo)/(hi-lo),cfg.ref.method):null,g=sc?.grade;
   // Close at or below which the tier is at least k (inverse of the score scale).
   const priceFor=k=>lo+(cfg.ref.method==='fib'?[0,.236,.382,.618,.786,1][6-k]:1-(k-1)/5)*(hi-lo);
   const amt=v=>'<b>'+money(v)+'</b>',px=v=>'<b>'+fmt(v,2)+' 元</b>';
@@ -274,18 +277,18 @@ function btAction(r){
     else main=`依「${btName()}」：持有中，已買 ${st.buys} 批，平均成本 ${fmt(r.cost/r.shares,2)} 元（未實現 ${pctText(c*r.shares/r.cost-1)}）。`;
   }
   const rows=btNow(r).filter(x=>!['下一個買點','平均成本'].includes(x[0]));
-  return `<h4>今日行動</h4><p class="bt-act-meta">${selected} ${e?.name||''}｜收盤 ${fmt(c,2)}｜水位 ${sc?fmt(sc.core,1):'—'} / 5${g?'（'+BT_ZONE[g]+'）':''}</p>`+
+  return `<h4>區間末日試算</h4><p class="bt-act-meta">${selected} ${e?.name||''}｜${r.end} 收盤 ${fmt(c,2)}｜水位 ${sc?fmt(sc.core,1):'—'} / 5${g?'（'+BT_ZONE[g]+'）':''}</p>`+
     (main?`<p class="bt-act-main">${main}</p>`:'')+(rows.length?'<dl>'+rows.map(([a,b])=>`<dt>${a}</dt><dd>${b}</dd>`).join('')+'</dl>':'')+
-    '<p class="bt-act-note">依你選的規則與今日收盤推算，僅供參考，不是投資建議。</p>';
+    '<p class="bt-act-note">依區間末日收盤與所選規則試算；觸發條件不代表可在該價成交。</p>';
 }
 const btName=()=>E.PRESETS.find(x=>x.id===settings.bt.preset)?.name||'自訂組合';
 function btRenderTrades(){
   const r=btResult;if(!r)return;
   const list=r.trades.filter(t=>btTradeFilter==='all'||(btTradeFilter==='dca'?['dca','drip'].includes(t.kind):t.type===btTradeFilter&&!['dca','drip'].includes(t.kind)));
-  const maxRet=Math.max(0.01,...list.filter(t=>t.ret!=null).map(t=>Math.abs(t.ret))),cls=v=>v>0?'up':v<0?'down':'';
+  const maxAmount=Math.max(1,...list.map(t=>Math.abs(t.amount))),maxRet=Math.max(0.01,...list.filter(t=>t.ret!=null).map(t=>Math.abs(t.ret))),cls=v=>v>0?'up':v<0?'down':'';
   const rows=list.slice(-400).reverse();
   $('btTradesTitle').textContent='交易明細（'+r.trades.length+' 筆）';
-  $('btTrades').innerHTML=rows.length?`<table><thead><tr><th>日期</th><th>動作</th><th>價格</th><th>股數</th><th>金額</th><th>報酬</th><th>原因</th></tr></thead><tbody>${rows.map(t=>`<tr><td>${t.date}</td><td class="${t.type}">${t.type==='buy'?(t.kind==='dca'?'定投':t.kind==='drip'?'配息再投入':'買進'):'賣出'}</td><td>${fmt(t.price,2)}</td><td>${fmt(t.shares,0)}</td><td>${fmt(t.amount,0)}</td><td class="${cls(t.ret)}">${t.ret!=null?`<span class="bt-bar" style="--w:${Math.round(Math.abs(t.ret)/maxRet*100)}%"></span>${pctText(t.ret)}`:''}</td><td>${t.reason}</td></tr>`).join('')}</tbody></table>${list.length>400?'<p class="small">只顯示最近 400 筆；完整明細請下載 CSV。</p>':''}`:'<p class="small">沒有符合的交易。</p>';
+  $('btTrades').innerHTML=rows.length?`<table><thead><tr><th>日期</th><th>動作</th><th>價格</th><th>股數</th><th>金額</th><th>報酬</th><th>原因</th></tr></thead><tbody>${rows.map(t=>`<tr><td>${t.date}</td><td class="${t.type}">${t.type==='buy'?(t.kind==='dca'?'定投':t.kind==='drip'?'配息再投入':'買進'):'賣出'}</td><td>${fmt(t.price,2)}</td><td>${fmt(t.shares,0)}</td><td class="amount-cell"><span class="bt-bar" style="--w:${Math.abs(t.amount)/maxAmount*100}%"></span><span>${fmt(t.amount,0)}</span></td><td class="${cls(t.ret)}">${t.ret!=null?`<span class="bt-bar" style="--w:${Math.round(Math.abs(t.ret)/maxRet*100)}%"></span>${pctText(t.ret)}`:''}</td><td>${t.reason}</td></tr>`).join('')}</tbody></table>${list.length>400?'<p class="small">只顯示最近 400 筆；完整明細請下載 CSV。</p>':''}`:'<p class="small">沒有符合的交易。</p>';
 }
 function renderBacktest(){
   btBarsRef=bars;
@@ -388,7 +391,7 @@ function applyMarkers(){
 const btDrawChart=drawChart;
 drawChart=function(keepView){btDrawChart(keepView);if(bars.length&&btBarsRef!==bars){btCtx=null;btFillForm();renderBacktest()}else{applyMarkers();btFollowTop()}};
 const btPrefs=prefs;
-prefs=function(){btPrefs();if(btCharts){const o={...chartOptions(),handleScroll:false,handleScale:false};btCharts.top.applyOptions({...o,timeScale:{...o.timeScale,visible:false}});btCharts.under.applyOptions(o)}};
+prefs=function(){btPrefs();if(btCharts){const o={...chartOptions(),handleScroll:chartOptions().handleScroll,handleScale:chartOptions().handleScale};btCharts.top.applyOptions({...o,timeScale:{...o.timeScale,visible:false}});btCharts.under.applyOptions(o)}};
 // Brent / FX arrive after the first render; the macro filter needs them.
 const btLoadLiveHook=applyLive;applyLive=function(){btLoadLiveHook();if(btCtx&&!btCtx.macro&&brent.length&&fx.length){btCtx=null;btSchedule()}};
 btEnsureDividends();btFillForm();
