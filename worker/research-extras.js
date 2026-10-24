@@ -107,12 +107,12 @@ function renderChip(){
     series:[{name:'融資餘額',color:'#0e7490',data:margin}],right:{name:`${selected} 收盤`,color:'#9aa5ab',data:history.map(r=>closeBy.get(r[0])??null)},
     note:Number.isFinite(firstM)&&Number.isFinite(lastM)?`區間變化 ${lastM>=firstM?'+':''}${fmt(lastM-firstM,0)} 張（${firstM?(lastM>=firstM?'+':'')+fmt((lastM/firstM-1)*100,1)+'%':'—'}）`:''}));
   const m=document.createElement('p');m.className='small';m.textContent=`${day} 融資餘額 ${Number.isFinite(row[7])?fmt(row[7],0)+' 張':'暫無資料'} · 融券餘額 ${Number.isFinite(row[8])?fmt(row[8],0)+' 張':'暫無資料'}`;node.append(m);
-  const gov=document.createElement('div');gov.className='chip-gov';gov.innerHTML='<strong>八大官股買賣超</strong><p class="small">本站尚未匯入逐檔授權資料，也不將外站數值納入分數。可到來源網站核對：</p><a class="chip-gov-link" target="_blank" rel="noopener noreferrer">HiStock・這檔 ETF ↗</a> · <a class="chip-gov-link" href="https://www.wantgoo.com/stock/public-bank/trend" target="_blank" rel="noopener noreferrer">玩股網・全市場 ↗</a>';gov.querySelector('a').href='https://histock.tw/stock/broker.aspx?no='+encodeURIComponent(selected);node.append(gov);updateWeights();
+  updateWeights();
 }
 /* Small SVG trend chart drawn at the card's real pixel width, so labels stay legible on phones.
    kind 'stack': series stacked above/below zero plus an optional total line; kind 'area': one filled line
    plus an optional dashed comparison line on its own right-hand scale. Hover or tap shows that day. */
-function chipChart({title,unit,width,dates,kind,series,line,right,note,bands=[],format}){
+function chipChart({title,unit,width,dates,kind,series,line,right,note,bands=[],format,periodLabel='個交易日'}){
   const NS='http://www.w3.org/2000/svg',wrap=document.createElement('div');wrap.className='chip-trend';
   const head=document.createElement('div');head.className='chip-trend-head';head.innerHTML=`<strong></strong><span></span>`;
   head.querySelector('strong').textContent=title;head.querySelector('span').textContent=`${dates[0]||'—'} 至 ${dates.at(-1)||'—'} · 單位：${unit}${note?' · '+note:''}`;wrap.append(head);
@@ -123,7 +123,7 @@ function chipChart({title,unit,width,dates,kind,series,line,right,note,bands=[],
   if(kind==='stack'){lo=0;hi=0;dates.forEach((_,i)=>{let p=0,q=0;for(const s of series){const v=s.data[i];if(v>0)p+=v;else if(v<0)q+=v}hi=Math.max(hi,p,line?.data[i]??0);lo=Math.min(lo,q,line?.data[i]??0)})}
   else{const ref=[...all,...bands.map(b=>b.value)];lo=Math.min(...ref);hi=Math.max(...ref);const pad=(hi-lo)*0.12||Math.abs(hi)*0.05||1;lo-=pad;hi+=pad}
   const span=hi-lo||1,y=v=>T+(hi-v)/span*(H-T-B),x=i=>L+step*(i+0.5);
-  const svg=document.createElementNS(NS,'svg');svg.setAttribute('viewBox',`0 0 ${W} ${H}`);svg.setAttribute('width',W);svg.setAttribute('height',H);svg.setAttribute('role','img');svg.setAttribute('aria-label',`${title}，${dates.length} 個交易日`);
+  const svg=document.createElementNS(NS,'svg');svg.setAttribute('viewBox',`0 0 ${W} ${H}`);svg.setAttribute('width',W);svg.setAttribute('height',H);svg.setAttribute('role','img');svg.setAttribute('aria-label',`${title}，${dates.length} ${periodLabel}`);
   const el=(tag,attrs,parent=svg)=>{const e=document.createElementNS(NS,tag);for(const [k,v] of Object.entries(attrs))e.setAttribute(k,String(v));parent.append(e);return e};
   const short=v=>Math.abs(v)>=10000?fmt(v/10000,1)+'萬':fmt(v,Math.abs(v)>=100?0:Math.abs(v)>=10?1:2);
   // Gridlines with labels: top, middle, bottom (and zero for stacked bars).
@@ -138,6 +138,7 @@ function chipChart({title,unit,width,dates,kind,series,line,right,note,bands=[],
   }else{
     const s=series[0],pts=s.data.map((v,i)=>Number.isFinite(v)?[x(i),y(v)]:null).filter(Boolean);
     if(pts.length>1){el('path',{d:`M${pts[0][0]},${H-B} `+pts.map(p=>`L${p[0]},${p[1]}`).join(' ')+` L${pts.at(-1)[0]},${H-B} Z`,fill:s.color,opacity:.14});el('polyline',{points:pts.map(p=>p.join(',')).join(' '),fill:'none',stroke:s.color,'stroke-width':2.4,'stroke-linejoin':'round'})}
+    for(const extra of series.slice(1)){const points=extra.data.map((v,i)=>Number.isFinite(v)?`${x(i)},${y(v)}`:null).filter(Boolean);if(points.length>1)el('polyline',{points:points.join(' '),fill:'none',stroke:extra.color,'stroke-width':2.2,'stroke-linejoin':'round'})}
     // Reference lines (for example the observation window's high and low).
     for(const b of bands){el('line',{x1:L,x2:W-R,y1:y(b.value),y2:y(b.value),stroke:s.color,'stroke-dasharray':'6 4',opacity:.7});const below=bands.length>1&&b.value===Math.min(...bands.map(x=>x.value)),t=el('text',{x:L+6,y:y(b.value)+(below?13:-5),class:'chip-axis chip-band'});t.textContent=b.label+' '+valueText(b.value)}
     if(right){const rv=right.data.filter(Number.isFinite);if(rv.length>1){const rl=Math.min(...rv),rh=Math.max(...rv),rs=rh-rl||1,ry=v=>T+(rh-v)/rs*(H-T-B);
@@ -152,7 +153,7 @@ function chipChart({title,unit,width,dates,kind,series,line,right,note,bands=[],
   legend.innerHTML=[...series.map(s=>`<span style="color:${s.color}">● ${s.name}</span>`),line?`<span>━ ${line.name}</span>`:'',right?`<span style="color:${right.color}">┅ ${right.name}（右軸）</span>`:''].join('');wrap.append(legend);
   const tip=document.createElement('p');tip.className='chip-tip';tip.setAttribute('aria-live','polite');wrap.append(tip);
   const signed=v=>Number.isFinite(v)?(v>0?'+':'')+fmt(v,0):'—';
-  const show=i=>{tip.textContent=`${dates[i]}　`+[...series.map(s=>`${s.name} ${kind==='stack'?signed(s.data[i]):Number.isFinite(s.data[i])?valueText(s.data[i]):'—'}${kind==='stack'?' 張':''}`),line?`${line.name} ${signed(line.data[i])} 張`:'',right&&Number.isFinite(right.data[i])?`${right.name} ${fmt(right.data[i],2)}`:''].filter(Boolean).join(' · ');guide.setAttribute('x1',x(i));guide.setAttribute('x2',x(i));guide.setAttribute('opacity',.45)};
+  const show=i=>{tip.textContent=`${dates[i]}　`+[...series.map(s=>`${s.name} ${Number.isFinite(s.data[i])?valueText(s.data[i]):'—'}`),line?`${line.name} ${valueText(line.data[i])}`:'',right&&Number.isFinite(right.data[i])?`${right.name} ${fmt(right.data[i],2)}`:''].filter(Boolean).join(' · ');guide.setAttribute('x1',x(i));guide.setAttribute('x2',x(i));guide.setAttribute('opacity',.45)};
   const pick=e=>{const r=svg.getBoundingClientRect(),px=(e.clientX-r.left)*W/r.width;show(Math.max(0,Math.min(n-1,Math.floor((px-L)/step))))};
   svg.addEventListener('pointermove',pick);svg.addEventListener('pointerdown',pick);svg.addEventListener('pointerleave',()=>{guide.setAttribute('opacity',0);show(n-1)});
   show(n-1);return wrap;

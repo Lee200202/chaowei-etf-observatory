@@ -2,7 +2,8 @@
    Absent data never becomes a zero score; a factor with weight but no data pauses the combined score. */
 const EXTRA_FACTORS=[
   {id:'wMargin',setting:'marginWeight',label:'本檔融資餘額',name:'本檔融資',score:()=>marginScore()},
-  {id:'wMktMargin',setting:'mktMarginWeight',label:'大盤融資餘額',name:'大盤融資',score:()=>mktMarginPosition?.core??null}
+  {id:'wMktMargin',setting:'mktMarginWeight',label:'大盤融資每日增減',name:'大盤融資增減',score:()=>mktMarginPosition?.core??null},
+  {id:'wBank',setting:'bankWeight',label:'八大官股（全市場）',name:'全市場官股',score:()=>bankPosition?.core??null}
 ];
 for(const f of EXTRA_FACTORS){
   const row=document.createElement('div');row.className='weight';
@@ -14,9 +15,9 @@ for(const f of EXTRA_FACTORS){
   row.querySelector('.w-num').addEventListener('input',e=>{$(f.id).value=Math.max(0,Math.min(100,Number(e.target.value)||0));updateWeights()});
 }
 const marginControls=document.createElement('div');marginControls.className='controls';
-marginControls.innerHTML='<label>本檔融資解讀<select id="marginDirection"><option value="low">融資越低分越高</option><option value="high">融資越高分越高</option></select></label><span class="small">本檔：今日融資餘額在近 60 個交易日的位置，資料不足 20 天停算。大盤：與上方「大盤融資餘額」卡同一分數，方向在該卡設定。</span>';
+marginControls.innerHTML='<label>本檔融資解讀<select id="marginDirection"><option value="low">融資越低分越高</option><option value="high">融資越高分越高</option></select></label><span class="small">本檔融資仍用近 60 日餘額位置。大盤融資改用每日增減：增加降分、減少加分。官股使用全市場淨額：買超加分、賣超減分。</span>';
 $('weights').querySelector('.weights').after(marginControls);
-const bankHint=document.createElement('p');bankHint.className='small';bankHint.textContent='八大官股：尚無授權逐檔資料，暫不開放加權。';marginControls.after(bankHint);
+const bankHint=document.createElement('p');bankHint.className='small';bankHint.textContent='原油、融資增減與官股共用上方市場計分設定；這些因子是背景資料，並非本檔 ETF 的持股明細。';marginControls.after(bankHint);
 settings.marginDirection=settings.marginDirection==='high'?'high':'low';
 $('marginDirection').value=settings.marginDirection;$('marginDirection').disabled=shareView;
 function marginScore(){
@@ -35,7 +36,7 @@ updateWeights=function(){
   EXTRA_FACTORS.forEach((f,i)=>settings[f.setting]=extra[i]);settings.marginDirection=$('marginDirection').value;
   const outs=['oEtf','oIndex','oVolume','oBrent','oFx',...EXTRA_FACTORS.map(f=>'o'+f.id.slice(1))];
   outs.forEach((id,i)=>$(id).textContent=sum?Math.round(weights[i]/sum*100)+'%':'0%');
-  const names=['本檔 ETF','大盤價格','大盤量能','原油（00642U）','美元／新台幣',...EXTRA_FACTORS.map(f=>f.name)];
+  const names=['本檔 ETF','大盤價格','大盤量能','布蘭特現貨','美元／新台幣',...EXTRA_FACTORS.map(f=>f.name)];
   $('weightBar').innerHTML=weights.map((w,i)=>w>0&&sum>0?`<span class="w${i}" style="width:${(w/sum*100).toFixed(2)}%" title="${names[i]} ${Math.round(w/sum*100)}%">${w/sum>=0.12?names[i]+' '+Math.round(w/sum*100)+'%':''}</span>`:'').join('');
   $('weightStatus').textContent=sum===100?'權重合計 100%':sum>0?`權重合計 ${sum}%，依比例換算成 100%`:'請至少設定一項權重';
   const base=[position?.core,marketPosition?.index?.core,marketPosition?.volumeGrade==null||settings.volumeDirection==='off'?null:settings.volumeDirection==='low'?5-marketPosition.volumeScore:marketPosition.volumeScore,brentPosition?.core,fxPosition?.core];

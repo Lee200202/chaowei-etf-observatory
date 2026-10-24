@@ -1,6 +1,6 @@
 /* ---------- Homepage search field and popular searches ---------- */
 // Typing in the homepage field opens the full search with the same text.
-$('homeSearch').addEventListener('focus',()=>{openSearch();setTimeout(()=>{if($('homeSearch').value){$('search').value=$('homeSearch').value;$('homeSearch').value='';renderList()}},40)});
+$('homeSearch').addEventListener('focus',()=>{if(restoringSearchFocus)return;openSearch();setTimeout(()=>{if(!$('searchOverlay').classList.contains('hidden')&&$('homeSearch').value){$('search').value=$('homeSearch').value;$('homeSearch').value='';renderList()}},40)});
 $('homeSearch').addEventListener('input',()=>{$('search').value=$('homeSearch').value;$('homeSearch').value='';openSearch();renderList()});
 let popular=null;
 async function loadPopular(){

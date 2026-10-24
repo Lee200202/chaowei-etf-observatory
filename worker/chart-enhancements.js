@@ -21,10 +21,10 @@ function customOption(select,value,label){value=String(value);if(!select||[...se
 /* ---------- ETF search ---------- */
 const sortKey=e=>[e.type==='active'?1:0,parseInt(e.code.replace(/\D/g,''),10)||0,e.code];
 function sortCatalog(){catalog.sort((a,b)=>{const x=sortKey(a),y=sortKey(b);return x[0]-y[0]||x[1]-y[1]||x[2].localeCompare(y[2])})}
-let lastFocus=null;
-function openSearch(){lastFocus=document.activeElement;$('searchOverlay').classList.remove('hidden');document.body.classList.add('searching');renderList();setTimeout(()=>{$('search').focus();$('search').select()},30)}
+let lastFocus=null,restoringSearchFocus=false,searchFocusTimer=null;
+function openSearch(){if(restoringSearchFocus||!$('searchOverlay').classList.contains('hidden'))return;lastFocus=document.activeElement;$('searchOverlay').classList.remove('hidden');document.body.classList.add('searching');renderList();searchFocusTimer=setTimeout(()=>{if(!$('searchOverlay').classList.contains('hidden')){$('search').focus();$('search').select()}},30)}
 // After a pick, focus must not jump back to the opener: the same Enter press would "click" it and reopen the sheet.
-function closeSearch(restore=true){if($('searchOverlay').classList.contains('hidden'))return;$('searchOverlay').classList.add('hidden');document.body.classList.remove('searching');if(restore)lastFocus?.focus?.({preventScroll:true});else document.activeElement?.blur?.()}
+function closeSearch(restore=true){if($('searchOverlay').classList.contains('hidden'))return;clearTimeout(searchFocusTimer);$('searchOverlay').classList.add('hidden');document.body.classList.remove('searching');if(restore){restoringSearchFocus=true;try{lastFocus?.focus?.({preventScroll:true})}finally{restoringSearchFocus=false}}else document.activeElement?.blur?.()}
 function pick(code){selected=code;closeSearch(false);renderList();loadBars();const t=document.querySelector('.toolbar');window.scrollTo({top:t.getBoundingClientRect().top+scrollY-12,behavior:'instant'})}
 /* Risk badge from the catalog name and index: inverse and leveraged first (their index names look like the core ones). */
 function etfRisk(code){
@@ -472,7 +472,7 @@ function renderLiveMeta(){
   const parts=[];
   if(live?.intraday)parts.push('大盤盤中 '+live.intraday.time.slice(0,5));
   else if(market.at(-1)?.date)parts.push('台股 '+shortDate(market.at(-1).date));
-  if(live?.brent?.unit==='TWD/barrel')parts.push('BRF '+shortDate(live.brent.latest));
+  if(live?.oil?.unit==='USD/barrel')parts.push('原油現貨 '+shortDate(live.oil.latest));
   if(live?.fx)parts.push('匯率 '+shortDate(live.fx.latest));
   if(live?.errors?.length)parts.push('部分來源暫不可用：'+live.errors.join('；'));
   $('liveMeta').textContent=parts.join(' · ')||'休市沿用最近收盤；等待下次檢查';

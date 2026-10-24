@@ -21,7 +21,7 @@ $('window').addEventListener('change',()=>setTimeout(markScenario,0));
 markScenario();
 
 /* ---------- Weights: used in proportion, so any total works; live preview of the combined score ---------- */
-const WEIGHT_LABELS=['本檔 ETF','大盤價格','大盤量能','原油（00642U）','美元／新台幣'];
+const WEIGHT_LABELS=['本檔 ETF','大盤價格','大盤量能','布蘭特現貨','美元／新台幣'];
 const shareUpdateWeights=updateWeights;
 updateWeights=function(){
   shareUpdateWeights();

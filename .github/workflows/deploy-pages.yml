@@ -66,6 +66,10 @@ jobs:
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         continue-on-error: true
         run: npm run brent:update
+      - name: Update FinMind Brent spot daily history
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        continue-on-error: true
+        run: node scripts/update-oil-spot.mjs
       - run: npm run history:validate
       - run: npm run build:pages
       - name: Save refreshed snapshots

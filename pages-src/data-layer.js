@@ -75,6 +75,8 @@ function installChaoweiApi(base,serverFallback){
     // Listings can change while the historical K-line manifest does not.
     if(path==='/api/etfs')return freshFile('etf-catalog.json');
     if(path==='/api/brent')return file('data/brent.json');
+    if(path==='/api/oil')return freshFile('data/oil-spot.json');
+    if(path==='/api/bank')return freshFile('data/history/histock-bank.json');
     if(path==='/api/fx')return file('data/fx.json');
     if(path==='/api/history')return history(params.get('code'));
     if(path==='/api/market')return market();

@@ -45,3 +45,18 @@ body:not(.member) .wave-pin-panel.member-only{max-height:220px;min-height:180px}
 .holder-contents{display:grid;gap:14px}.holder-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.holder-stat{display:grid;gap:5px;padding:18px;border:1px solid var(--line);border-radius:24px;background:var(--mist)}.holder-stat strong{font-size:clamp(1.7rem,4vw,2.6rem);line-height:1.1}.holder-stat small{color:var(--muted)}.holder-meter{height:8px;border-radius:99px;background:var(--line);overflow:hidden}.holder-meter i{display:block;height:100%;border-radius:99px}@media(max-width:560px){.holder-grid{grid-template-columns:1fr}}
 .momentum-panel{margin-top:14px}.momentum-body{margin-top:12px;border:1px solid var(--line);border-radius:24px;background:var(--mist);padding:18px;display:grid;gap:12px}.momentum-body.hidden{display:none}.momentum-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}.momentum-head strong{font-size:1.15rem}.momentum-head small,.momentum-period small{color:var(--muted)}.momentum-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.momentum-period{display:grid;gap:4px;border-radius:18px;background:var(--paper);padding:14px}.momentum-period strong{font-size:1.7rem;line-height:1.1}.momentum-body p{margin:0}@media(max-width:560px){.momentum-grid{grid-template-columns:1fr}}
 .momentum-trend{border-radius:18px;background:var(--paper);padding:12px 14px}.momentum-trend svg{display:block;width:100%;height:118px;color:var(--ink)}.momentum-legend{display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:11px;font-weight:750}.momentum-legend span:first-child{color:#c9413b}.momentum-legend span:nth-child(2){color:#8b98a8}.momentum-legend small{margin-left:auto;color:var(--muted);font-weight:500}
+/* Market factor settings stay secondary; the raw values and source time remain visible. */
+.market-config{margin:0 0 1.3rem;border:1px solid var(--line);border-radius:24px;padding:14px 18px}
+.market-config summary{cursor:pointer;font-weight:650;list-style-position:inside}
+.market-config .controls{margin-top:16px;display:flex;flex-wrap:wrap;gap:14px;align-items:end}
+.market-config label{display:flex;flex-direction:column;gap:6px;min-width:150px}
+.market-config input{max-width:180px}
+.market-config .small{max-width:72ch;line-height:1.7}
+.factor-spark{width:100%;max-width:240px;margin:10px 0;color:var(--accent)}
+.factor-spark svg{display:block;width:100%;height:48px}
+.factor .oil-future{font-size:12px;line-height:1.6;max-width:32ch}
+.bank-market-trend{margin-top:24px;padding-top:24px;border-top:1px solid var(--line)}
+.bank-market-trend h4{margin:0;font-size:clamp(18px,2vw,24px)}
+.bank-market-trend .small{max-width:85ch;line-height:1.7}
+.w7{background:#c98a2b}
+@media(max-width:600px){.market-config{padding:12px 14px}.market-config label{min-width:0;flex:1 1 140px}.bank-market-trend .factor-trend-head{flex-wrap:wrap;gap:12px}.bank-market-trend .segment{flex-wrap:wrap}}

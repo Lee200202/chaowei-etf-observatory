@@ -1,9 +1,15 @@
 // 潮位 ETF 觀測所：Apps Script 入口。
 // 網頁在瀏覽器直接讀 GitHub Pages 的每日快照（一檔 ETF 一個檔案）；瀏覽器讀不到時才由這裡代讀。
 const PAGES_BASE='__PAGES_BASE__';
-const ALLOWED=/^(etf-catalog\.json|data\/(brent|fx)\.json|data\/history\/(market|margin|intraday-volume|dividends|radar|[0-9A-Z]{4,6})\.json|data\/chips\/[0-9A-Z]{4,6}\.json)$/;
+const ALLOWED=/^(etf-catalog\.json|data\/(brent|oil-spot|fx)\.json|data\/history\/(market|margin|holders|histock-bank|intraday-volume|dividends|radar|[0-9A-Z]{4,6})\.json|data\/chips\/[0-9A-Z]{4,6}\.json)$/;
 
 function doGet(e){
+  if(e&&e.parameter&&(e.parameter.api==='bank'||e.parameter.api==='holders')){
+    let result;try{result=e.parameter.api==='bank'?getBankHistory():getHolderHistory(e.parameter.code)}catch(err){result={rows:[],error:String(err.message).slice(0,160)}}
+    const cb=String(e.parameter.callback||'');
+    if(/^__cwx_[A-Za-z0-9]{8,40}$/.test(cb))return ContentService.createTextOutput(cb+'('+JSON.stringify(result)+');').setMimeType(ContentService.MimeType.JAVASCRIPT);
+    return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
+  }
   if(e&&e.parameter&&e.parameter.api==='quote'){
     const result=getQuote(e.parameter.code);
     const callback=String(e.parameter.callback||'');
@@ -88,7 +94,7 @@ function readSnapshot(path){
 // 市場刻度的最新資料：盤中加權指數與累計成交量（證交所基本市況報導）、期交所 BRF 布蘭特期貨近月結算價、央行匯率。
 // 整包快取 4 分鐘，所有訪客共用一次對外請求；前端每 5 分鐘讀一次。
 function getLiveMarket(){
-  const cache=CacheService.getScriptCache(),hit=cache.get('live-v3');
+  const cache=CacheService.getScriptCache(),hit=cache.get('live-v4');
   if(hit)return JSON.parse(hit);
   const out={generated:new Date().toISOString(),intraday:null,brent:null,fx:null,store:false,errors:[]};
   const now=new Date(Date.now()+8*3600000),mins=now.getUTCHours()*60+now.getUTCMinutes(),day=now.getUTCDay();
@@ -101,7 +107,9 @@ function getLiveMarket(){
   }
   if(!out.brent)try{out.brent=brfNear_()}catch(err){out.errors.push('FinMind BRF：'+err.message)}
   if(!out.fx)try{out.fx=cbcFx_()}catch(err){out.errors.push('央行：'+err.message)}
-  cache.put('live-v3',JSON.stringify(out),240);
+  try{out.oil=oilSpot_()}catch(err){out.errors.push('FinMind 原油：'+err.message)}
+  try{out.oilFuture=oilFuture_()}catch(err){out.errors.push('Yahoo 原油期貨：'+err.message)}
+  cache.put('live-v4',JSON.stringify(out),240);
   return out;
 }
 function liveNum_(v){const n=Number(String(v==null?'':v).replace(/,/g,''));return isFinite(n)?n:null}

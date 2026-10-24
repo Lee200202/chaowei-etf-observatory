@@ -24,6 +24,9 @@
     "source:finmind:check": "node scripts/validate-finmind.mjs",
     "test:bank": "node scripts/test-bank-history.mjs",
     "test:finmind": "node scripts/test-finmind-check.mjs",
-    "brent:update": "node scripts/update-brent-futures.mjs"
+    "brent:update": "node scripts/update-brent-futures.mjs",
+    "oil:update": "node scripts/update-oil-spot.mjs",
+    "holders:backfill": "node scripts/backfill-holders.mjs",
+    "test:market": "node scripts/test-market-factors.mjs && node scripts/test-market-sources.mjs"
   }
 }

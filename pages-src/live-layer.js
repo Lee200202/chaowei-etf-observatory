@@ -1,6 +1,16 @@
 // Live market factors (intraday TAIEX and turnover, TAIFEX BRF Brent near-month, CBC USD/TWD) through the Apps Script deployment.
 // Apps Script caches one bundle for all visitors; the page asks every five minutes.
 function installChaoweiLive(appsScriptUrl){
+  const extra=(api,code)=>new Promise((resolve,reject)=>{
+    const cb='__cwx_'+Date.now().toString(36)+Math.random().toString(36).slice(2,10),script=document.createElement('script'),u=new URL(appsScriptUrl);let done=false;
+    u.searchParams.set('api',api);u.searchParams.set('callback',cb);if(code)u.searchParams.set('code',code);
+    const finish=(err,data,late=false)=>{if(done)return;done=true;clearTimeout(timer);if(late){window[cb]=()=>{delete window[cb];script.remove()};script.onload=()=>{delete window[cb];script.remove()}}else{delete window[cb];script.remove()}err?reject(err):resolve(data)};
+    window[cb]=d=>finish(null,d);script.onerror=()=>{if(done){delete window[cb];script.remove()}else finish(Error('資料連線失敗'))};const timer=setTimeout(()=>finish(Error('資料來源逾時'),null,true),api==='holders'?45000:20000);script.src=u.toString();document.head.append(script);
+  });
+  if(window.google?.script?.run){
+    window.CHAOWEI_BANK=()=>new Promise((resolve,reject)=>google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getBankHistory());
+    window.CHAOWEI_HOLDERS=code=>new Promise((resolve,reject)=>google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getHolderHistory(code));
+  }else if(appsScriptUrl){window.CHAOWEI_BANK=()=>extra('bank');window.CHAOWEI_HOLDERS=code=>extra('holders',code)}
   // Anonymous usage events (one row each) and the popular-search list, via the same Apps Script.
   const jsonp=(api,prefix)=>new Promise((resolve,reject)=>{
     const callback=prefix+Date.now().toString(36)+Math.random().toString(36).slice(2,10),script=document.createElement('script'),url=new URL(appsScriptUrl);
