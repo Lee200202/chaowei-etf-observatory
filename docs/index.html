@@ -474,7 +474,8 @@ function installChaoweiApi(base,serverFallback){
     return{days,latest:days.at(-1).date,source:'TWSE FMTQIK',live};
   }
   async function api(path,params){
-    if(path==='/api/etfs')return file('etf-catalog.json');
+    // Listings can change while the historical K-line manifest does not.
+    if(path==='/api/etfs')return freshFile('etf-catalog.json');
     if(path==='/api/brent')return file('data/brent.json');
     if(path==='/api/fx')return file('data/fx.json');
     if(path==='/api/history')return history(params.get('code'));
