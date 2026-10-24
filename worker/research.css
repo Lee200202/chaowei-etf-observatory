@@ -60,3 +60,21 @@ body:not(.member) .wave-pin-panel.member-only{max-height:220px;min-height:180px}
 .bank-market-trend .small{max-width:85ch;line-height:1.7}
 .w7{background:#c98a2b}
 @media(max-width:600px){.market-config{padding:12px 14px}.market-config label{min-width:0;flex:1 1 140px}.bank-market-trend .factor-trend-head{flex-wrap:wrap;gap:12px}.bank-market-trend .segment{flex-wrap:wrap}}
+/* Direction and research controls share the site's compact rounded language. */
+.factor-direction{width:100%;min-width:0;max-width:100%;font-size:12px;margin:7px 0 10px;white-space:normal}
+.water-copy .factor-direction{background:#174752;color:#e2f6f1;border-color:#608f94}
+.direction-action{font-size:12px!important;font-weight:750;line-height:1.5;padding:6px 10px;border-radius:999px;display:inline-block;background:var(--paper);border:1px solid var(--line);margin:8px 0!important}
+.direction-action.increase{color:#c64240}.direction-action.decrease{color:#17815b}.direction-action.neutral{color:var(--muted)}
+.water-copy .direction-action{color:#ddf6ef;background:#1a4a53;border-color:#608f94}
+.direction-presets{margin:0 0 18px}.direction-presets .segment{display:flex;flex-wrap:wrap;width:fit-content}
+.weight-direction{grid-column:1 / -1;justify-self:start}.weight-direction select{margin:0;font-size:11px;padding:5px 12px;min-height:34px}
+.market-view-tools{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin:16px 0}.market-moves{display:flex;gap:6px}.market-moves button{font-size:24px;width:44px;height:44px;padding:0}
+.market-view-tools [aria-pressed=true]{background:var(--paper);color:var(--ink);box-shadow:0 2px 8px #24494f20}
+.factor-grid.is-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr));padding:0;overflow:visible;max-width:none;gap:14px;scroll-snap-type:none}
+.factor-grid.is-grid .factor{width:auto;min-width:0;max-width:none;flex-basis:auto;min-height:200px}
+.factor-card:has(.is-grid) .factor-progress{display:none}.grid-progress-hidden{display:none}
+.wave-bridge,.resonance-panel{border:1px solid var(--line);background:var(--mist);border-radius:24px;padding:16px;margin:18px 0}.wave-bridge button{margin-top:6px}.resonance-panel h4{margin:0 0 12px}.wave-origin{border-left:3px solid #26a5a4;padding-left:12px}
+#chartCard,#market,#waveStudy,#holderCard,#chipCard,#backtestCard,#weights,#method-story{scroll-margin-top:var(--anchor-clearance,200px)}
+#explore{scroll-margin-top:var(--header-clearance,84px)}
+.to-top{width:44px;height:44px;padding:0!important;font-size:22px!important;bottom:max(14px,env(safe-area-inset-bottom))}
+@media(max-width:600px){.direction-presets .segment{border-radius:24px}.market-view-tools{gap:7px}.market-view-tools .segment button{padding:7px 10px}.resonance-panel .controls label{flex:1;min-width:125px}}

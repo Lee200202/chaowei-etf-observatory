@@ -1,0 +1,17 @@
+// Compact carousel on small screens, overview on wide screens; both remain user selectable.
+(()=>{
+  const rail=$('factorRail'),nav=document.querySelector('.factor-rail-nav');
+  const controls=document.createElement('div');controls.className='market-view-tools';
+  controls.innerHTML='<div class="segment" aria-label="市場卡片版面"><button type="button" data-market-view="grid">⊞ 全覽</button><button type="button" data-market-view="rail">⇄ 輪播</button></div><span class="small" id="marketCount"></span><div class="market-moves"><button type="button" class="pill" data-market-move="-1" aria-label="上一張市場刻度">‹</button><button type="button" class="pill" data-market-move="1" aria-label="下一張市場刻度">›</button></div>';
+  rail.before(controls);
+  function count(){const cards=[...rail.children],visible=cards.filter(c=>c.offsetLeft+c.offsetWidth>rail.scrollLeft+cards[0].offsetLeft+2&&c.offsetLeft<rail.scrollLeft+cards[0].offsetLeft+rail.clientWidth-2),first=cards.indexOf(visible[0])+1,last=cards.indexOf(visible.at(-1))+1;$('marketCount').textContent=rail.classList.contains('is-grid')?`${cards.length} 項全覽`:`${first||1}–${last||1} / ${cards.length} 項`}
+  function layout(){const mode=['grid','rail'].includes(settings.marketView)?settings.marketView:innerWidth>1200?'grid':'rail';rail.classList.toggle('is-grid',mode==='grid');nav.classList.toggle('hidden',mode==='grid');rail.setAttribute('aria-label',mode==='grid'?'市場刻度全覽':'市場刻度，可左右滑動');controls.querySelectorAll('[data-market-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.marketView===mode)));controls.querySelector('.market-moves').classList.toggle('hidden',mode==='grid');rail.nextElementSibling?.classList.toggle('grid-progress-hidden',mode==='grid');count()}
+  controls.addEventListener('click',e=>{const view=e.target.closest('[data-market-view]'),move=e.target.closest('[data-market-move]');if(view){settings.marketView=view.dataset.marketView;layout();save()}if(move){rail.dispatchEvent(new Event('pointerdown'));rail.scrollBy({left:Number(move.dataset.marketMove)*(rail.children[0].offsetWidth+16),behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'})}});
+  rail.addEventListener('scroll',count,{passive:true});window.addEventListener('resize',layout);
+  const prev=window.chaoweiApplyProfile;window.chaoweiApplyProfile=p=>{prev(p);layout()};layout();
+  // Actual sticky heights, including larger fonts, determine anchor clearance.
+  function offsets(){const header=document.querySelector('header'),toolbar=document.querySelector('.toolbar');document.documentElement.style.setProperty('--header-clearance',(header?.getBoundingClientRect().height||72)+12+'px');document.documentElement.style.setProperty('--anchor-clearance',(header?.getBoundingClientRect().height||72)+(toolbar?.getBoundingClientRect().height||100)+20+'px')}
+  const ro=new ResizeObserver(offsets);for(const el of [document.querySelector('header'),document.querySelector('.toolbar')])if(el)ro.observe(el);offsets();
+  const aliases={method:'method-story','wave-lab':'waveStudy',chips:'chipCard',backtest:'backtestCard'};function alias(){const id=aliases[location.hash.slice(1)];if(id)$(id)?.scrollIntoView({behavior:'instant'})}window.addEventListener('hashchange',alias);setTimeout(alias,300);
+  const top=document.querySelector('.to-top');if(top){top.textContent='↑';top.setAttribute('aria-label','回到上方觀測區');top.title='回到上方觀測區'}
+})();

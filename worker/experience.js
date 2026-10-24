@@ -94,7 +94,7 @@
       new IntersectionObserver(entries=>{visible=entries[0].isIntersecting},{threshold:.35}).observe(rail);
     }else visible=true;
     setInterval(()=>{
-      if(!visible||document.hidden||paused||reduced.matches||
+      if(rail.classList.contains('is-grid')||!visible||document.hidden||paused||reduced.matches||
          document.body.classList.contains('motion-paused')||Date.now()<manualUntil||
          rail.matches(':hover')||rail.contains(document.activeElement))return;
       goTo(index+1);

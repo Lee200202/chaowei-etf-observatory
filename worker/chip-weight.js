@@ -15,7 +15,7 @@ for(const f of EXTRA_FACTORS){
   row.querySelector('.w-num').addEventListener('input',e=>{$(f.id).value=Math.max(0,Math.min(100,Number(e.target.value)||0));updateWeights()});
 }
 const marginControls=document.createElement('div');marginControls.className='controls';
-marginControls.innerHTML='<label>本檔融資解讀<select id="marginDirection"><option value="low">融資越低分越高</option><option value="high">融資越高分越高</option></select></label><span class="small">本檔融資仍用近 60 日餘額位置。大盤融資改用每日增減：增加降分、減少加分。官股使用全市場淨額：買超加分、賣超減分。</span>';
+marginControls.innerHTML='<label>本檔融資解讀<select id="marginDirection"><option value="low">融資越低分越高</option><option value="high">融資越高分越高</option></select></label><span class="small">本檔融資用近 60 日餘額位置；大盤融資用每日增減，官股用全市場淨額。各因子分數依上方方向選單計算。</span>';
 $('weights').querySelector('.weights').after(marginControls);
 const bankHint=document.createElement('p');bankHint.className='small';bankHint.textContent='原油、融資增減與官股共用上方市場計分設定；這些因子是背景資料，並非本檔 ETF 的持股明細。';marginControls.after(bankHint);
 settings.marginDirection=settings.marginDirection==='high'?'high':'low';
@@ -41,13 +41,14 @@ updateWeights=function(){
   $('weightStatus').textContent=sum===100?'權重合計 100%':sum>0?`權重合計 ${sum}%，依比例換算成 100%`:'請至少設定一項權重';
   const base=[position?.core,marketPosition?.index?.core,marketPosition?.volumeGrade==null||settings.volumeDirection==='off'?null:settings.volumeDirection==='low'?5-marketPosition.volumeScore:marketPosition.volumeScore,brentPosition?.core,fxPosition?.core];
   const scores=[...base,...EXTRA_FACTORS.map(f=>f.score())];
+  if(polarityReady){for(const [i,key]of [[0,'etf'],[1,'index'],[2,'volume'],[3,'oil'],[4,'fx'],[6,'margin'],[7,'bank']])scores[i]=directionScore(key)}
   const missing=weights.findIndex((w,i)=>w>0&&!Number.isFinite(scores[i]));
   if(sum<=0||missing>=0||!position){$('combined').textContent='—';$('combinedExtra').textContent=sum<=0?'請至少設定一項權重':missing>=5?`${names[missing]}可用資料不足，暫停綜合分`:'選取的因子資料不足';$('weightPreview').textContent='';save();return}
   const value=weights.reduce((n,w,i)=>n+w*scores[i],0)/sum;
   $('combined').textContent=fmt(value,1)+' / 5';
-  $('combinedExtra').textContent=EXTRA_FACTORS.filter((f,i)=>extra[i]>0).map(f=>`${f.name} ${fmt(f.score(),1)} 分`).join(' · ')||'延伸綜合分請參照各項位置';
-  const d=value-position.core;
-  $('weightPreview').innerHTML=`只看 ${selected}：<b>${fmt(position.core,1)}</b> 分 → 依你的權重：<b>${fmt(value,1)}</b> 分`+(Math.abs(d)>=0.05?`（${d>0?'偏向加碼':'偏向減碼'} ${fmt(Math.abs(d),1)} 分）`:'');
+  $('combinedExtra').textContent=EXTRA_FACTORS.map((f,i)=>extra[i]>0?`${f.name} ${fmt(scores[5+i],1)} 分`:'').filter(Boolean).join(' · ')||'延伸綜合分請參照各項位置';
+  const etfScore=polarityReady?directionScore('etf'):position.core,d=value-etfScore;
+  $('weightPreview').innerHTML=`只看 ${selected}：<b>${fmt(etfScore,1)}</b> 分 → 依你的權重：<b>${fmt(value,1)}</b> 分`+(Math.abs(d)>=0.05?`（${d>0?'偏向增加':'偏向降低'} ${fmt(Math.abs(d),1)} 分）`:'');
   save();
 };
 $('marginDirection').addEventListener('change',updateWeights);

@@ -56,6 +56,7 @@ function waveRender(){
   const excluded=currentPins().filter(x=>x.kind==='exclude').map(x=>x.date);
   const stat=ChaoweiWave.summary(result.segments,p.cutoff,excluded);
   const accepted=result.segments.filter(s=>!excluded.some(date=>date>=s.from.date&&date<=s.to.date));
+  waveBridgeData={code:selected,interval,params:p,segments:accepted};
   wavePivots=[...new Map(accepted.flatMap(s=>[s.from,s.to]).map(x=>[x.date,x])).values()];
   const f=n=>n==null?'—':fmt(n,1),unit=ivName()+' K';
   const box=$('waveSummary');box.replaceChildren();
@@ -74,6 +75,7 @@ function waveRender(){
     for(const value of row){const td=document.createElement('td');td.textContent=value;tr.append(td)}$('waveRows').append(tr)
   }
   waveRefreshMarkers();
+  if(typeof refreshWaveBridge==='function')refreshWaveBridge();
 }
 function waveRefreshMarkers(){
   if(!isMember||!waveShowMarks||!lwc?.data?.length){window.chaoweiWaveMarkers=[];window.chaoweiPins.render();return}

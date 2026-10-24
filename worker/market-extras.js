@@ -97,7 +97,7 @@ function renderFactorTrend(){
     series:def.bars?[{name:'增加',color:RISE,data:rows.map(x=>Math.max(0,x[1]))},{name:'減少',color:FALL,data:rows.map(x=>Math.min(0,x[1]))}]:[{name:def.title,color:def.color,data:rows.map(x=>x[1])}],bands,format:def.fmt,
     right:def.right?(()=>{const r=def.right();return{name:r.name,color:r.color,data:rows.map(x=>r.byDate.get(x[0])??null)}})():undefined,
     note:def.bars?'零軸為基準':`區間 ${last>=first?'+':''}${fmt((last/first-1)*100,1)}%`}));
-  if(s){const p=document.createElement('p');p.className='small';p.textContent=`前 ${s.count} 筆參考，本次值不放入均值與標準差。${key==='margin'?'增加降分、減少加分。':`均值 ${fmt(s.mean,2)}、標準差 ${fmt(s.sd,2)} 美元；比均值高則降分。`} Z＝${fmt(s.z,2)}，分數 ${fmt(s.core,2)}。`;trendPanel.append(p)}
+  if(s){const p=document.createElement('p');p.className='small';const k=key==='brent'?'oil':key,display=polarityReady?directionScore(k):s.core;p.textContent=`前 ${s.count} 筆參考，本次值不放入均值與標準差。${key==='margin'?'以零軸衡量每日增減。':`均值 ${fmt(s.mean,2)}、標準差 ${fmt(s.sd,2)} 美元。`} Z＝${fmt(s.z,2)}，依所選方向 ${fmt(display,2)} 分。`;trendPanel.append(p)}
 }
 let factorWidth=0;window.addEventListener('resize',()=>{const w=trendPanel.clientWidth;if(factorTrendKey&&Math.abs(w-factorWidth)>40){factorWidth=w;clearTimeout(window.__factorResize);window.__factorResize=setTimeout(renderFactorTrend,150)}});
 // Keep an open chart current when the window, Brent or FX data change.

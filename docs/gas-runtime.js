@@ -1,3 +1,20 @@
+// Firestore rejects undefined fields. Clean only the user's plain settings before adding serverTimestamp().
+function sanitizeCloudPayload(value){
+  const path=new WeakSet();
+  function clean(x,depth=0){
+    if(x===undefined||typeof x==='function'||typeof x==='symbol'||depth>30)return undefined;
+    if(x===null||typeof x==='string'||typeof x==='boolean')return x;
+    if(typeof x==='number')return Number.isFinite(x)?x:null;
+    if(x instanceof Date)return Number.isFinite(x.getTime())?x.toISOString():null;
+    if(typeof x!=='object'||path.has(x))return undefined;
+    path.add(x);let out;
+    if(Array.isArray(x))out=x.map(v=>clean(v,depth+1)??null);
+    else{out={};for(const[k,v]of Object.entries(x)){if(!k.trim()||['__proto__','prototype','constructor'].includes(k))continue;const y=clean(v,depth+1);if(y!==undefined)out[k]=y}}
+    path.delete(x);return out;
+  }
+  return clean(value)??null;
+}
+
 // Shared by GitHub Pages and Apps Script.
 // Long history comes from the daily snapshot files (one request per ETF); TWSE is asked live
 // at most once per series, only when the snapshot is behind the latest expected trading day.
@@ -133,16 +150,25 @@ function installChaoweiIdentity(host){
   const config={apiKey:'AIzaSyBSMEMIDfBUSVSPwQUdbs6mEV-SXkBHbbs',authDomain:'chaowei-etf-observatory.firebaseapp.com',projectId:'chaowei-etf-observatory',appId:'1:342380543762:web:f27d15c89c70fe94b57dcb'};
   const base='https://www.gstatic.com/firebasejs/13.0.0/';
   let auth,db,user=null,api,plans=[],saveTimer=0,applying=false,ready=false;
+  const retry=document.createElement('button');retry.type='button';retry.className='pill mini hidden';retry.id='retryCloudSync';retry.textContent='重新同步雲端';$('accountStatus').after(retry);
+  retry.addEventListener('click',()=>write(getLocal()));
   const profileRef=()=>api.doc(db,'users',user.uid);
-  const safeSettings=s=>({window:s.window,method:s.method,anchorMode:s.anchorMode,anchorCount:s.anchorCount,showLevels:s.showLevels!==false,font:s.font,dark:!!s.dark,weights:s.weights,volumeDirection:s.volumeDirection,watchlist:s.watchlist,overlays:s.overlays,osc:s.osc,oscs:s.oscs,ind:s.ind,chartType:s.chartType,colorScheme:s.colorScheme,tourDone:s.tourDone,uiMode:s.uiMode,marginWeight:s.marginWeight,marginDirection:s.marginDirection,chipRange:s.chipRange,mktMarginWeight:s.mktMarginWeight,bankWeight:s.bankWeight,marketWindow:s.marketWindow,marketMethod:s.marketMethod,marketSpan:s.marketSpan,bankRange:s.bankRange,holderRange:s.holderRange,mktMarginDirection:s.mktMarginDirection,factorRange:s.factorRange,fxDirection:s.fxDirection,paneHeights:s.paneHeights,volumeBasis:s.volumeBasis,momentumEnabled:s.momentumEnabled===true,bt:s.bt,favorites:s.favorites,preferredWindow:s.preferredWindow,wavePins:Array.isArray(s.wavePins)?s.wavePins.slice(-300):[],waveStudy:s.waveStudy&&typeof s.waveStudy==='object'?s.waveStudy:{}});
+  const safeSettings=s=>({window:s.window,method:s.method,anchorMode:s.anchorMode,anchorCount:s.anchorCount,showLevels:s.showLevels!==false,font:s.font,dark:!!s.dark,weights:s.weights,volumeDirection:s.volumeDirection,watchlist:s.watchlist,overlays:s.overlays,osc:s.osc,oscs:s.oscs,ind:s.ind,chartType:s.chartType,colorScheme:s.colorScheme,tourDone:s.tourDone,uiMode:s.uiMode,marginWeight:s.marginWeight,marginDirection:s.marginDirection,chipRange:s.chipRange,mktMarginWeight:s.mktMarginWeight,bankWeight:s.bankWeight,marketWindow:s.marketWindow,marketMethod:s.marketMethod,marketSpan:s.marketSpan,bankRange:s.bankRange,holderRange:s.holderRange,factorModes:s.factorModes,marketView:s.marketView,chipResonance:s.chipResonance,chipResonanceWeight:s.chipResonanceWeight,mktMarginDirection:s.mktMarginDirection,factorRange:s.factorRange,fxDirection:s.fxDirection,paneHeights:s.paneHeights,volumeBasis:s.volumeBasis,momentumEnabled:s.momentumEnabled===true,bt:s.bt,favorites:s.favorites,preferredWindow:s.preferredWindow,wavePins:Array.isArray(s.wavePins)?s.wavePins.slice(-300):[],waveStudy:s.waveStudy&&typeof s.waveStudy==='object'?s.waveStudy:{}});
   const getLocal=()=>{try{return safeSettings(JSON.parse(localStorage.getItem('chaowei-settings')||'{}'))}catch{return {}}};
   const showPlans=()=>{const list=$('planList');list.replaceChildren(new Option('選擇方案',''));plans.forEach((p,i)=>list.add(new Option(p.name,String(i))))};
-  const write=async settings=>{if(!user||!db)return;try{await api.setDoc(profileRef(),{settings:safeSettings(settings),plans,updatedAt:api.serverTimestamp()},{merge:true});status(`已登入 ${user.email} · 設定已同步`)}catch(e){status(`已登入 ${user.email} · 雲端同步失敗：${e.code||e.message}`)}};
+  const write=async settings=>{
+    if(!user||!db)return;const uid=user.uid,payload=sanitizeCloudPayload({settings:safeSettings(settings),plans});
+    try{localStorage.setItem('chaowei-cloud-backup-'+uid,JSON.stringify({...payload,savedAt:new Date().toISOString()}))}catch{}
+    retry.disabled=true;
+    try{await api.setDoc(profileRef(),{...payload,updatedAt:api.serverTimestamp()},{merge:true});if(user?.uid===uid){status('雲端已同步 · 本機也已保存');retry.classList.add('hidden')}}
+    catch(e){if(user?.uid===uid){status('設定已保存在本機，雲端暫未同步。可稍後重試。');retry.classList.remove('hidden')}console.warn('Cloud sync failed:',e.code||'unavailable')}
+    finally{retry.disabled=false}
+  };
   window.chaoweiProfileChanged=settings=>{if(!user||applying)return;clearTimeout(saveTimer);saveTimer=setTimeout(()=>write(settings),900)};
   $('savePlan').addEventListener('click',async()=>{if(!user)return;const name=$('planName').value.trim();if(!name){status('請先輸入方案名稱');return}const settings=getLocal();const existing=plans.findIndex(p=>p.name===name);const item={name,settings,createdAt:new Date().toISOString()};if(existing>=0)plans[existing]=item;else plans.push(item);plans=plans.slice(-12);showPlans();$('planList').value=String(plans.findIndex(p=>p.name===name));await write(settings)});
   $('applyPlan').addEventListener('click',()=>{if(!user)return;const p=plans[Number($('planList').value)];if(!p)return;window.chaoweiApplyProfile?.({settings:p.settings});status(`已套用「${p.name}」`)});
   async function signedIn(next){user=next;clearTimeout(saveTimer);window.chaoweiSetMember?.(!!user);$('googleSignIn').classList.toggle('hidden',!!user);$('googleSignOut').classList.toggle('hidden',!user);$('accountPlans').classList.toggle('hidden',!user);($('accountTop').querySelector('.nav-label')||$('accountTop')).textContent=user?'我的帳號':'登入';$('accountTop').setAttribute('aria-label',user?'我的帳號':'Google 登入');$('displaySyncNote').textContent=user?'外觀、權重與追蹤清單會同步到你的 Google 帳號。':'外觀與權重目前存在此瀏覽器；登入後可跨裝置同步。';
-    if(!user){status(ready?'尚未登入；可繼續使用免費行情與本機設定。':'正在檢查登入服務…');plans=[];showPlans();return}
+    if(!user){retry.classList.add('hidden');status(ready?'尚未登入；可繼續使用免費行情與本機設定。':'正在檢查登入服務…');plans=[];showPlans();return}
     status(`已登入 ${user.email} · 正在讀取同步設定…`);
     try{const snap=await api.getDoc(profileRef());if(user!==auth.currentUser)return;
       if(snap.exists()){const data=snap.data();plans=Array.isArray(data.plans)?data.plans.filter(p=>p&&typeof p.name==='string'&&p.settings).slice(-12):[];showPlans();if(data.settings){applying=true;window.chaoweiApplyProfile?.({settings:data.settings});applying=false}status(`已登入 ${user.email} · 已載入雲端設定`)}
@@ -223,7 +249,7 @@ const fmt=(n,d=0)=>Number.isFinite(n)?Number(n).toLocaleString('zh-TW',{minimumF
 let catalog=[],selected='0050',type='all',bars=[],market=[],brent=[],fx=[],position=null,marketPosition=null,brentPosition=null,fxPosition=null,interval='D',showMA=false,shareView=false,brentSnapshot=false;
 let settings={window:'200',method:'equal',anchorMode:'wick',anchorCount:5,showLevels:true,font:'normal',dark:false,weights:[100,0,0,0,0],volumeDirection:'off'};
 try{Object.assign(settings,JSON.parse(localStorage.getItem('chaowei-settings')||'{}'))}catch{}
-try{const p=new URLSearchParams(location.search);if(p.has('preset')){const s=JSON.parse(atob(p.get('preset')));if(s&&Array.isArray(s.weights)&&s.weights.length<=5&&s.weights.every(x=>Number.isInteger(x)&&x>=0&&x<=100)&&['60','120','200','240','400','600','1200','2400','all'].includes(s.window)&&['equal','fib'].includes(s.method)&&['off','low','high'].includes(s.volumeDirection)&&/^[0-9A-Z]{4,6}$/.test(s.code)){settings.window=s.window;settings.method=s.method;settings.anchorMode=['wick','close','average'].includes(s.anchorMode)?s.anchorMode:'wick';settings.anchorCount=Math.max(1,Math.min(20,Math.round(Number(s.anchorCount)||5)));settings.showLevels=s.showLevels!==false;settings.weights=s.weights;settings.volumeDirection=s.volumeDirection;settings.marginWeight=Number.isInteger(s.marginWeight)?Math.max(0,Math.min(100,s.marginWeight)):0;settings.marginDirection=s.marginDirection==='high'?'high':'low';settings.mktMarginWeight=Number.isInteger(s.mktMarginWeight)?Math.max(0,Math.min(100,s.mktMarginWeight)):0;settings.mktMarginDirection=s.mktMarginDirection==='high'?'high':'low';settings.bankWeight=Math.max(0,Math.min(100,Number(s.bankWeight)||0));settings.marketWindow=Math.max(20,Math.min(2400,Number(s.marketWindow)||120));settings.marketMethod=s.marketMethod==='mean'?'mean':'normal';settings.marketSpan=Math.max(1,Math.min(200,Number(s.marketSpan)||20));selected=s.code;shareView=true}}}catch{}
+try{const p=new URLSearchParams(location.search);if(p.has('preset')){const s=JSON.parse(atob(p.get('preset')));if(s&&Array.isArray(s.weights)&&s.weights.length<=5&&s.weights.every(x=>Number.isInteger(x)&&x>=0&&x<=100)&&['60','120','200','240','400','600','1200','2400','all'].includes(s.window)&&['equal','fib'].includes(s.method)&&['off','low','high'].includes(s.volumeDirection)&&/^[0-9A-Z]{4,6}$/.test(s.code)){settings.window=s.window;settings.method=s.method;settings.anchorMode=['wick','close','average'].includes(s.anchorMode)?s.anchorMode:'wick';settings.anchorCount=Math.max(1,Math.min(20,Math.round(Number(s.anchorCount)||5)));settings.showLevels=s.showLevels!==false;settings.weights=s.weights;settings.volumeDirection=s.volumeDirection;settings.marginWeight=Number.isInteger(s.marginWeight)?Math.max(0,Math.min(100,s.marginWeight)):0;settings.marginDirection=s.marginDirection==='high'?'high':'low';settings.mktMarginWeight=Number.isInteger(s.mktMarginWeight)?Math.max(0,Math.min(100,s.mktMarginWeight)):0;settings.mktMarginDirection=s.mktMarginDirection==='high'?'high':'low';settings.factorModes=s.factorModes;settings.bankWeight=Math.max(0,Math.min(100,Number(s.bankWeight)||0));settings.marketWindow=Math.max(20,Math.min(2400,Number(s.marketWindow)||120));settings.marketMethod=s.marketMethod==='mean'?'mean':'normal';settings.marketSpan=Math.max(1,Math.min(200,Number(s.marketSpan)||20));selected=s.code;shareView=true}}}catch{}
 function save(){if(!shareView)try{localStorage.setItem('chaowei-settings',JSON.stringify(settings));window.chaoweiProfileChanged?.(settings)}catch{}}
 function notice(t){$('status').textContent=t;$('status').classList.remove('hidden')}
 function renderList(){const q=$('search').value.trim().toLowerCase();const list=catalog.filter(e=>(type==='all'||e.type===type)&&(!q||e.code.toLowerCase().includes(q)||e.name.toLowerCase().includes(q)));$('etfList').replaceChildren();for(const e of list){const b=document.createElement('button');b.type='button';b.className=e.code===selected?'selected':'';const strong=document.createElement('strong');strong.textContent=e.code+' · '+e.name;const small=document.createElement('small');small.textContent=(e.type==='active'?'主動型':'被動型')+' / '+e.note;b.append(strong,small);b.addEventListener('click',()=>{selected=e.code;renderList();loadBars()});$('etfList').append(b)}if(!list.length)$('etfList').textContent='沒有符合的首批標的'}
@@ -240,7 +266,7 @@ async function loadBars(){const code=selected;notice('正在讀取 '+code+' 的�
 async function loadMarket(){try{const res=await fetch('/api/market'),d=await res.json();if(!res.ok)throw Error(d.error||'大盤資料讀取失敗');market=d.days;computeMarket();updateWeights();if(d.missingMonths)notice('大盤資料有 '+d.missingMonths+' 個月份暫缺，量能評分請暫勿作判斷。')}catch(e){market=[];marketPosition=null;$('indexMeta').textContent='資料暫不可用：'+e.message;$('volumeMeta').textContent='資料暫不可用：'+e.message;updateWeights()}}
 async function loadBrent(){try{const res=await fetch('/api/brent'),d=await res.json();if(!res.ok)throw Error(d.error||'布蘭特資料讀取失敗');brent=d.days;brentSnapshot=!!d.snapshot;computeBrent();updateWeights()}catch(e){brent=[];brentPosition=null;$('brentScore').textContent='—';$('brentMeta').textContent='資料暫不可用：'+e.message;updateWeights()}}
 async function loadFx(){try{const res=await fetch('/api/fx'),d=await res.json();if(!res.ok)throw Error(d.error||'央行匯率讀取失敗');fx=d.days;computeFx();updateWeights()}catch(e){fx=[];fxPosition=null;$('fxScore').textContent='—';$('fxMeta').textContent='資料暫不可用：'+e.message;updateWeights()}}
-function share(){const data={code:selected,window:settings.window,method:settings.method,anchorMode:settings.anchorMode,anchorCount:settings.anchorCount,showLevels:settings.showLevels,weights:settings.weights,volumeDirection:settings.volumeDirection,marginWeight:settings.marginWeight||0,marginDirection:settings.marginDirection||'low',bankWeight:settings.bankWeight||0,marketWindow:settings.marketWindow||120,marketMethod:settings.marketMethod||'normal',marketSpan:settings.marketSpan||20,mktMarginWeight:settings.mktMarginWeight||0,mktMarginDirection:settings.mktMarginDirection||'low'},url=new URL(location.pathname,location.origin);url.searchParams.set('preset',btoa(JSON.stringify(data)));navigator.clipboard.writeText(url.toString()).then(()=>{$('share').textContent='✓ 已複製';setTimeout(()=>$('share').textContent='複製方案連結',2500)},()=>prompt('複製這個檢視連結',url.toString()))}
+function share(){const data={code:selected,window:settings.window,method:settings.method,anchorMode:settings.anchorMode,anchorCount:settings.anchorCount,showLevels:settings.showLevels,weights:settings.weights,volumeDirection:settings.volumeDirection,marginWeight:settings.marginWeight||0,marginDirection:settings.marginDirection||'low',factorModes:settings.factorModes,bankWeight:settings.bankWeight||0,marketWindow:settings.marketWindow||120,marketMethod:settings.marketMethod||'normal',marketSpan:settings.marketSpan||20,mktMarginWeight:settings.mktMarginWeight||0,mktMarginDirection:settings.mktMarginDirection||'low'},url=new URL(location.pathname,location.origin);url.searchParams.set('preset',btoa(JSON.stringify(data)));navigator.clipboard.writeText(url.toString()).then(()=>{$('share').textContent='✓ 已複製';setTimeout(()=>$('share').textContent='複製方案連結',2500)},()=>prompt('複製這個檢視連結',url.toString()))}
 function prefs(){document.body.classList.toggle('dark',!!settings.dark);document.body.classList.remove('large','xlarge');if(settings.font!=='normal')document.body.classList.add(settings.font);$('fontSize').value=settings.font;$('window').value=settings.window;$('method').value=settings.method;$('volumeDirection').value=settings.volumeDirection;if($('anchorMode'))updateAnchorControls();const w=[100,0,0,0,0].map((v,i)=>settings.weights?.[i]??v);['wEtf','wIndex','wVolume','wBrent','wFx'].forEach((k,i)=>$(k).value=w[i]);updateWeights()}
 $('search').addEventListener('input',()=>renderList());$('typeChips').addEventListener('click',e=>{const b=e.target.closest('button[data-type]');if(!b)return;type=b.dataset.type;$('typeChips').querySelectorAll('button').forEach(x=>x.classList.toggle('active',x===b));renderList()});$('window').addEventListener('change',function(){settings.window=this.value;computePosition();renderPosition();computeMarket();computeBrent();computeFx();updateWeights();save()});$('method').addEventListener('change',function(){settings.method=this.value;computePosition();renderPosition();computeMarket();computeBrent();computeFx();updateWeights();save()});$('intervalSeg').addEventListener('click',e=>{const b=e.target.closest('button[data-interval]');if(!b)return;interval=b.dataset.interval;$('intervalSeg').querySelectorAll('button').forEach(x=>x.classList.toggle('active',x===b));drawChart()});['wEtf','wIndex','wVolume','wBrent','wFx'].forEach(k=>$(k).addEventListener('input',updateWeights));$('volumeDirection').addEventListener('change',function(){settings.volumeDirection=this.value;updateWeights()});$('normalize').addEventListener('click',()=>{const available=[true,!!marketPosition,!!marketPosition&&settings.volumeDirection!=='off',!!brentPosition,!!fxPosition],count=available.filter(Boolean).length,v=[0,0,0,0,0];let left=100;available.forEach((yes,i)=>{if(yes){const chunk=Math.floor(100/count/5)*5;v[i]=chunk;left-=chunk}});v[0]+=left;['wEtf','wIndex','wVolume','wBrent','wFx'].forEach((k,i)=>$(k).value=v[i]);updateWeights()});$('share').addEventListener('click',share);$('fontSize').addEventListener('change',function(){settings.font=this.value;prefs();save()});['theme'].forEach(k=>$(k).addEventListener('click',()=>{settings.dark=!settings.dark;prefs();save()}));
 prefs();fetch('/api/etfs').then(r=>r.json()).then(d=>{catalog=d.etfs;if(!catalog.some(x=>x.code===selected))selected='0050';renderList();loadBars();loadMarket();loadBrent();loadFx()}).catch(e=>notice('ETF 名單無法取得：'+e.message));function refresh(){if(document.hidden)return;$('refreshClock').textContent=new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Taipei'});loadBars(true);loadMarket();loadBrent();loadFx()}setInterval(refresh,300000);$('refreshClock').textContent=new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Taipei'});if(shareView){$('share').textContent='檢視中的方案';$('share').disabled=true;$('normalize').disabled=true;['wEtf','wIndex','wVolume','wBrent','wFx','window','method','volumeDirection'].forEach(k=>$(k).disabled=true)}
@@ -1226,6 +1252,7 @@ function waveRender(){
   const excluded=currentPins().filter(x=>x.kind==='exclude').map(x=>x.date);
   const stat=ChaoweiWave.summary(result.segments,p.cutoff,excluded);
   const accepted=result.segments.filter(s=>!excluded.some(date=>date>=s.from.date&&date<=s.to.date));
+  waveBridgeData={code:selected,interval,params:p,segments:accepted};
   wavePivots=[...new Map(accepted.flatMap(s=>[s.from,s.to]).map(x=>[x.date,x])).values()];
   const f=n=>n==null?'—':fmt(n,1),unit=ivName()+' K';
   const box=$('waveSummary');box.replaceChildren();
@@ -1244,6 +1271,7 @@ function waveRender(){
     for(const value of row){const td=document.createElement('td');td.textContent=value;tr.append(td)}$('waveRows').append(tr)
   }
   waveRefreshMarkers();
+  if(typeof refreshWaveBridge==='function')refreshWaveBridge();
 }
 function waveRefreshMarkers(){
   if(!isMember||!waveShowMarks||!lwc?.data?.length){window.chaoweiWaveMarkers=[];window.chaoweiPins.render();return}
@@ -2511,7 +2539,7 @@ function renderFactorTrend(){
     series:def.bars?[{name:'增加',color:RISE,data:rows.map(x=>Math.max(0,x[1]))},{name:'減少',color:FALL,data:rows.map(x=>Math.min(0,x[1]))}]:[{name:def.title,color:def.color,data:rows.map(x=>x[1])}],bands,format:def.fmt,
     right:def.right?(()=>{const r=def.right();return{name:r.name,color:r.color,data:rows.map(x=>r.byDate.get(x[0])??null)}})():undefined,
     note:def.bars?'零軸為基準':`區間 ${last>=first?'+':''}${fmt((last/first-1)*100,1)}%`}));
-  if(s){const p=document.createElement('p');p.className='small';p.textContent=`前 ${s.count} 筆參考，本次值不放入均值與標準差。${key==='margin'?'增加降分、減少加分。':`均值 ${fmt(s.mean,2)}、標準差 ${fmt(s.sd,2)} 美元；比均值高則降分。`} Z＝${fmt(s.z,2)}，分數 ${fmt(s.core,2)}。`;trendPanel.append(p)}
+  if(s){const p=document.createElement('p');p.className='small';const k=key==='brent'?'oil':key,display=polarityReady?directionScore(k):s.core;p.textContent=`前 ${s.count} 筆參考，本次值不放入均值與標準差。${key==='margin'?'以零軸衡量每日增減。':`均值 ${fmt(s.mean,2)}、標準差 ${fmt(s.sd,2)} 美元。`} Z＝${fmt(s.z,2)}，依所選方向 ${fmt(display,2)} 分。`;trendPanel.append(p)}
 }
 let factorWidth=0;window.addEventListener('resize',()=>{const w=trendPanel.clientWidth;if(factorTrendKey&&Math.abs(w-factorWidth)>40){factorWidth=w;clearTimeout(window.__factorResize);window.__factorResize=setTimeout(renderFactorTrend,150)}});
 // Keep an open chart current when the window, Brent or FX data change.
@@ -2562,7 +2590,7 @@ for(const f of EXTRA_FACTORS){
   row.querySelector('.w-num').addEventListener('input',e=>{$(f.id).value=Math.max(0,Math.min(100,Number(e.target.value)||0));updateWeights()});
 }
 const marginControls=document.createElement('div');marginControls.className='controls';
-marginControls.innerHTML='<label>本檔融資解讀<select id="marginDirection"><option value="low">融資越低分越高</option><option value="high">融資越高分越高</option></select></label><span class="small">本檔融資仍用近 60 日餘額位置。大盤融資改用每日增減：增加降分、減少加分。官股使用全市場淨額：買超加分、賣超減分。</span>';
+marginControls.innerHTML='<label>本檔融資解讀<select id="marginDirection"><option value="low">融資越低分越高</option><option value="high">融資越高分越高</option></select></label><span class="small">本檔融資用近 60 日餘額位置；大盤融資用每日增減，官股用全市場淨額。各因子分數依上方方向選單計算。</span>';
 $('weights').querySelector('.weights').after(marginControls);
 const bankHint=document.createElement('p');bankHint.className='small';bankHint.textContent='原油、融資增減與官股共用上方市場計分設定；這些因子是背景資料，並非本檔 ETF 的持股明細。';marginControls.after(bankHint);
 settings.marginDirection=settings.marginDirection==='high'?'high':'low';
@@ -2588,13 +2616,14 @@ updateWeights=function(){
   $('weightStatus').textContent=sum===100?'權重合計 100%':sum>0?`權重合計 ${sum}%，依比例換算成 100%`:'請至少設定一項權重';
   const base=[position?.core,marketPosition?.index?.core,marketPosition?.volumeGrade==null||settings.volumeDirection==='off'?null:settings.volumeDirection==='low'?5-marketPosition.volumeScore:marketPosition.volumeScore,brentPosition?.core,fxPosition?.core];
   const scores=[...base,...EXTRA_FACTORS.map(f=>f.score())];
+  if(polarityReady){for(const [i,key]of [[0,'etf'],[1,'index'],[2,'volume'],[3,'oil'],[4,'fx'],[6,'margin'],[7,'bank']])scores[i]=directionScore(key)}
   const missing=weights.findIndex((w,i)=>w>0&&!Number.isFinite(scores[i]));
   if(sum<=0||missing>=0||!position){$('combined').textContent='—';$('combinedExtra').textContent=sum<=0?'請至少設定一項權重':missing>=5?`${names[missing]}可用資料不足，暫停綜合分`:'選取的因子資料不足';$('weightPreview').textContent='';save();return}
   const value=weights.reduce((n,w,i)=>n+w*scores[i],0)/sum;
   $('combined').textContent=fmt(value,1)+' / 5';
-  $('combinedExtra').textContent=EXTRA_FACTORS.filter((f,i)=>extra[i]>0).map(f=>`${f.name} ${fmt(f.score(),1)} 分`).join(' · ')||'延伸綜合分請參照各項位置';
-  const d=value-position.core;
-  $('weightPreview').innerHTML=`只看 ${selected}：<b>${fmt(position.core,1)}</b> 分 → 依你的權重：<b>${fmt(value,1)}</b> 分`+(Math.abs(d)>=0.05?`（${d>0?'偏向加碼':'偏向減碼'} ${fmt(Math.abs(d),1)} 分）`:'');
+  $('combinedExtra').textContent=EXTRA_FACTORS.map((f,i)=>extra[i]>0?`${f.name} ${fmt(scores[5+i],1)} 分`:'').filter(Boolean).join(' · ')||'延伸綜合分請參照各項位置';
+  const etfScore=polarityReady?directionScore('etf'):position.core,d=value-etfScore;
+  $('weightPreview').innerHTML=`只看 ${selected}：<b>${fmt(etfScore,1)}</b> 分 → 依你的權重：<b>${fmt(value,1)}</b> 分`+(Math.abs(d)>=0.05?`（${d>0?'偏向增加':'偏向降低'} ${fmt(Math.abs(d),1)} 分）`:'');
   save();
 };
 $('marginDirection').addEventListener('change',updateWeights);
@@ -2606,6 +2635,178 @@ window.chaoweiApplyProfile=profile=>{marginApplyProfile(profile);
   if($('mktMarginDirection')){$('mktMarginDirection').value=settings.mktMarginDirection==='high'?'high':'low';computeMktMargin()}
   updateWeights()};
 updateWeights();
+
+const IndicatorDirection=(()=>{
+  const clamp=x=>Math.max(0,Math.min(5,x));
+  const meta={
+    etf:{name:'ETF 價格',modes:[['low_buy','價格越低 → 分高'],['high_buy','價格越高 → 分高']],default:'low_buy'},
+    index:{name:'大盤價格',modes:[['low_buy','指數越低 → 分高'],['high_buy','指數越高 → 分高']],default:'low_buy'},
+    volume:{name:'大盤量能',modes:[['low_buy','量縮 → 分高'],['high_buy','量增 → 分高'],['smart_pv','價量配合（實驗規則）']],default:'low_buy'},
+    oil:{name:'布蘭特現貨',modes:[['low_buy','油價越低 → 分高'],['high_buy','油價越高 → 分高']],default:'low_buy'},
+    fx:{name:'美元／新台幣',modes:[['twd_strong_buy','匯率低／台幣升 → 分高'],['twd_weak_buy','匯率高／台幣貶 → 分高']],default:'twd_strong_buy'},
+    margin:{name:'大盤融資增減',modes:[['decrease_buy','融資減少 → 分高'],['increase_buy','融資增加 → 分高']],default:'decrease_buy'},
+    bank:{name:'全市場官股',modes:[['buy_follow','官股買超 → 分高'],['sell_follow','官股賣超 → 分高']],default:'buy_follow'}
+  };
+  const presets={
+    value:{etf:'low_buy',index:'low_buy',volume:'low_buy',oil:'low_buy',fx:'twd_weak_buy',margin:'decrease_buy',bank:'buy_follow'},
+    trend:{etf:'high_buy',index:'high_buy',volume:'high_buy',oil:'low_buy',fx:'twd_strong_buy',margin:'increase_buy',bank:'sell_follow'},
+    hedge:{etf:'low_buy',index:'high_buy',volume:'smart_pv',oil:'low_buy',fx:'twd_strong_buy',margin:'decrease_buy',bank:'buy_follow'}
+  };
+  function normalize(m={}){return Object.fromEntries(Object.entries(meta).map(([k,v])=>[k,v.modes.some(x=>x[0]===m?.[k])?m[k]:v.default]))}
+  function score(key,base,mode,{rank,pricePosition}={}){
+    if(key==='volume'){
+      if(!Number.isFinite(rank))return null;
+      if(mode==='smart_pv')return Number.isFinite(pricePosition)?clamp(2.5+10*(.5-pricePosition)*(rank-.3)):null;
+      return clamp(5*(mode==='low_buy'?1-rank:rank));
+    }
+    if(!Number.isFinite(base))return null;
+    const flip=mode==='high_buy'||mode==='increase_buy'||mode==='sell_follow'||key==='fx'&&mode==='twd_weak_buy';
+    return clamp(flip?5-base:base);
+  }
+  function action(score){return !Number.isFinite(score)?{kind:'missing',text:'資料不足，暫不判讀'}:score>=4?{kind:'increase',text:'依設定：偏向增加配置'}:score<=2?{kind:'decrease',text:'依設定：偏向降低配置'}:{kind:'neutral',text:'依設定：維持觀察'}}
+  return{meta,presets,normalize,score,action};
+})();
+
+// The price's raw position remains unchanged. Direction only changes the observation/weight score.
+var polarityReady=false;
+const DM=IndicatorDirection;
+function migrateDirections(){
+  const old=settings.factorModes;
+  settings.factorModes=DM.normalize(old);
+  if(!old){if(settings.fxDirection==='high')settings.factorModes.fx='twd_weak_buy';if(settings.volumeDirection==='high')settings.factorModes.volume='high_buy'}
+}
+migrateDirections();
+const DKEYS=['etf','index','volume','oil','fx','margin','bank'];
+function directionScore(key){
+  if(key==='volume'){
+    if(!marketPosition||marketPosition.volumeGrade==null)return null;
+    const last=marketPosition.last,n=settings.window==='all'?market.length:Number(settings.window),prior=market.filter(x=>x.date<last.date).slice(-n),range=scalarRange(prior.map(x=>x.index));
+    const p=range?(last.index-range.low)/(range.high-range.low):null;
+    return DM.score(key,null,settings.factorModes.volume,{rank:marketPosition.volumeScore/5,pricePosition:p});
+  }
+  const base={etf:position?.core,index:marketPosition?.index?.core,oil:brentPosition?.core,fx:fxPosition?(settings.fxDirection==='high'?5-fxPosition.core:fxPosition.core):null,margin:mktMarginPosition?.core,bank:bankPosition?.core}[key];
+  return DM.score(key,base,settings.factorModes[key]);
+}
+const directionSelects=[];
+function makeDirection(key,parent,before=null){
+  const select=document.createElement('select');select.className='factor-direction';select.setAttribute('aria-label',DM.meta[key].name+'計分方向');select.dataset.direction=key;
+  for(const[value,label]of DM.meta[key].modes)select.add(new Option(label,value));
+  select.value=settings.factorModes[key];select.disabled=shareView;select.addEventListener('click',e=>e.stopPropagation());select.addEventListener('keydown',e=>e.stopPropagation());
+  select.addEventListener('change',e=>{e.stopPropagation();settings.factorModes[key]=select.value;applyDirections()});
+  before?parent.insertBefore(select,before):parent.append(select);directionSelects.push(select);return select;
+}
+const scoreIds={index:'indexScore',volume:'volumeScore',oil:'brentScore',fx:'fxScore',margin:'mktMarginScore',bank:'bankScore'};
+makeDirection('etf',$('grade').parentElement,$('grade'));
+for(const[key,id]of Object.entries(scoreIds)){const score=$(id),parent=score.closest('.factor');makeDirection(key,parent,score);const tag=document.createElement('p');tag.className='direction-action';tag.id='action-'+key;score.after(tag)}
+const etfAction=document.createElement('p');etfAction.className='direction-action';etfAction.id='action-etf';$('waterText').after(etfAction);
+for(const[key,id]of Object.entries({etf:'wEtf',index:'wIndex',volume:'wVolume',oil:'wBrent',fx:'wFx',margin:'wMktMargin',bank:'wBank'})){const row=$(id).closest('.weight'),wrap=document.createElement('div');wrap.className='weight-direction';makeDirection(key,wrap);row.append(wrap)}
+// Keep old controls for existing saved plans and backtest code, but expose only the explicit wording above.
+$('fxDirection').classList.add('hidden');$('volumeDirection').closest('label').classList.add('hidden');
+const logic=document.createElement('div');logic.className='direction-presets';logic.innerHTML='<p class="small">分數高＝依你的規則偏向增加配置；分數低＝偏向降低。這是位置／規則讀數，不是勝率或固定持股比例。</p><div class="segment" role="group" aria-label="指標方向預設包"><button type="button" data-direction-preset="value">🛡 價值低接</button><button type="button" data-direction-preset="trend">↗ 順勢觀察</button><button type="button" data-direction-preset="hedge">▥ 債券／避險參考</button></div>';
+$('market').querySelector('.card-heading').after(logic);
+logic.addEventListener('click',e=>{const b=e.target.closest('[data-direction-preset]');if(!b||shareView)return;settings.factorModes={...DM.presets[b.dataset.directionPreset]};applyDirections()});
+if(shareView)logic.querySelectorAll('button').forEach(b=>b.disabled=true);
+function refreshDirectionViews(){
+  if(!polarityReady)return;
+  const ids={...scoreIds,etf:'grade'};
+  for(const[key,id]of Object.entries(ids)){
+    const s=directionScore(key),node=$(id);if(key==='etf'){node.innerHTML=Number.isFinite(s)?fmt(s,1)+'<small>/5</small>':'—<small>/5</small>';$('barGrade').textContent=Number.isFinite(s)?fmt(s,1)+' / 5':'—'}else node.textContent=Number.isFinite(s)?fmt(s,1)+' / 5':'—';
+    const a=DM.action(s),tag=$('action-'+key);tag.className='direction-action '+a.kind;tag.textContent=a.text;
+  }
+  for(const select of directionSelects)select.value=settings.factorModes[select.dataset.direction];
+  if(fxPosition)$('fxMeta').textContent=fmt(fxPosition.last.value,3)+' 新台幣／美元 · '+fxPosition.last.date+' · '+(settings.factorModes.fx==='twd_strong_buy'?'數字低＝台幣較強，分高':'數字高＝台幣較弱，分高');
+  bankTile.querySelector('small').textContent=(settings.factorModes.bank==='buy_follow'?'買超加分':'賣超加分')+' · 平日約 20:00 單次擷取';
+  const a=DM.action(Number.parseFloat($('combined').textContent));$('combinedAction').textContent=a.text;$('combinedAction').className='direction-action '+a.kind;
+}
+const combinedAction=document.createElement('p');combinedAction.id='combinedAction';$('combined').after(combinedAction);
+const directionHelp=document.createElement('details');directionHelp.innerHTML='<summary>05 方向、分數與配置傾向</summary><p>顯示分數為 0–5 分，4 分以上標示偏向增加配置、2 分以下偏向降低，其餘維持觀察；依各項方向設定判讀，不代表勝率或固定持股比例。價格圖與原始相對位置不會因方向反轉而改變。</p><p>匯率是 USD/TWD：數字變小表示台幣較強，變大表示台幣較弱。正反方向得分互補，合計 5 分；不能由匯率或官股單項推定外資流向。價量配合是實驗規則，使用大盤價格位置與成交股數百分位，尚未驗證預測能力。</p><p>油價使用美元現貨日資料，盤中期貨另列。融資用當日增減、官股用全市場淨額，以零為基準；常態模式採 Z 分數映射，並非報酬機率。方向可保存在權重方案；歷史策略的交易條件仍依回測區設定。</p>';
+document.querySelector('.method-steps').append(directionHelp);
+function applyDirections(){
+  settings.fxDirection=settings.factorModes.fx==='twd_strong_buy'?'low':'high';$('fxDirection').value=settings.fxDirection;
+  settings.volumeDirection=settings.factorModes.volume==='low_buy'?'low':'high';$('volumeDirection').value=settings.volumeDirection;
+  computeFx();updateWeights();refreshDirectionViews();save();
+  btCtx=null;btSchedule();
+}
+const directionUpdate=updateWeights;updateWeights=function(){directionUpdate();refreshDirectionViews()};
+const directionRender=renderPosition;renderPosition=function(){directionRender();refreshDirectionViews()};
+const directionProfile=window.chaoweiApplyProfile;window.chaoweiApplyProfile=p=>{directionProfile(p);migrateDirections();applyDirections()};
+polarityReady=true;applyDirections();
+
+// Compact carousel on small screens, overview on wide screens; both remain user selectable.
+(()=>{
+  const rail=$('factorRail'),nav=document.querySelector('.factor-rail-nav');
+  const controls=document.createElement('div');controls.className='market-view-tools';
+  controls.innerHTML='<div class="segment" aria-label="市場卡片版面"><button type="button" data-market-view="grid">⊞ 全覽</button><button type="button" data-market-view="rail">⇄ 輪播</button></div><span class="small" id="marketCount"></span><div class="market-moves"><button type="button" class="pill" data-market-move="-1" aria-label="上一張市場刻度">‹</button><button type="button" class="pill" data-market-move="1" aria-label="下一張市場刻度">›</button></div>';
+  rail.before(controls);
+  function count(){const cards=[...rail.children],visible=cards.filter(c=>c.offsetLeft+c.offsetWidth>rail.scrollLeft+cards[0].offsetLeft+2&&c.offsetLeft<rail.scrollLeft+cards[0].offsetLeft+rail.clientWidth-2),first=cards.indexOf(visible[0])+1,last=cards.indexOf(visible.at(-1))+1;$('marketCount').textContent=rail.classList.contains('is-grid')?`${cards.length} 項全覽`:`${first||1}–${last||1} / ${cards.length} 項`}
+  function layout(){const mode=['grid','rail'].includes(settings.marketView)?settings.marketView:innerWidth>1200?'grid':'rail';rail.classList.toggle('is-grid',mode==='grid');nav.classList.toggle('hidden',mode==='grid');rail.setAttribute('aria-label',mode==='grid'?'市場刻度全覽':'市場刻度，可左右滑動');controls.querySelectorAll('[data-market-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.marketView===mode)));controls.querySelector('.market-moves').classList.toggle('hidden',mode==='grid');rail.nextElementSibling?.classList.toggle('grid-progress-hidden',mode==='grid');count()}
+  controls.addEventListener('click',e=>{const view=e.target.closest('[data-market-view]'),move=e.target.closest('[data-market-move]');if(view){settings.marketView=view.dataset.marketView;layout();save()}if(move){rail.dispatchEvent(new Event('pointerdown'));rail.scrollBy({left:Number(move.dataset.marketMove)*(rail.children[0].offsetWidth+16),behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'})}});
+  rail.addEventListener('scroll',count,{passive:true});window.addEventListener('resize',layout);
+  const prev=window.chaoweiApplyProfile;window.chaoweiApplyProfile=p=>{prev(p);layout()};layout();
+  // Actual sticky heights, including larger fonts, determine anchor clearance.
+  function offsets(){const header=document.querySelector('header'),toolbar=document.querySelector('.toolbar');document.documentElement.style.setProperty('--header-clearance',(header?.getBoundingClientRect().height||72)+12+'px');document.documentElement.style.setProperty('--anchor-clearance',(header?.getBoundingClientRect().height||72)+(toolbar?.getBoundingClientRect().height||100)+20+'px')}
+  const ro=new ResizeObserver(offsets);for(const el of [document.querySelector('header'),document.querySelector('.toolbar')])if(el)ro.observe(el);offsets();
+  const aliases={method:'method-story','wave-lab':'waveStudy',chips:'chipCard',backtest:'backtestCard'};function alias(){const id=aliases[location.hash.slice(1)];if(id)$(id)?.scrollIntoView({behavior:'instant'})}window.addEventListener('hashchange',alias);setTimeout(alias,300);
+  const top=document.querySelector('.to-top');if(top){top.textContent='↑';top.setAttribute('aria-label','回到上方觀測區');top.title='回到上方觀測區'}
+})();
+
+// Use confirmed training segments only when a test start date is specified.
+var waveBridgeData=null;
+const WaveBacktestBridge=(()=>{
+  function summarize(segments,cutoff){
+    const sample=segments.filter(s=>!cutoff||s.availableDate<cutoff),up=sample.filter(s=>s.change>0),down=sample.filter(s=>s.change<0),mean=a=>a.length?a.reduce((n,s)=>n+Math.abs(s.change),0)/a.length:null;
+    return{up:mean(up),down:mean(down),upCount:up.length,downCount:down.length,count:sample.length};
+  }
+  return{summarize};
+})();
+const bridge=document.createElement('div');bridge.className='wave-bridge';bridge.innerHTML='<p class="small" id="waveBridgeNote">完成波段計算後，可帶入回測。</p><button type="button" class="pill" id="waveToBacktest" disabled>↘ 將平均波段帶入回測</button>';$('waveSummary').after(bridge);
+function refreshWaveBridge(){
+  const d=waveBridgeData,s=d&&d.code===selected?WaveBacktestBridge.summarize(d.segments,d.params.cutoff):null;
+  const enoughTest=!d?.params.cutoff||bars.filter(b=>b.date>=d.params.cutoff).length>=41;
+  $('waveToBacktest').disabled=!isMember||!s?.up||!s?.down||shareView||!enoughTest;
+  $('waveBridgeNote').textContent=s?.up&&s?.down?`${d.params.cutoff?'僅用測試起日前確認的訓練段':'全段描述統計（樣本內）'}：上漲 ${s.upCount} 段均幅 ${fmt(s.up,1)}%，拉回 ${s.downCount} 段均幅 ${fmt(s.down,1)}%。帶入後仍以日 K 回測，不代表轉折可預知。`:'需要已確認的上漲及拉回段，才能帶入參數。';
+  if(!enoughTest)$('waveBridgeNote').textContent+=' 測試期需至少 41 個交易日；請將起日往前調整。';
+}
+const bridgeRender=window.chaoweiWave.render;window.chaoweiWave.render=function(){waveBridgeData=null;bridgeRender();refreshWaveBridge()};
+$('waveToBacktest').addEventListener('click',()=>{
+  if(!isMember||!waveBridgeData||waveBridgeData.code!==selected)return;
+  const d=waveBridgeData,s=WaveBacktestBridge.summarize(d.segments,d.params.cutoff);if(!s.up||!s.down)return;
+  const round=x=>Math.round(x*10)/10;
+  Object.assign(settings.bt,{family:'swing',preset:'custom',strategy:'classic',params:{...E.PARAMS.classic,entry:'drop',drop:Math.max(1,Math.min(90,round(s.down))),exit:'gain',rise:Math.min(300,round(s.up))},waveOrigin:{code:selected,interval:d.interval,cutoff:d.params.cutoff||'',upCount:s.upCount,downCount:s.downCount}});
+  if(d.params.cutoff)Object.assign(settings.bt,{period:'custom',from:d.params.cutoff,to:bars.at(-1).date});
+  save();btFillForm();btSchedule();renderWaveOrigin();$('backtestCard').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});
+});
+const origin=document.createElement('p');origin.id='btWaveOrigin';origin.className='small wave-origin';$('btParams').after(origin);
+function renderWaveOrigin(){const o=settings.bt.waveOrigin;origin.textContent=o&&settings.bt.strategy==='classic'?`參數來源：${o.code} ${o.interval} K 的 ${o.upCount} 段上漲／${o.downCount} 段拉回。${o.cutoff?'只用 '+o.cutoff+' 前確認資料；下方起日已設為測試期。':'全段樣本內統計，未構成樣本外驗證。'}帶入後可自行調整；方向選單不會改寫回測內原有的水位交易條件。`:''}
+const bridgeFill=btFillForm;btFillForm=function(){bridgeFill();renderWaveOrigin()};refreshWaveBridge();renderWaveOrigin();
+
+// An optional current-observation factor. Historical backtest entry rules remain independent.
+const ChipResonance=(()=>{
+  function evaluate(chips,holders,{days=3,holder='1000',mode='both',through='9999-12-31'}={}){
+    const daily=chips.filter(r=>r[0]<=through).slice(-days),weekly=holders.filter(r=>r[0]<=through).slice(-2),net=daily.map(r=>r[4]),col=holder==='400'?2:3;
+    const inst=daily.length===days&&net.every(Number.isFinite)?net.every(x=>x>0):null;
+    const change=weekly.length===2&&weekly.every(r=>Number.isFinite(r[col]))?weekly[1][col]-weekly[0][col]:null,held=change==null?null:change>0;
+    const enabled=mode==='institution'?[inst]:mode==='holder'?[held]:[inst,held],score=enabled.some(x=>x===null)?null:5*enabled.filter(Boolean).length/enabled.length;
+    return{score,inst,held,change,dailyDate:daily.at(-1)?.[0],holderDate:weekly.at(-1)?.[0]};
+  }
+  return{evaluate};
+})();
+function normalizeResonance(){const p=settings.chipResonance||{};settings.chipResonance={days:[2,3,5,10].includes(Number(p.days))?Number(p.days):3,holder:p.holder==='400'?'400':'1000',mode:['both','institution','holder'].includes(p.mode)?p.mode:'both'}}
+normalizeResonance();
+const resonance=document.createElement('div');resonance.className='resonance-panel';resonance.innerHTML='<h4>籌碼共振 <span class="member-badge">會員</span></h4><div class="controls"><label>觀察規則<select id="resonanceMode"><option value="both">法人＋大戶</option><option value="institution">只看法人連買</option><option value="holder">只看大戶週增</option></select></label><label>法人連買<select id="resonanceDays"><option value="2">2 日</option><option value="3">3 日</option><option value="5">5 日</option><option value="10">10 日</option></select></label><label>大戶門檻<select id="resonanceHolder"><option value="1000">1,000 張以上</option><option value="400">400 張以上</option></select></label></div><p id="resonanceReading" aria-live="polite" class="small"></p><p class="small">法人以三大法人合計買賣超判斷；大戶比較最近兩筆集保比例。每項成立得 5 分、不成立 0 分，兩項取平均。這是自訂規則，非勝率；只納入當前綜合分，未接入歷史回測。</p>';
+$('chipContents').after(resonance);
+function resonanceScore(){if(!isMember||chipCode!==selected)return null;return ChipResonance.evaluate(chipRows,holderRowsByCode.get(selected)||[],{...settings.chipResonance,through:$('chipDate').value||chipRows.at(-1)?.[0]}).score}
+const resonanceFactor={id:'wResonance',setting:'chipResonanceWeight',label:'ETF 籌碼共振（會員）',name:'籌碼共振',score:resonanceScore};EXTRA_FACTORS.push(resonanceFactor);
+const resonanceRow=document.createElement('div');resonanceRow.className='weight';resonanceRow.innerHTML='<label for="wResonance">ETF 籌碼共振（會員）</label><input id="wResonance" type="range" min="0" max="100" step="1" value="0"><input class="w-num" type="number" min="0" max="100" step="1" data-for="wResonance" aria-label="籌碼共振權重數值"><output id="oResonance">0%</output>';$('weights').querySelector('.weights').append(resonanceRow);resonanceFactor.row=resonanceRow;
+function resonanceView(){const p=settings.chipResonance;for(const [id,key]of [['resonanceMode','mode'],['resonanceDays','days'],['resonanceHolder','holder']]){$(id).value=p[key];$(id).disabled=!isMember||shareView}$('wResonance').disabled=!isMember||shareView;resonanceRow.querySelector('.w-num').disabled=!isMember||shareView;if(!isMember){$('resonanceReading').textContent='Google 登入後可查看並納入權重。';return}const r=ChipResonance.evaluate(chipRows,holderRowsByCode.get(selected)||[],{...p,through:$('chipDate').value||chipRows.at(-1)?.[0]});$('resonanceReading').textContent=`${Number.isFinite(r.score)?fmt(r.score,1)+' / 5':'資料不足，暫不計分'} · 法人 ${r.dailyDate||'—'}：${r.inst===null?'不足 '+p.days+' 筆':r.inst?'連買成立':'連買未成立'} · 集保 ${r.holderDate||'—'}：${r.change==null?'需兩週資料':(r.change>=0?'+':'')+fmt(r.change,2)+' 個百分點'}`}
+for(const [id,key]of [['resonanceMode','mode'],['resonanceDays','days'],['resonanceHolder','holder']])$(id).addEventListener('change',()=>{settings.chipResonance[key]=key==='days'?Number($(id).value):$(id).value;updateWeights()});
+function resonanceWeight(){settings.chipResonanceWeight=Math.max(0,Math.min(100,Number(settings.chipResonanceWeight)||0));$('wResonance').value=settings.chipResonanceWeight;resonanceRow.querySelector('.w-num').value=settings.chipResonanceWeight}
+$('wResonance').addEventListener('input',()=>{resonanceRow.querySelector('.w-num').value=$('wResonance').value;updateWeights()});resonanceRow.querySelector('.w-num').addEventListener('input',e=>{$('wResonance').value=Math.max(0,Math.min(100,Number(e.target.value)||0));updateWeights()});
+const resonanceUpdate=updateWeights;updateWeights=function(){resonanceUpdate();resonanceView()};
+const resonanceChip=renderChip;renderChip=function(){resonanceChip();updateWeights()};
+const resonanceHolders=renderHolders;renderHolders=function(...args){resonanceHolders(...args);updateWeights()};
+const resonanceMember=window.chaoweiResearchMemberChanged;window.chaoweiResearchMemberChanged=signed=>{resonanceMember?.(signed);updateWeights()};
+const resonanceProfile=window.chaoweiApplyProfile;window.chaoweiApplyProfile=p=>{resonanceProfile(p);normalizeResonance();resonanceWeight();updateWeights()};resonanceWeight();updateWeights();
 
 /* Navigation and motion only. Market data and scoring remain in their own modules. */
 (()=>{
@@ -2703,7 +2904,7 @@ updateWeights();
       new IntersectionObserver(entries=>{visible=entries[0].isIntersecting},{threshold:.35}).observe(rail);
     }else visible=true;
     setInterval(()=>{
-      if(!visible||document.hidden||paused||reduced.matches||
+      if(rail.classList.contains('is-grid')||!visible||document.hidden||paused||reduced.matches||
          document.body.classList.contains('motion-paused')||Date.now()<manualUntil||
          rail.matches(':hover')||rail.contains(document.activeElement))return;
       goTo(index+1);
