@@ -4,7 +4,7 @@ function installChaoweiIdentity(host){
   const status=t=>{$('accountStatus').textContent=t};
   if(host==='apps-script'){
     $('googleSignIn').classList.add('hidden');$('accountMainLink').classList.remove('hidden');
-    status('請在主網站登入；Apps Script 鏡像提供行情與評分。');return;
+    status('請在主網站登入；Apps Script 鏡像提供行情與評分。');$('displaySyncNote').textContent='此外觀儲存在目前瀏覽器；帳號同步請到主網站。';return;
   }
   const config={apiKey:'AIzaSyBSMEMIDfBUSVSPwQUdbs6mEV-SXkBHbbs',authDomain:'chaowei-etf-observatory.firebaseapp.com',projectId:'chaowei-etf-observatory',appId:'1:342380543762:web:f27d15c89c70fe94b57dcb'};
   const base='https://www.gstatic.com/firebasejs/13.0.0/';

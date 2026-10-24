@@ -14,9 +14,16 @@ function installChaoweiSnapshotCache(){
     const task=(async()=>{try{const data=await fetcher();if(!data||data.error)throw Error(data?.error||'空白資料');const signature=JSON.stringify(data),old=memory.get(path),changed=old&&old.signature!==signature,record={path,data,signature,bytes:signature.length*2,at:Date.now()};memory.set(path,record);checked.set(path,Date.now());stats.network++;stats.background='已核對';store(record);emit('chaowei-cache-status',{path,source:'network',checked:true});if(changed)emit('chaowei-snapshot-updated',{path});return record}catch(e){stats.background='背景核對未完成，沿用標示日期的快取';emit('chaowei-cache-status',{path,source:'stale',error:true});throw e}finally{pending.delete(path)}})();pending.set(path,task);return task;
   }
   async function load(path,fetcher){
-    const begun=performance.now();let record=memory.get(path),source='memory';if(!record){record=await read(path);source='indexeddb';if(record)memory.set(path,record)}
-    if(record){stats.hits++;stats.lastSource=source;stats.lastMs=performance.now()-begun;revalidate(path,fetcher).catch(()=>{});emit('chaowei-cache-status',{path,source,ms:stats.lastMs,storage:stats.storage});return{...record.data,_snapshotCache:{source,at:record.at}}}
-    record=await revalidate(path,fetcher);stats.lastSource='network';stats.lastMs=performance.now()-begun;emit('chaowei-cache-status',{path,source:'network',ms:stats.lastMs,storage:stats.storage});return record.data;
+    const begun=performance.now();let record=memory.get(path),source='memory',failed=false;
+    if(record)revalidate(path,fetcher).catch(()=>{});
+    else{
+      // Start both immediately: slow or blocked IndexedDB must not delay a faster network response.
+      const disk=read(path).then(record=>{if(!record)throw Error('cache miss');if(!memory.has(path))memory.set(path,record);return{record,source:'indexeddb'}});
+      const network=revalidate(path,fetcher).then(record=>({record,source:'network'})).catch(e=>{failed=true;throw e});
+      try{({record,source}=await Promise.any([disk,network]))}catch(e){throw e.errors?.at(-1)||e}
+    }
+    stats.lastSource=source;stats.lastMs=performance.now()-begun;if(source!=='network')stats.hits++;emit('chaowei-cache-status',{path,source:failed?'stale':source,readSource:source,ms:stats.lastMs,storage:stats.storage});
+    return source==='network'?record.data:{...record.data,_snapshotCache:{source,at:record.at}};
   }
   window.CHAOWEI_SNAPSHOT_CACHE={load,stats};
 }

@@ -14,9 +14,16 @@ function installChaoweiSnapshotCache(){
     const task=(async()=>{try{const data=await fetcher();if(!data||data.error)throw Error(data?.error||'空白資料');const signature=JSON.stringify(data),old=memory.get(path),changed=old&&old.signature!==signature,record={path,data,signature,bytes:signature.length*2,at:Date.now()};memory.set(path,record);checked.set(path,Date.now());stats.network++;stats.background='已核對';store(record);emit('chaowei-cache-status',{path,source:'network',checked:true});if(changed)emit('chaowei-snapshot-updated',{path});return record}catch(e){stats.background='背景核對未完成，沿用標示日期的快取';emit('chaowei-cache-status',{path,source:'stale',error:true});throw e}finally{pending.delete(path)}})();pending.set(path,task);return task;
   }
   async function load(path,fetcher){
-    const begun=performance.now();let record=memory.get(path),source='memory';if(!record){record=await read(path);source='indexeddb';if(record)memory.set(path,record)}
-    if(record){stats.hits++;stats.lastSource=source;stats.lastMs=performance.now()-begun;revalidate(path,fetcher).catch(()=>{});emit('chaowei-cache-status',{path,source,ms:stats.lastMs,storage:stats.storage});return{...record.data,_snapshotCache:{source,at:record.at}}}
-    record=await revalidate(path,fetcher);stats.lastSource='network';stats.lastMs=performance.now()-begun;emit('chaowei-cache-status',{path,source:'network',ms:stats.lastMs,storage:stats.storage});return record.data;
+    const begun=performance.now();let record=memory.get(path),source='memory',failed=false;
+    if(record)revalidate(path,fetcher).catch(()=>{});
+    else{
+      // Start both immediately: slow or blocked IndexedDB must not delay a faster network response.
+      const disk=read(path).then(record=>{if(!record)throw Error('cache miss');if(!memory.has(path))memory.set(path,record);return{record,source:'indexeddb'}});
+      const network=revalidate(path,fetcher).then(record=>({record,source:'network'})).catch(e=>{failed=true;throw e});
+      try{({record,source}=await Promise.any([disk,network]))}catch(e){throw e.errors?.at(-1)||e}
+    }
+    stats.lastSource=source;stats.lastMs=performance.now()-begun;if(source!=='network')stats.hits++;emit('chaowei-cache-status',{path,source:failed?'stale':source,readSource:source,ms:stats.lastMs,storage:stats.storage});
+    return source==='network'?record.data:{...record.data,_snapshotCache:{source,at:record.at}};
   }
   window.CHAOWEI_SNAPSHOT_CACHE={load,stats};
 }
@@ -179,7 +186,7 @@ function installChaoweiIdentity(host){
   const status=t=>{$('accountStatus').textContent=t};
   if(host==='apps-script'){
     $('googleSignIn').classList.add('hidden');$('accountMainLink').classList.remove('hidden');
-    status('請在主網站登入；Apps Script 鏡像提供行情與評分。');return;
+    status('請在主網站登入；Apps Script 鏡像提供行情與評分。');$('displaySyncNote').textContent='此外觀儲存在目前瀏覽器；帳號同步請到主網站。';return;
   }
   const config={apiKey:'AIzaSyBSMEMIDfBUSVSPwQUdbs6mEV-SXkBHbbs',authDomain:'chaowei-etf-observatory.firebaseapp.com',projectId:'chaowei-etf-observatory',appId:'1:342380543762:web:f27d15c89c70fe94b57dcb'};
   const base='https://www.gstatic.com/firebasejs/13.0.0/';
@@ -2771,7 +2778,7 @@ function refreshDirectionViews(){
   const a=DM.action(Number.parseFloat($('combined').textContent));$('combinedAction').textContent=a.text;$('combinedAction').className='direction-action '+a.kind;
 }
 const combinedAction=document.createElement('p');combinedAction.id='combinedAction';$('combined').after(combinedAction);
-const directionHelp=document.createElement('details');directionHelp.innerHTML='<summary>05 方向、分數與配置傾向</summary><p>顯示分數為 0–5 分，4 分以上標示偏向增加配置、2 分以下偏向降低，其餘維持觀察；依各項方向設定判讀，不代表勝率或固定持股比例。價格圖與原始相對位置不會因方向反轉而改變。</p><p>匯率是 USD/TWD：數字變小表示台幣較強，變大表示台幣較弱。正反方向得分互補，合計 5 分；不能由匯率或官股單項推定外資流向。價量配合是實驗規則，使用大盤價格位置與成交股數百分位，尚未驗證預測能力。</p><p>油價使用美元現貨日資料，盤中期貨另列。融資用當日增減、官股用全市場淨額，以零為基準；常態模式採 Z 分數映射，並非報酬機率。方向可保存在權重方案；歷史策略的交易條件仍依回測區設定。</p>';
+const directionHelp=document.createElement('details');directionHelp.innerHTML='<summary><span>05</span> 方向、分數與配置傾向</summary><p>顯示分數為 0–5 分，4 分以上標示偏向增加配置、2 分以下偏向降低，其餘維持觀察；依各項方向設定判讀，不代表勝率或固定持股比例。價格圖與原始相對位置不會因方向反轉而改變。</p><p>匯率是 USD/TWD：數字變小表示台幣較強，變大表示台幣較弱。正反方向得分互補，合計 5 分；不能由匯率或官股單項推定外資流向。價量配合是實驗規則，使用大盤價格位置與成交股數百分位，尚未驗證預測能力。</p><p>油價使用美元現貨日資料，盤中期貨另列。融資用當日增減、官股用全市場淨額，以零為基準；常態模式採 Z 分數映射，並非報酬機率。方向可保存在權重方案；歷史策略的交易條件仍依回測區設定。</p>';
 document.querySelector('.method-steps').append(directionHelp);
 function applyDirections(){
   settings.fxDirection=settings.factorModes.fx==='twd_strong_buy'?'low':'high';$('fxDirection').value=settings.fxDirection;
@@ -2997,7 +3004,7 @@ const ViewportMath=(()=>{
 (()=>{
   const note=document.createElement('p');note.className='small cache-note';note.id='cacheState';$('historyNote').after(note);
   window.addEventListener('chaowei-cache-storage',e=>{if(e.detail.path===`data/history/${selected}.json`){note.dataset.databaseRead=e.detail.read;if(e.detail.ms!=null)note.dataset.databaseMs=e.detail.ms.toFixed(2)}});
-  window.addEventListener('chaowei-cache-status',e=>{const d=e.detail;if(d.path!==`data/history/${selected}.json`)return;note.textContent=d.source==='stale'?'背景核對未完成，沿用上方標示日期的歷史資料。':d.source==='network'?'歷史快照已核對；盤中報價另行更新。':'先顯示本機歷史快取，背景核對最新快照。';note.dataset.source=d.source;if(d.ms!=null){note.dataset.readMs=d.ms.toFixed(2);note.dataset.readSource=d.source}if(d.storage)note.dataset.storage=d.storage});
+  window.addEventListener('chaowei-cache-status',e=>{const d=e.detail;if(d.path!==`data/history/${selected}.json`)return;note.textContent=d.source==='stale'?'背景核對未完成，沿用上方標示日期的歷史資料。':d.source==='network'?'歷史快照已核對；盤中報價另行更新。':'先顯示本機歷史快取，背景核對最新快照。';note.dataset.source=d.source;if(d.ms!=null){note.dataset.readMs=d.ms.toFixed(2);note.dataset.readSource=d.readSource||d.source}if(d.storage)note.dataset.storage=d.storage});
   const timers=new Map();
   function refresh(path){clearTimeout(timers.get(path));timers.set(path,setTimeout(()=>{if(path===`data/history/${selected}.json`)loadBars(true);else if(path==='data/history/market.json')loadMarket();else if(path==='data/oil-spot.json')loadBrent();else if(path==='data/fx.json')loadFx();else if(path==='data/history/margin.json')loadMktMargin();else if(path==='data/history/histock-bank.json')loadBanks();else if(path==='etf-catalog.json')fetch('/api/etfs').then(r=>r.json()).then(d=>{if(d.etfs?.length){catalog=d.etfs;renderList()}}).catch(()=>{})},0))}
   window.addEventListener('chaowei-snapshot-updated',e=>refresh(e.detail.path));window.addEventListener('chaowei-history-live',e=>{if(e.detail.code===selected)refresh(`data/history/${selected}.json`)});
