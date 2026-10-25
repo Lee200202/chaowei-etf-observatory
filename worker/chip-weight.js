@@ -29,6 +29,21 @@ function marginScore(){
   const r=(values.at(-1)-low)/(high-low);
   return 5*(settings.marginDirection==='low'?1-r:r);
 }
+// Factor order: ETF, index, volume, oil, FX, then EXTRA_FACTORS. Scores follow the chosen directions.
+function factorScores(){
+  const base=[position?.core,marketPosition?.index?.core,marketPosition?.volumeGrade==null||settings.volumeDirection==='off'?null:settings.volumeDirection==='low'?5-marketPosition.volumeScore:marketPosition.volumeScore,brentPosition?.core,fxPosition?.core];
+  const scores=[...base,...EXTRA_FACTORS.map(f=>f.score())];
+  if(polarityReady){for(const [i,key]of [[0,'etf'],[1,'index'],[2,'volume'],[3,'oil'],[4,'fx'],[6,'margin'],[7,'bank']])scores[i]=directionScore(key)}
+  return scores;
+}
+// One weighted score for any weight list (the sliders, or a saved plan), always from the latest data.
+function weightedScore(weights){
+  const w=(weights||[]).map(x=>Math.max(0,Number(x)||0)),sum=w.reduce((a,b)=>a+b,0),scores=factorScores();
+  if(sum<=0||!position)return{value:null,sum,scores,missing:-1};
+  const missing=w.findIndex((x,i)=>x>0&&!Number.isFinite(scores[i]));if(missing>=0)return{value:null,sum,scores,missing};
+  return{value:w.reduce((n,x,i)=>n+x*scores[i],0)/sum,sum,scores,missing:-1};
+}
+const currentWeights=()=>[...(settings.weights||[]).map(x=>Number(x)||0),...EXTRA_FACTORS.map(f=>Number($(f.id).value)||0)];
 const fiveFactorWeights=updateWeights;
 updateWeights=function(){
   fiveFactorWeights();
@@ -39,12 +54,8 @@ updateWeights=function(){
   const names=['本檔 ETF','大盤價格','大盤量能','布蘭特現貨','美元／新台幣',...EXTRA_FACTORS.map(f=>f.name)];
   $('weightBar').innerHTML=weights.map((w,i)=>w>0&&sum>0?`<span class="w${i}" style="width:${(w/sum*100).toFixed(2)}%" title="${names[i]} ${Math.round(w/sum*100)}%">${w/sum>=0.12?names[i]+' '+Math.round(w/sum*100)+'%':''}</span>`:'').join('');
   $('weightStatus').textContent=sum===100?'權重合計 100%':sum>0?`權重合計 ${sum}%，依比例換算成 100%`:'請至少設定一項權重';
-  const base=[position?.core,marketPosition?.index?.core,marketPosition?.volumeGrade==null||settings.volumeDirection==='off'?null:settings.volumeDirection==='low'?5-marketPosition.volumeScore:marketPosition.volumeScore,brentPosition?.core,fxPosition?.core];
-  const scores=[...base,...EXTRA_FACTORS.map(f=>f.score())];
-  if(polarityReady){for(const [i,key]of [[0,'etf'],[1,'index'],[2,'volume'],[3,'oil'],[4,'fx'],[6,'margin'],[7,'bank']])scores[i]=directionScore(key)}
-  const missing=weights.findIndex((w,i)=>w>0&&!Number.isFinite(scores[i]));
-  if(sum<=0||missing>=0||!position){$('combined').textContent='—';$('combinedExtra').textContent=sum<=0?'請至少設定一項權重':missing>=5?`${names[missing]}可用資料不足，暫停綜合分`:'選取的因子資料不足';$('weightPreview').textContent='';save();return}
-  const value=weights.reduce((n,w,i)=>n+w*scores[i],0)/sum;
+  const {value,scores,missing}=weightedScore(weights);
+  if(value==null){$('combined').textContent='—';$('combinedExtra').textContent=sum<=0?'請至少設定一項權重':missing>=5?`${names[missing]}可用資料不足，暫停綜合分`:'選取的因子資料不足';$('weightPreview').textContent='';save();return}
   $('combined').textContent=fmt(value,1)+' / 5';
   $('combinedExtra').textContent=EXTRA_FACTORS.map((f,i)=>extra[i]>0?`${f.name} ${fmt(scores[5+i],1)} 分`:'').filter(Boolean).join(' · ')||'延伸綜合分請參照各項位置';
   const etfScore=polarityReady?directionScore('etf'):position.core,d=value-etfScore;

@@ -206,8 +206,8 @@ function installChaoweiIdentity(host){
     finally{retry.disabled=false}
   };
   window.chaoweiProfileChanged=settings=>{if(!user||applying)return;clearTimeout(saveTimer);saveTimer=setTimeout(()=>write(settings),900)};
-  $('savePlan').addEventListener('click',async()=>{if(!user)return;const name=$('planName').value.trim();if(!name){status('請先輸入方案名稱');return}const settings=getLocal();const existing=plans.findIndex(p=>p.name===name);const item={name,settings,createdAt:new Date().toISOString()};if(existing>=0)plans[existing]=item;else plans.push(item);plans=plans.slice(-12);showPlans();$('planList').value=String(plans.findIndex(p=>p.name===name));await write(settings)});
-  $('applyPlan').addEventListener('click',()=>{if(!user)return;const p=plans[Number($('planList').value)];if(!p)return;window.chaoweiApplyProfile?.({settings:p.settings});status(`已套用「${p.name}」`)});
+  $('savePlan').addEventListener('click',async()=>{if(!user)return;const name=$('planName').value.trim();if(!name){status('請先輸入方案名稱');return}const settings=getLocal();const existing=plans.findIndex(p=>p.name===name);const item={name,settings,createdAt:new Date().toISOString()};if(existing>=0)plans[existing]=item;else plans.push(item);plans=plans.slice(-12);showPlans();$('planList').value=String(plans.findIndex(p=>p.name===name));window.chaoweiPlanApplied?.(name);await write(settings)});
+  $('applyPlan').addEventListener('click',()=>{if(!user)return;const p=plans[Number($('planList').value)];if(!p)return;window.chaoweiApplyProfile?.({settings:p.settings});window.chaoweiPlanApplied?.(p.name);status(`已套用「${p.name}」`)});
   async function signedIn(next){user=next;clearTimeout(saveTimer);window.chaoweiSetMember?.(!!user);$('googleSignIn').classList.toggle('hidden',!!user);$('googleSignOut').classList.toggle('hidden',!user);$('accountPlans').classList.toggle('hidden',!user);const label=user?'我的帳號與外觀':'登入與外觀';$('accountTop').querySelector('.nav-label').textContent=label;$('accountTop').setAttribute('aria-label',label);$('accountTop').title=label;$('displaySyncNote').textContent=user?'外觀、權重與追蹤清單會同步到你的 Google 帳號。':'外觀與權重目前存在此瀏覽器；登入後可跨裝置同步。';
     if(!user){retry.classList.add('hidden');status(ready?'尚未登入；可繼續使用免費行情與本機設定。':'正在檢查登入服務…');plans=[];showPlans();return}
     status(`已登入 ${user.email} · 正在讀取同步設定…`);
@@ -2712,6 +2712,21 @@ function marginScore(){
   const r=(values.at(-1)-low)/(high-low);
   return 5*(settings.marginDirection==='low'?1-r:r);
 }
+// Factor order: ETF, index, volume, oil, FX, then EXTRA_FACTORS. Scores follow the chosen directions.
+function factorScores(){
+  const base=[position?.core,marketPosition?.index?.core,marketPosition?.volumeGrade==null||settings.volumeDirection==='off'?null:settings.volumeDirection==='low'?5-marketPosition.volumeScore:marketPosition.volumeScore,brentPosition?.core,fxPosition?.core];
+  const scores=[...base,...EXTRA_FACTORS.map(f=>f.score())];
+  if(polarityReady){for(const [i,key]of [[0,'etf'],[1,'index'],[2,'volume'],[3,'oil'],[4,'fx'],[6,'margin'],[7,'bank']])scores[i]=directionScore(key)}
+  return scores;
+}
+// One weighted score for any weight list (the sliders, or a saved plan), always from the latest data.
+function weightedScore(weights){
+  const w=(weights||[]).map(x=>Math.max(0,Number(x)||0)),sum=w.reduce((a,b)=>a+b,0),scores=factorScores();
+  if(sum<=0||!position)return{value:null,sum,scores,missing:-1};
+  const missing=w.findIndex((x,i)=>x>0&&!Number.isFinite(scores[i]));if(missing>=0)return{value:null,sum,scores,missing};
+  return{value:w.reduce((n,x,i)=>n+x*scores[i],0)/sum,sum,scores,missing:-1};
+}
+const currentWeights=()=>[...(settings.weights||[]).map(x=>Number(x)||0),...EXTRA_FACTORS.map(f=>Number($(f.id).value)||0)];
 const fiveFactorWeights=updateWeights;
 updateWeights=function(){
   fiveFactorWeights();
@@ -2722,12 +2737,8 @@ updateWeights=function(){
   const names=['本檔 ETF','大盤價格','大盤量能','布蘭特現貨','美元／新台幣',...EXTRA_FACTORS.map(f=>f.name)];
   $('weightBar').innerHTML=weights.map((w,i)=>w>0&&sum>0?`<span class="w${i}" style="width:${(w/sum*100).toFixed(2)}%" title="${names[i]} ${Math.round(w/sum*100)}%">${w/sum>=0.12?names[i]+' '+Math.round(w/sum*100)+'%':''}</span>`:'').join('');
   $('weightStatus').textContent=sum===100?'權重合計 100%':sum>0?`權重合計 ${sum}%，依比例換算成 100%`:'請至少設定一項權重';
-  const base=[position?.core,marketPosition?.index?.core,marketPosition?.volumeGrade==null||settings.volumeDirection==='off'?null:settings.volumeDirection==='low'?5-marketPosition.volumeScore:marketPosition.volumeScore,brentPosition?.core,fxPosition?.core];
-  const scores=[...base,...EXTRA_FACTORS.map(f=>f.score())];
-  if(polarityReady){for(const [i,key]of [[0,'etf'],[1,'index'],[2,'volume'],[3,'oil'],[4,'fx'],[6,'margin'],[7,'bank']])scores[i]=directionScore(key)}
-  const missing=weights.findIndex((w,i)=>w>0&&!Number.isFinite(scores[i]));
-  if(sum<=0||missing>=0||!position){$('combined').textContent='—';$('combinedExtra').textContent=sum<=0?'請至少設定一項權重':missing>=5?`${names[missing]}可用資料不足，暫停綜合分`:'選取的因子資料不足';$('weightPreview').textContent='';save();return}
-  const value=weights.reduce((n,w,i)=>n+w*scores[i],0)/sum;
+  const {value,scores,missing}=weightedScore(weights);
+  if(value==null){$('combined').textContent='—';$('combinedExtra').textContent=sum<=0?'請至少設定一項權重':missing>=5?`${names[missing]}可用資料不足，暫停綜合分`:'選取的因子資料不足';$('weightPreview').textContent='';save();return}
   $('combined').textContent=fmt(value,1)+' / 5';
   $('combinedExtra').textContent=EXTRA_FACTORS.map((f,i)=>extra[i]>0?`${f.name} ${fmt(scores[5+i],1)} 分`:'').filter(Boolean).join(' · ')||'延伸綜合分請參照各項位置';
   const etfScore=polarityReady?directionScore('etf'):position.core,d=value-etfScore;
@@ -3519,6 +3530,54 @@ const StrategyBoard=(()=>{
  // toolbar keeps only the ranges plus 貼合畫面／回到最新區間. They stay available for keyboard users there.
  const zoom=$('chartCard').querySelector('.zoom-controls'),settingsPanel=$('chartIndicatorSettings');
  if(zoom&&settingsPanel){const box=document.createElement('div');box.className='zoom-moved';box.innerHTML='<span class="small">移動與縮放（也可用滑鼠滾輪、拖曳或雙指）</span>';box.append(zoom);settingsPanel.querySelector(':scope > summary').after(box)}
+})();
+
+/* ---------- Saved weight plan drives the main water level ----------
+   「儲存並套用到水位」 keeps the current weights on this device. While a plan is applied, the top bar, the big water
+   number and the gauge show that plan's weighted score, recomputed from the latest data on every refresh,
+   instead of this ETF's own price position. Moving the sliders afterwards does not change the main screen until
+   the plan is saved again. Scoring directions stay the global settings. A shared plan link shows its own weights. */
+(()=>{
+  const valid=p=>p&&Array.isArray(p.weights)&&p.weights.some(x=>Number(x)>0);
+  if(!valid(settings.appliedPlan))delete settings.appliedPlan;
+  const plan=()=>shareView?{weights:currentWeights(),name:'分享的方案'}:settings.appliedPlan||null;
+  const box=document.createElement('div');box.className='applied-plan';box.innerHTML='<p class="small" id="appliedStatus" aria-live="polite"></p><div><button class="action" type="button" id="applyWeights">儲存並套用到水位</button><button class="pill" type="button" id="clearApplied">改回只看本檔</button></div>';
+  $('weightPreview').after(box);
+  const label=$('grade').closest('.water-copy').querySelector('.overline'),plainLabel=label.textContent;
+  const note=document.createElement('p');note.className='small applied-note hidden';$('grade').after(note);
+  const barLabel=$('barGrade').previousElementSibling,plainBar=barLabel?.textContent;
+  const same=(a,b)=>JSON.stringify((a||[]).map(Number))===JSON.stringify((b||[]).map(Number));
+  function status(){
+    const p=settings.appliedPlan,changed=p&&!same(p.weights,currentWeights());
+    $('appliedStatus').textContent=shareView?'檢視分享的方案：主畫面水位依這組權重計算。':p?`主畫面水位使用「${p.name}」（${p.savedAt} 儲存）`+(changed?'；目前滑桿與已套用的不同，按「儲存並套用到水位」更新。':'。'):'主畫面水位目前只看本檔價格位置；按下按鈕後改用這組權重，並隨最新資料更新。';
+    $('clearApplied').hidden=!p||shareView;$('applyWeights').hidden=shareView;
+  }
+  function show(){
+    frame=0;status();const p=plan();
+    if(!p){label.textContent=plainLabel;if(barLabel)barLabel.textContent=plainBar;note.classList.add('hidden');return}
+    const r=weightedScore(p.weights);
+    if(r.value==null){label.textContent=plainLabel;if(barLabel)barLabel.textContent=plainBar;note.textContent='「'+p.name+'」部分因子資料不足，暫時顯示本檔價格水位。';note.classList.remove('hidden');return}
+    const v=r.value,own=r.scores[0];
+    $('grade').innerHTML=fmt(v,1)+'<small>/5</small>';$('barGrade').textContent=fmt(v,1)+' / 5';
+    // The gauge fills like the price gauge: a high score (favourable) is a low water line.
+    const cup=$('cupWater');cup.style.height=Math.max(0,Math.min(1,1-v/5))*100+'%';const [a,b]=tideColors(v);cup.style.setProperty('--w1',a);cup.style.setProperty('--w2',b);
+    label.textContent='綜合水位 · 我的權重';if(barLabel)barLabel.textContent='我的水位';
+    // The suggestion tag follows the plan score; the range sentence below still describes the ETF's own price.
+    const tag=$('action-etf');if(tag&&typeof DM!=='undefined'){const act=DM.action(v);tag.className='direction-action '+act.kind;tag.textContent=act.text}
+    const wt=$('waterText');if(wt&&wt.textContent&&!wt.textContent.startsWith('本檔價格'))wt.textContent='本檔價格'+wt.textContent;
+    const ex=$('extended');if(ex&&ex.textContent.startsWith('水位'))ex.textContent='本檔價格位置'+ex.textContent.slice(2);
+    note.textContent=`依「${p.name}」計算；本檔價格水位 ${Number.isFinite(own)?fmt(own,1):'—'} 分。`;note.classList.remove('hidden');
+  }
+  let frame=0;const schedule=()=>{if(!frame)frame=requestAnimationFrame(show)};
+  // Every path that rewrites the ETF score is followed by the plan score.
+  const rp=renderPosition;renderPosition=function(...a){const out=rp(...a);schedule();return out};
+  const uw=updateWeights;updateWeights=function(...a){const out=uw(...a);schedule();return out};
+  if(typeof refreshDirectionViews==='function'){const rd=refreshDirectionViews;refreshDirectionViews=function(...a){const out=rd(...a);schedule();return out}}
+  function apply(name){settings.appliedPlan={weights:currentWeights(),name:name||'我的權重',savedAt:new Date().toISOString().slice(0,10)};save();schedule()}
+  $('applyWeights').addEventListener('click',()=>apply(settings.appliedPlan?.name));
+  $('clearApplied').addEventListener('click',()=>{delete settings.appliedPlan;save();renderPosition();if(typeof refreshDirectionViews==='function')refreshDirectionViews();schedule()});
+  window.chaoweiPlanApplied=name=>{updateWeights();apply(name)};
+  schedule();
 })();
 
 })();

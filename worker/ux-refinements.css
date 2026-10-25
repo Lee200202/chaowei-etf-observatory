@@ -34,3 +34,5 @@
 #guidePage .story-rail{--edge:32px;--rail-card-width:min(560px,74%);max-width:none;width:auto;margin-inline:calc(var(--edge) * -1);padding:0 var(--edge) 10px;scroll-padding-inline:var(--edge)}
 #guidePage .story-tile{flex-basis:var(--rail-card-width);scroll-snap-align:start}
 @media(max-width:700px){#guidePage .story-rail{--edge:20px;--rail-card-width:84%}}
+/* Saved weight plan controls and the note under the water number. */
+.applied-plan{display:grid;gap:8px;margin:6px 0 12px}.applied-plan>div{display:flex;gap:8px;flex-wrap:wrap}.applied-note{margin:4px 0 0}
