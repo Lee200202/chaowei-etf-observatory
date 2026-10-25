@@ -99,3 +99,5 @@ body.editorial-site #top>#siteHeader{width:100%;max-width:1320px;margin-inline:a
 .editorial-site.dark #top .direction-action.increase{color:#ff8990;border-color:#ff899060}
 .editorial-site.dark #top .direction-action.decrease{color:#77cdb0;border-color:#77cdb060}
 .editorial-site.dark #top .factor-more{color:var(--rd-teal)}
+/* The pinned ETF tab already returns to the desk; the old centred floater obscures controls. */
+body.editorial-site .to-top{display:none!important}

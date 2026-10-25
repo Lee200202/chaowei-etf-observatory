@@ -47,3 +47,5 @@ ph8只換排版：`worker/redesign.css`／`redesign.js` 最後載入，把既有
 卡片共用SVG時，path、circle、rect的fill／stroke必須覆蓋每一種承載容器；否則圈形會退回黑色填滿。暫停動畫後，路徑須以完整狀態顯示，不能停在stroke-dashoffset的隱藏初始幀。
 
 深色特大字級亦須截圖：舊 `.dark .hero .pill` 的深色字可能壓過新底色；方向標籤須用深色主題的亮紅／亮綠。橫向功能預覽列的figure統一180px，避免早期Bento的前兩卡規則殘留。
+
+固定頂部ETF分頁已提供返回入口，取消舊的中央「回到觀測區」浮動鈕；該鈕掛在body外層，不能使用只命中#top後代的修正選擇器。驗收時檢查是否壓住教學或圖表控制。
