@@ -94,3 +94,8 @@ body.editorial-site #top>#siteHeader{width:100%;max-width:1320px;margin-inline:a
 .tool-preview-art .rd-gridline{stroke-width:1;opacity:.2}.tool-preview-art .rd-wire{stroke-dasharray:9 7;animation:rd-wire 6s linear infinite}
 .tool-preview-art .rd-leaf{animation:rd-page 8s ease-in-out infinite}.tool-preview-art .leaf-b{fill:currentColor;fill-opacity:.25;animation-delay:.6s}.tool-preview-art .leaf-c{fill:currentColor;fill-opacity:.6;animation-delay:1.2s}
 .editorial-site.motion-paused #top .rd-draw{animation:none;stroke-dashoffset:0}
+.editorial-site #top #homePage .feature-entry figure.tool-preview-art{height:180px;aspect-ratio:auto}
+.editorial-site #top .hero .pill{color:var(--ink);background:var(--paper);border-color:var(--line)}
+.editorial-site.dark #top .direction-action.increase{color:#ff8990;border-color:#ff899060}
+.editorial-site.dark #top .direction-action.decrease{color:#77cdb0;border-color:#77cdb060}
+.editorial-site.dark #top .factor-more{color:var(--rd-teal)}
