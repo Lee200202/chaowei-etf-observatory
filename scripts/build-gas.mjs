@@ -23,7 +23,10 @@ await writeFile(new URL('docs/'+filename,root),runtime);
 let previous=[];try{previous=JSON.parse(await read('docs/gas-runtimes.json'))}catch{}
 // Keep the newest 8 runtimes: a published web-app version still loads its older file until it is
 // redeployed, but unbounded retention made every local rebuild add another file to docs/.
-const keep=[hash,...previous.filter(x=>x!==hash&&/^[a-f0-9]{16}$/.test(x))].slice(0,8);
+// The runtime named by the committed gas/Index.html is what the live deployment loads, so it is always kept,
+// even when CI builds (different line endings, different hash) push it out of the newest eight.
+let deployed=null;try{deployed=(await read('gas/Index.html')).match(/gas-runtime-([a-f0-9]{16})\.js/)?.[1]||null}catch{}
+const keep=[...new Set([hash,...previous.filter(x=>x!==hash&&/^[a-f0-9]{16}$/.test(x)).slice(0,7),deployed].filter(Boolean))];
 for(const old of previous)if(/^[a-f0-9]{16}$/.test(old)&&!keep.includes(old))await rm(new URL('docs/gas-runtime-'+old+'.js',root),{force:true});
 await writeFile(new URL('docs/gas-runtimes.json',root),JSON.stringify(keep)+'\n');
 const html=page.replace('__CSS__',()=>css).replace('<script>__JS__</script>',()=>'<script src="'+PAGES_BASE+filename+'"></script>');
