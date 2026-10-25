@@ -27,7 +27,7 @@ function createChaoweiEngine(){
   /* ---------- indicators ---------- */
   function sma(a,n){const out=new Float64Array(a.length).fill(NaN);let s=0;for(let i=0;i<a.length;i++){s+=a[i];if(i>=n)s-=a[i-n];if(i>=n-1)out[i]=s/n}return out}
   function prepare(bars,dividends,macro){
-    const n=bars.length,close=Float64Array.from(bars,b=>b.close),high=Float64Array.from(bars,b=>b.high),low=Float64Array.from(bars,b=>b.low),vol=Float64Array.from(bars,b=>b.volume);
+    const n=bars.length,close=Float64Array.from(bars,b=>b.close),open=Float64Array.from(bars,b=>Number(b.open)>0?Number(b.open):b.close),high=Float64Array.from(bars,b=>b.high),low=Float64Array.from(bars,b=>b.low),vol=Float64Array.from(bars,b=>b.volume);
     const ma20=sma(close,20),ma60=sma(close,60),ma120=sma(close,120),ma200=sma(close,200),volMa20=sma(vol,20);
     const bbUp=new Float64Array(n).fill(NaN),bbLo=new Float64Array(n).fill(NaN),bw=new Float64Array(n).fill(NaN),bwRank=new Float64Array(n).fill(NaN);
     for(let i=19;i<n;i++){let s=0;for(let j=i-19;j<=i;j++)s+=(close[j]-ma20[i])**2;const sd=Math.sqrt(s/20);bbUp[i]=ma20[i]+2*sd;bbLo[i]=ma20[i]-2*sd;bw[i]=(bbUp[i]-bbLo[i])/ma20[i]}
@@ -41,7 +41,7 @@ function createChaoweiEngine(){
     const div=new Float64Array(n);const byDate=new Map(bars.map((b,i)=>[b.date,i]));
     for(const [date,amount] of dividends||[]){const i=byDate.get(date);if(i!=null)div[i]+=amount}
     const monthStart=bars.map((b,i)=>i===0||b.date.slice(0,7)!==bars[i-1].date.slice(0,7));
-    return{bars,n,close,high,low,vol,ma20,ma60,ma120,ma200,volMa20,bbUp,bbLo,bw,bwRank,rsi,atr,hh22,sigma,div,monthStart,macro:macro||null,refCache:new Map(),scoreCache:new Map()};
+    return{bars,n,open,close,high,low,vol,ma20,ma60,ma120,ma200,volMa20,bbUp,bbLo,bw,bwRank,rsi,atr,hh22,sigma,div,monthStart,macro:macro||null,refCache:new Map(),scoreCache:new Map()};
   }
   // Reference high/low at day i from the window of bars before i (no look-ahead).
   function reference(ctx,window,anchorMode,anchorCount){
@@ -84,22 +84,36 @@ function createChaoweiEngine(){
     for(let k=0;k<200;k++){const m=(a+b)/2,fm=f(m);if(Math.abs(fm)<1e-7)return m;if(fa*fm<0){b=m;fb=fm}else{a=m;fa=fm}}
     return(a+b)/2;
   }
-  function account(ctx,cfg){
-    const fee=cfg.fee/100*cfg.discount/100,tax=cfg.tax/100;
-    return{cash:0,shares:0,cost:0,fee,tax,fees:0,trades:[],divs:[],
+  /* Fill model. A decision on day i only sees data up to close[i].
+     fill 'close' (the original model): trade at close[i]. fill 'nextOpen': trade at open[i+1], the next session
+     inside the run window; an order on the window's last day is not filled (no data past the window is read).
+     slipBps moves every fill against the trader (buys higher, sells lower).
+     A T+1 order is booked on day i so strategy state (shares, cost) stays exact, but until the next open the
+     account still economically holds the old cash and shares: pendingCash/pendingShares undo the booking for
+     day i's valuation, overnight interest and the next day's dividend entitlement. */
+  function account(ctx,cfg,last){
+    const fee=cfg.fee/100*cfg.discount/100,tax=cfg.tax/100,next=cfg.fill==='nextOpen',slip=Math.max(0,Number(cfg.slipBps)||0)/10000;
+    last=last==null?ctx.n-1:last;
+    const fillAt=i=>{if(!next)return{j:i,ref:ctx.close[i]};if(i+1>last)return null;const o=ctx.open?.[i+1];return{j:i+1,ref:o>0?o:ctx.close[i+1]}};
+    return{cash:0,shares:0,cost:0,fee,tax,fees:0,slippage:0,unfilled:0,pendingCash:0,pendingShares:0,trades:[],divs:[],
       buy(i,amount,reason,kind){
-        const c=ctx.close[i],spend=Math.min(amount,this.cash);if(!(spend>0))return 0;
-        let sh=spend/(c*(1+fee));if(cfg.wholeShares)sh=Math.floor(sh);if(!(sh>0))return 0;
-        const gross=sh*c,f=gross*fee;this.cash-=gross+f;this.shares+=sh;this.cost+=gross+f;this.fees+=f;
-        this.trades.push({i,date:ctx.bars[i].date,type:'buy',kind:kind||'buy',price:c,shares:sh,amount:gross+f,reason});return sh;
+        const at=fillAt(i),spend=Math.min(amount,this.cash);if(!(spend>0))return 0;if(!at){this.unfilled++;return 0}
+        const c=at.ref*(1+slip);let sh=spend/(c*(1+fee));if(cfg.wholeShares)sh=Math.floor(sh);if(!(sh>0))return 0;
+        const gross=sh*c,f=gross*fee;this.cash-=gross+f;this.shares+=sh;this.cost+=gross+f;this.fees+=f;this.slippage+=sh*(c-at.ref);
+        if(at.j>i){this.pendingCash+=gross+f;this.pendingShares+=sh}
+        this.trades.push({i:at.j,...(at.j>i?{signal:i}:{}),date:ctx.bars[at.j].date,type:'buy',kind:kind||'buy',price:c,shares:sh,amount:gross+f,reason});return sh;
       },
       sell(i,sh,reason,kind){
-        sh=Math.min(sh,this.shares);if(cfg.wholeShares)sh=Math.floor(sh+1e-9);if(!(sh>0))return 0;
-        const c=ctx.close[i],gross=sh*c,f=gross*(fee+(Number.isFinite(ctx.tradeTax?.[i])?ctx.tradeTax[i]:tax)),costPart=this.cost*sh/this.shares,net=gross-f,pnl=net-costPart;
-        this.cash+=net;this.shares-=sh;this.cost-=costPart;this.fees+=f;if(this.shares<1e-9){this.shares=0;this.cost=0}
-        this.trades.push({i,date:ctx.bars[i].date,type:'sell',kind:kind||'sell',price:c,shares:sh,amount:net,pnl,ret:pnl/costPart,reason});return net;
+        sh=Math.min(sh,this.shares);if(cfg.wholeShares)sh=Math.floor(sh+1e-9);if(!(sh>0))return 0;const at=fillAt(i);if(!at){this.unfilled++;return 0}
+        const c=at.ref*(1-slip),gross=sh*c,f=gross*(fee+(Number.isFinite(ctx.tradeTax?.[at.j])?ctx.tradeTax[at.j]:tax)),costPart=this.cost*sh/this.shares,net=gross-f,pnl=net-costPart;
+        this.cash+=net;this.shares-=sh;this.cost-=costPart;this.fees+=f;this.slippage+=sh*(at.ref-c);if(this.shares<1e-9){this.shares=0;this.cost=0}
+        if(at.j>i){this.pendingCash-=net;this.pendingShares-=sh}
+        this.trades.push({i:at.j,...(at.j>i?{signal:i}:{}),date:ctx.bars[at.j].date,type:'sell',kind:kind||'sell',price:c,shares:sh,amount:net,pnl,ret:pnl/costPart,reason});return net;
       },
-      value(i){return this.cash+this.shares*ctx.close[i]},
+      // Economic holdings tonight: orders waiting for tomorrow's open are not yet filled.
+      held(){return this.shares-this.pendingShares},
+      value(i){return this.cash+this.pendingCash+this.held()*ctx.close[i]},
+      settle(){this.pendingCash=0;this.pendingShares=0},
       toWeight(i,w,reason){const c=ctx.close[i],total=this.value(i),cur=this.shares*c,target=total*w;
         if(target>cur)return this.buy(i,(target-cur),reason,'rebalance');if(target<cur)return this.sell(i,(cur-target)/c,reason,'rebalance');return 0}
     };
@@ -117,9 +131,9 @@ function createChaoweiEngine(){
     const auto=cfg.dcaPeriods==null||cfg.dcaPeriods==='auto',N=auto?months.length:Math.max(1,Math.round(Number(cfg.dcaPeriods)||12));
     const monthly=cfg.capitalMode==='monthly',lump=!monthly,base=cfg.capital/N,dcaMonths=new Set(months.slice(0,N));
     const inflowAt=monthly?new Map(months.slice(0,N).map(i=>[i,base])):new Map([[start,cfg.capital]]);
-    const park=Math.pow(1+cfg.parking/100,1/365)-1,acc=account(ctx,cfg),state={};
+    const park=Math.pow(1+cfg.parking/100,1/365)-1,acc=account(ctx,cfg,end),state={};
     // Benchmarks: buy-and-hold (C invested on day one) and 定期定額 (C ÷ N per month), same fees and tax.
-    const bh=account(ctx,cfg),dca=account(ctx,cfg);
+    const bh=account(ctx,cfg,end),dca=account(ctx,cfg,end);
     const flows=[],bhFlows=monthly?[[Date.parse(ctx.bars[start].date),-cfg.capital]]:flows,series=[],bhSeries=[],dcaSeries=[];
     let contributed=0,interest=0,dividends=0,nav=1,prevEq=0,peakNav=1,mdd=0,utilSum=0,days=0,lastT=Date.parse(ctx.bars[start].date),rets=[];
     let bhNav=1,bhPrev=0,bhPeak=1,bhMdd=0,dcaNav=1,dcaPrev=0,dcaPeak=1,dcaMdd=0;
@@ -128,12 +142,14 @@ function createChaoweiEngine(){
     for(let i=start;i<=end;i++){
       const t=Date.parse(ctx.bars[i].date),dd=Math.round((t-lastT)/DAY);lastT=t;
       // Interest on parked cash for the calendar days since the previous bar.
-      if(dd>0)for(const a of [acc,bh,dca]){const r=a.cash*(Math.pow(1+park,dd)-1);a.cash+=r;if(a===acc)interest+=r}
+      if(dd>0)for(const a of [acc,bh,dca]){const r=(a.cash+a.pendingCash)*(Math.pow(1+park,dd)-1);a.cash+=r;if(a===acc)interest+=r}
       const inflow=inflowAt.get(i)||0,bhIn=monthly?(i===start?cfg.capital:0):inflow;
       if(inflow){acc.cash+=inflow;dca.cash+=inflow;contributed+=inflow;flows.push([t,-inflow])}
       bh.cash+=bhIn;
       // Dividends on shares held before today's trades.
-      if(ctx.div[i]>0)for(const a of [acc,bh,dca]){const d=a.shares*ctx.div[i];if(d>0){a.cash+=d;a.divs.push([t,d]);if(a===acc)dividends+=d;if(cfg.drip)a.buy(i,d,'配息再投入','drip')}}
+      // Yesterday's T+1 orders fill at today's open: entitlement follows the holdings at yesterday's close.
+      if(ctx.div[i]>0)for(const a of [acc,bh,dca]){const d=a.held()*ctx.div[i];a.settle();if(d>0){a.cash+=d;a.divs.push([t,d]);if(a===acc)dividends+=d;if(cfg.drip)a.buy(i,d,'配息再投入','drip')}}
+      for(const a of [acc,bh,dca])a.settle();
       if(bhIn)bh.buy(i,bh.cash,'買進持有','bench');
       if(dcaMonths.has(i))dca.buy(i,base,'定期定額','bench');
       strat.day(i,ctx,cfg,acc,state,helpers,inflow);
@@ -143,8 +159,8 @@ function createChaoweiEngine(){
       if(series.length)rets.push(nav/series.at(-1).nav-1);
       const bq=bh.value(i);if(bhPrev>0)bhNav*=(bq-bhIn)/bhPrev;bhPrev=bq;bhPeak=Math.max(bhPeak,bhNav);bhMdd=Math.min(bhMdd,bhNav/bhPeak-1);
       const dq=dca.value(i);if(dcaPrev>0)dcaNav*=(dq-inflow)/dcaPrev;dcaPrev=dq;dcaPeak=Math.max(dcaPeak,dcaNav);dcaMdd=Math.min(dcaMdd,dcaNav/dcaPeak-1);
-      utilSum+=eq>0?acc.shares*c/eq:0;days++;
-      series.push({time:ctx.bars[i].date,value:eq,nav,dd:ddown,exposure:eq>0?acc.shares*c/eq:0,contributed});
+      utilSum+=eq>0?acc.held()*c/eq:0;days++;
+      series.push({time:ctx.bars[i].date,value:eq,nav,dd:ddown,exposure:eq>0?acc.held()*c/eq:0,contributed});
       bhSeries.push({time:ctx.bars[i].date,value:bq,nav:bhNav,dd:bhNav/bhPeak-1});dcaSeries.push({time:ctx.bars[i].date,value:dq,nav:dcaNav,dd:dcaNav/dcaPeak-1});
     }
     const tEnd=Date.parse(ctx.bars[end].date),years=Math.max(1/365,(tEnd-Date.parse(ctx.bars[start].date))/(365.25*DAY));
@@ -158,7 +174,7 @@ function createChaoweiEngine(){
     const sells=acc.trades.filter(x=>x.type==='sell'&&x.kind!=='rebalance');
     return{cfg,start:ctx.bars[start].date,end:ctx.bars[end].date,years,contributed,N,base,monthly,...s,roic:acc.trades.length?xirr(sleeve):null,
       calmar:s.mdd>0?s.cagr/s.mdd:null,sharpe:sharpeInfo.value,sharpeInfo,drawdowns:drawdownEvents(series),utilization:utilSum/Math.max(1,days),
-      interest,dividends,fees:acc.fees,trades:acc.trades,sells:sells.length,wins:sells.filter(x=>x.pnl>0).length,buys:acc.trades.filter(x=>x.type==='buy').length,
+      interest,dividends,fees:acc.fees,slippage:acc.slippage,unfilled:acc.unfilled,fill:cfg.fill==='nextOpen'?'nextOpen':'close',slipBps:Math.max(0,Number(cfg.slipBps)||0),friction:(acc.fees+acc.slippage)/cfg.capital,trades:acc.trades,sells:sells.length,wins:sells.filter(x=>x.pnl>0).length,buys:acc.trades.filter(x=>x.type==='buy').length,
       shares:acc.shares,cost:acc.cost,cash:acc.cash,state,series,bh:{...summary(bh,bhNav,bhMdd,bhFlows,cfg.capital),series:bhSeries},dca:{...summary(dca,dcaNav,dcaMdd,flows,contributed),series:dcaSeries}};
   }
 

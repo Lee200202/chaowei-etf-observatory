@@ -553,6 +553,10 @@ body.editorial-site #top.shell{max-width:1440px;padding:0 40px;margin:auto}.edit
 .rd-spark-range>span:first-child:before{content:'高 '}.rd-spark-range>span:last-child:before{content:'低 '}
 @media(max-width:700px){.editorial-site #top .rd-matrix-spark{padding-right:0}.rd-spark-range{position:static;height:auto;flex-direction:row-reverse;justify-content:space-between}.rd-ma-note{white-space:nowrap;font-size:calc((13px) * var(--text-scale,1))}}
 @media(min-width:701px){.editorial-site #top .rd-matrix-spark{padding-right:66px}.rd-spark-range{white-space:nowrap}}
+/* Q03 fill comparison: two bars, red for a positive annualised return and green for a negative one. */
+.bt-fill-compare{margin:16px 0;padding:18px 20px;border:1px solid var(--line);border-radius:20px;background:var(--paper)}.bt-fill-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:4px 12px;margin-bottom:8px}.bt-fill-head .kicker{margin:0}.bt-fill-row{display:grid;grid-template-columns:minmax(0,15em) minmax(60px,1fr) 5.5em;align-items:center;gap:12px;padding:6px 0;font-size:calc((14px) * var(--text-scale,1))}.bt-fill-row b{text-align:right;font-variant-numeric:tabular-nums}.bt-fill-bar{display:block;height:10px;border-radius:10px;background:var(--line);overflow:hidden}.bt-fill-bar>i{display:block;height:100%;border-radius:inherit}.bt-fill-bar .up-bg{background:var(--tw-rise)}.bt-fill-bar .down-bg{background:var(--tw-fall)}.bt-fill-compare>p{margin:10px 0 0}
+@media(max-width:700px){.bt-fill-row{grid-template-columns:1fr 5em;row-gap:4px}.bt-fill-row>span{grid-column:1/-1}}
+.bt-fill-gap{font-size:calc((14px) * var(--text-scale,1));font-variant-numeric:tabular-nums;padding:3px 10px;border-radius:999px;border:1px solid currentColor;white-space:nowrap}.bt-fill-sub{margin:0 0 8px}
 </style>
 </head>
 <body>
@@ -603,6 +607,7 @@ body.editorial-site #top.shell{max-width:1440px;padding:0 40px;margin:auto}.edit
 </div>
 <details class="bt-advanced expert-only" id="btAdvanced"><summary> 交易成本、閒置資金與配息 <span class="bt-badge" id="btFriction"></span></summary><div class="bt-adv-grid">
 <label>手續費<span class="bt-num"><input id="btFee" type="number" min="0" max="1" step="0.0001"><em>%</em></span></label><label>折扣<span class="bt-num"><input id="btDiscount" type="number" min="10" max="100" step="1"><em>%</em></span></label><label>證交稅<span class="bt-num"><input id="btTax" type="number" min="0" max="1" step="0.01"><em>%</em></span></label>
+<label>成交時點<select id="btFill"><option value="nextOpen">T+1 開盤（預設，訊號收盤確認）</option><option value="close">T 日收盤（理想對照）</option></select></label><label>滑價（單邊）<span class="bt-num"><input id="btSlip" type="number" min="0" max="100" step="1"><em>bps</em></span></label>
 <label>閒置資金年利率<span class="bt-num"><input id="btParking" type="number" min="0" max="10" step="0.1"><em>%</em></span></label><label class="bt-check"><input type="checkbox" id="btDrip">配息再投入</label><label class="bt-check"><input type="checkbox" id="btWhole">只買整股</label></div></details>
 <p class="bt-summary" id="btSummary"></p>
 <div class="bt-risk" id="btRisk"></div><div class="bt-verdict" id="btVerdict" aria-live="polite"></div><div class="bt-now" id="btNow" aria-live="polite"></div>
@@ -612,7 +617,7 @@ body.editorial-site #top.shell{max-width:1440px;padding:0 40px;margin:auto}.edit
 <details class="bt-detail" id="btRollingBox"><summary>滾動期間勝率（避免只看單一起點）</summary><div id="btRolling"></div></details>
 <details class="bt-detail bt-if-classic expert-only"><summary>參數比較</summary><div class="bt-grid" id="btGrid"></div></details>
 <details class="bt-detail"><summary id="btTradesTitle">交易明細</summary><div class="bt-trade-filter segment" id="btTradeFilter"><button type="button" data-f="all" class="active">全部</button><button type="button" data-f="buy">買進</button><button type="button" data-f="sell">賣出</button><button type="button" data-f="dca">定投</button></div><div class="bt-trades" id="btTrades"></div></details>
-<p class="small bt-note">以收盤價成交、價格已還原分割；配息依證交所除息資料入帳。為歷史模擬，不代表未來報酬。</p>
+<p class="small bt-note">預設訊號於 T 日收盤確認、T+1 開盤成交並計入滑價（可在交易成本設定改為 T 日收盤對照）；價格已還原分割；配息依證交所除息資料入帳。為歷史模擬，不代表未來報酬。</p>
 </div>
 
             <div class="weights-card card member-only" id="weights"><div class="member-lock" role="group" aria-label="我的權重方案：會員專屬"><div class="member-lock-box"><span class="member-badge">會員專屬</span><h4>我的權重方案</h4><p>自訂 ETF、大盤、量能、原油與匯率的權重，算出你的綜合分數，並儲存多組方案。</p><button class="action" type="button" data-open-account>用 Google 登入解鎖</button><p class="small">免費登入，設定會同步到你的 Google 帳號。</p></div></div><div class="card-heading"><h3>我的權重方案</h3><span class="small">本機儲存 · 可複製檢視連結</span></div><div class="weights"><div class="weight"><label for="wEtf">本檔 ETF</label><input id="wEtf" type="range" min="0" max="100" step="1" value="100"><input class="w-num" type="number" min="0" max="100" step="1" data-for="wEtf" aria-label="權重數值"><output id="oEtf">100%</output></div><div class="weight"><label for="wIndex">大盤價格</label><input id="wIndex" type="range" min="0" max="100" step="1" value="0"><input class="w-num" type="number" min="0" max="100" step="1" data-for="wIndex" aria-label="權重數值"><output id="oIndex">0%</output></div><div class="weight"><label for="wVolume">大盤量能</label><input id="wVolume" type="range" min="0" max="100" step="1" value="0"><input class="w-num" type="number" min="0" max="100" step="1" data-for="wVolume" aria-label="權重數值"><output id="oVolume">0%</output></div><div class="weight"><label for="wBrent">布蘭特現貨</label><input id="wBrent" type="range" min="0" max="100" step="1" value="0"><input class="w-num" type="number" min="0" max="100" step="1" data-for="wBrent" aria-label="權重數值"><output id="oBrent">0%</output></div><div class="weight"><label for="wFx">美元／新台幣</label><input id="wFx" type="range" min="0" max="100" step="1" value="0"><input class="w-num" type="number" min="0" max="100" step="1" data-for="wFx" aria-label="權重數值"><output id="oFx">0%</output></div></div><div class="controls"><label>量能解讀<select id="volumeDirection"><option value="off">不納入綜合分</option><option value="low">低量分高</option><option value="high">高量分高</option></select></label></div><div class="weight-bar" id="weightBar" aria-hidden="true"></div><p class="weight-preview" id="weightPreview" aria-live="polite"></p><div class="summary"><div><p class="small" id="weightStatus">權重合計 100%</p><strong id="combined">—</strong><p class="small" id="combinedExtra">連續分：—</p></div><div class="summary-actions"><button class="pill" id="normalize" type="button">平均分配</button><button class="pill" id="share" type="button">複製方案連結</button></div></div><p class="small">各因子可自訂方向：分數高偏向增加配置，低偏向降低；綜合分數依權重計算。匯率數字小代表台幣較強。分數不是勝率。</p></div>
@@ -2092,7 +2097,7 @@ function createChaoweiEngine(){
   /* ---------- indicators ---------- */
   function sma(a,n){const out=new Float64Array(a.length).fill(NaN);let s=0;for(let i=0;i<a.length;i++){s+=a[i];if(i>=n)s-=a[i-n];if(i>=n-1)out[i]=s/n}return out}
   function prepare(bars,dividends,macro){
-    const n=bars.length,close=Float64Array.from(bars,b=>b.close),high=Float64Array.from(bars,b=>b.high),low=Float64Array.from(bars,b=>b.low),vol=Float64Array.from(bars,b=>b.volume);
+    const n=bars.length,close=Float64Array.from(bars,b=>b.close),open=Float64Array.from(bars,b=>Number(b.open)>0?Number(b.open):b.close),high=Float64Array.from(bars,b=>b.high),low=Float64Array.from(bars,b=>b.low),vol=Float64Array.from(bars,b=>b.volume);
     const ma20=sma(close,20),ma60=sma(close,60),ma120=sma(close,120),ma200=sma(close,200),volMa20=sma(vol,20);
     const bbUp=new Float64Array(n).fill(NaN),bbLo=new Float64Array(n).fill(NaN),bw=new Float64Array(n).fill(NaN),bwRank=new Float64Array(n).fill(NaN);
     for(let i=19;i<n;i++){let s=0;for(let j=i-19;j<=i;j++)s+=(close[j]-ma20[i])**2;const sd=Math.sqrt(s/20);bbUp[i]=ma20[i]+2*sd;bbLo[i]=ma20[i]-2*sd;bw[i]=(bbUp[i]-bbLo[i])/ma20[i]}
@@ -2106,7 +2111,7 @@ function createChaoweiEngine(){
     const div=new Float64Array(n);const byDate=new Map(bars.map((b,i)=>[b.date,i]));
     for(const [date,amount] of dividends||[]){const i=byDate.get(date);if(i!=null)div[i]+=amount}
     const monthStart=bars.map((b,i)=>i===0||b.date.slice(0,7)!==bars[i-1].date.slice(0,7));
-    return{bars,n,close,high,low,vol,ma20,ma60,ma120,ma200,volMa20,bbUp,bbLo,bw,bwRank,rsi,atr,hh22,sigma,div,monthStart,macro:macro||null,refCache:new Map(),scoreCache:new Map()};
+    return{bars,n,open,close,high,low,vol,ma20,ma60,ma120,ma200,volMa20,bbUp,bbLo,bw,bwRank,rsi,atr,hh22,sigma,div,monthStart,macro:macro||null,refCache:new Map(),scoreCache:new Map()};
   }
   // Reference high/low at day i from the window of bars before i (no look-ahead).
   function reference(ctx,window,anchorMode,anchorCount){
@@ -2149,22 +2154,36 @@ function createChaoweiEngine(){
     for(let k=0;k<200;k++){const m=(a+b)/2,fm=f(m);if(Math.abs(fm)<1e-7)return m;if(fa*fm<0){b=m;fb=fm}else{a=m;fa=fm}}
     return(a+b)/2;
   }
-  function account(ctx,cfg){
-    const fee=cfg.fee/100*cfg.discount/100,tax=cfg.tax/100;
-    return{cash:0,shares:0,cost:0,fee,tax,fees:0,trades:[],divs:[],
+  /* Fill model. A decision on day i only sees data up to close[i].
+     fill 'close' (the original model): trade at close[i]. fill 'nextOpen': trade at open[i+1], the next session
+     inside the run window; an order on the window's last day is not filled (no data past the window is read).
+     slipBps moves every fill against the trader (buys higher, sells lower).
+     A T+1 order is booked on day i so strategy state (shares, cost) stays exact, but until the next open the
+     account still economically holds the old cash and shares: pendingCash/pendingShares undo the booking for
+     day i's valuation, overnight interest and the next day's dividend entitlement. */
+  function account(ctx,cfg,last){
+    const fee=cfg.fee/100*cfg.discount/100,tax=cfg.tax/100,next=cfg.fill==='nextOpen',slip=Math.max(0,Number(cfg.slipBps)||0)/10000;
+    last=last==null?ctx.n-1:last;
+    const fillAt=i=>{if(!next)return{j:i,ref:ctx.close[i]};if(i+1>last)return null;const o=ctx.open?.[i+1];return{j:i+1,ref:o>0?o:ctx.close[i+1]}};
+    return{cash:0,shares:0,cost:0,fee,tax,fees:0,slippage:0,unfilled:0,pendingCash:0,pendingShares:0,trades:[],divs:[],
       buy(i,amount,reason,kind){
-        const c=ctx.close[i],spend=Math.min(amount,this.cash);if(!(spend>0))return 0;
-        let sh=spend/(c*(1+fee));if(cfg.wholeShares)sh=Math.floor(sh);if(!(sh>0))return 0;
-        const gross=sh*c,f=gross*fee;this.cash-=gross+f;this.shares+=sh;this.cost+=gross+f;this.fees+=f;
-        this.trades.push({i,date:ctx.bars[i].date,type:'buy',kind:kind||'buy',price:c,shares:sh,amount:gross+f,reason});return sh;
+        const at=fillAt(i),spend=Math.min(amount,this.cash);if(!(spend>0))return 0;if(!at){this.unfilled++;return 0}
+        const c=at.ref*(1+slip);let sh=spend/(c*(1+fee));if(cfg.wholeShares)sh=Math.floor(sh);if(!(sh>0))return 0;
+        const gross=sh*c,f=gross*fee;this.cash-=gross+f;this.shares+=sh;this.cost+=gross+f;this.fees+=f;this.slippage+=sh*(c-at.ref);
+        if(at.j>i){this.pendingCash+=gross+f;this.pendingShares+=sh}
+        this.trades.push({i:at.j,...(at.j>i?{signal:i}:{}),date:ctx.bars[at.j].date,type:'buy',kind:kind||'buy',price:c,shares:sh,amount:gross+f,reason});return sh;
       },
       sell(i,sh,reason,kind){
-        sh=Math.min(sh,this.shares);if(cfg.wholeShares)sh=Math.floor(sh+1e-9);if(!(sh>0))return 0;
-        const c=ctx.close[i],gross=sh*c,f=gross*(fee+(Number.isFinite(ctx.tradeTax?.[i])?ctx.tradeTax[i]:tax)),costPart=this.cost*sh/this.shares,net=gross-f,pnl=net-costPart;
-        this.cash+=net;this.shares-=sh;this.cost-=costPart;this.fees+=f;if(this.shares<1e-9){this.shares=0;this.cost=0}
-        this.trades.push({i,date:ctx.bars[i].date,type:'sell',kind:kind||'sell',price:c,shares:sh,amount:net,pnl,ret:pnl/costPart,reason});return net;
+        sh=Math.min(sh,this.shares);if(cfg.wholeShares)sh=Math.floor(sh+1e-9);if(!(sh>0))return 0;const at=fillAt(i);if(!at){this.unfilled++;return 0}
+        const c=at.ref*(1-slip),gross=sh*c,f=gross*(fee+(Number.isFinite(ctx.tradeTax?.[at.j])?ctx.tradeTax[at.j]:tax)),costPart=this.cost*sh/this.shares,net=gross-f,pnl=net-costPart;
+        this.cash+=net;this.shares-=sh;this.cost-=costPart;this.fees+=f;this.slippage+=sh*(at.ref-c);if(this.shares<1e-9){this.shares=0;this.cost=0}
+        if(at.j>i){this.pendingCash-=net;this.pendingShares-=sh}
+        this.trades.push({i:at.j,...(at.j>i?{signal:i}:{}),date:ctx.bars[at.j].date,type:'sell',kind:kind||'sell',price:c,shares:sh,amount:net,pnl,ret:pnl/costPart,reason});return net;
       },
-      value(i){return this.cash+this.shares*ctx.close[i]},
+      // Economic holdings tonight: orders waiting for tomorrow's open are not yet filled.
+      held(){return this.shares-this.pendingShares},
+      value(i){return this.cash+this.pendingCash+this.held()*ctx.close[i]},
+      settle(){this.pendingCash=0;this.pendingShares=0},
       toWeight(i,w,reason){const c=ctx.close[i],total=this.value(i),cur=this.shares*c,target=total*w;
         if(target>cur)return this.buy(i,(target-cur),reason,'rebalance');if(target<cur)return this.sell(i,(cur-target)/c,reason,'rebalance');return 0}
     };
@@ -2182,9 +2201,9 @@ function createChaoweiEngine(){
     const auto=cfg.dcaPeriods==null||cfg.dcaPeriods==='auto',N=auto?months.length:Math.max(1,Math.round(Number(cfg.dcaPeriods)||12));
     const monthly=cfg.capitalMode==='monthly',lump=!monthly,base=cfg.capital/N,dcaMonths=new Set(months.slice(0,N));
     const inflowAt=monthly?new Map(months.slice(0,N).map(i=>[i,base])):new Map([[start,cfg.capital]]);
-    const park=Math.pow(1+cfg.parking/100,1/365)-1,acc=account(ctx,cfg),state={};
+    const park=Math.pow(1+cfg.parking/100,1/365)-1,acc=account(ctx,cfg,end),state={};
     // Benchmarks: buy-and-hold (C invested on day one) and 定期定額 (C ÷ N per month), same fees and tax.
-    const bh=account(ctx,cfg),dca=account(ctx,cfg);
+    const bh=account(ctx,cfg,end),dca=account(ctx,cfg,end);
     const flows=[],bhFlows=monthly?[[Date.parse(ctx.bars[start].date),-cfg.capital]]:flows,series=[],bhSeries=[],dcaSeries=[];
     let contributed=0,interest=0,dividends=0,nav=1,prevEq=0,peakNav=1,mdd=0,utilSum=0,days=0,lastT=Date.parse(ctx.bars[start].date),rets=[];
     let bhNav=1,bhPrev=0,bhPeak=1,bhMdd=0,dcaNav=1,dcaPrev=0,dcaPeak=1,dcaMdd=0;
@@ -2193,12 +2212,14 @@ function createChaoweiEngine(){
     for(let i=start;i<=end;i++){
       const t=Date.parse(ctx.bars[i].date),dd=Math.round((t-lastT)/DAY);lastT=t;
       // Interest on parked cash for the calendar days since the previous bar.
-      if(dd>0)for(const a of [acc,bh,dca]){const r=a.cash*(Math.pow(1+park,dd)-1);a.cash+=r;if(a===acc)interest+=r}
+      if(dd>0)for(const a of [acc,bh,dca]){const r=(a.cash+a.pendingCash)*(Math.pow(1+park,dd)-1);a.cash+=r;if(a===acc)interest+=r}
       const inflow=inflowAt.get(i)||0,bhIn=monthly?(i===start?cfg.capital:0):inflow;
       if(inflow){acc.cash+=inflow;dca.cash+=inflow;contributed+=inflow;flows.push([t,-inflow])}
       bh.cash+=bhIn;
       // Dividends on shares held before today's trades.
-      if(ctx.div[i]>0)for(const a of [acc,bh,dca]){const d=a.shares*ctx.div[i];if(d>0){a.cash+=d;a.divs.push([t,d]);if(a===acc)dividends+=d;if(cfg.drip)a.buy(i,d,'配息再投入','drip')}}
+      // Yesterday's T+1 orders fill at today's open: entitlement follows the holdings at yesterday's close.
+      if(ctx.div[i]>0)for(const a of [acc,bh,dca]){const d=a.held()*ctx.div[i];a.settle();if(d>0){a.cash+=d;a.divs.push([t,d]);if(a===acc)dividends+=d;if(cfg.drip)a.buy(i,d,'配息再投入','drip')}}
+      for(const a of [acc,bh,dca])a.settle();
       if(bhIn)bh.buy(i,bh.cash,'買進持有','bench');
       if(dcaMonths.has(i))dca.buy(i,base,'定期定額','bench');
       strat.day(i,ctx,cfg,acc,state,helpers,inflow);
@@ -2208,8 +2229,8 @@ function createChaoweiEngine(){
       if(series.length)rets.push(nav/series.at(-1).nav-1);
       const bq=bh.value(i);if(bhPrev>0)bhNav*=(bq-bhIn)/bhPrev;bhPrev=bq;bhPeak=Math.max(bhPeak,bhNav);bhMdd=Math.min(bhMdd,bhNav/bhPeak-1);
       const dq=dca.value(i);if(dcaPrev>0)dcaNav*=(dq-inflow)/dcaPrev;dcaPrev=dq;dcaPeak=Math.max(dcaPeak,dcaNav);dcaMdd=Math.min(dcaMdd,dcaNav/dcaPeak-1);
-      utilSum+=eq>0?acc.shares*c/eq:0;days++;
-      series.push({time:ctx.bars[i].date,value:eq,nav,dd:ddown,exposure:eq>0?acc.shares*c/eq:0,contributed});
+      utilSum+=eq>0?acc.held()*c/eq:0;days++;
+      series.push({time:ctx.bars[i].date,value:eq,nav,dd:ddown,exposure:eq>0?acc.held()*c/eq:0,contributed});
       bhSeries.push({time:ctx.bars[i].date,value:bq,nav:bhNav,dd:bhNav/bhPeak-1});dcaSeries.push({time:ctx.bars[i].date,value:dq,nav:dcaNav,dd:dcaNav/dcaPeak-1});
     }
     const tEnd=Date.parse(ctx.bars[end].date),years=Math.max(1/365,(tEnd-Date.parse(ctx.bars[start].date))/(365.25*DAY));
@@ -2223,7 +2244,7 @@ function createChaoweiEngine(){
     const sells=acc.trades.filter(x=>x.type==='sell'&&x.kind!=='rebalance');
     return{cfg,start:ctx.bars[start].date,end:ctx.bars[end].date,years,contributed,N,base,monthly,...s,roic:acc.trades.length?xirr(sleeve):null,
       calmar:s.mdd>0?s.cagr/s.mdd:null,sharpe:sharpeInfo.value,sharpeInfo,drawdowns:drawdownEvents(series),utilization:utilSum/Math.max(1,days),
-      interest,dividends,fees:acc.fees,trades:acc.trades,sells:sells.length,wins:sells.filter(x=>x.pnl>0).length,buys:acc.trades.filter(x=>x.type==='buy').length,
+      interest,dividends,fees:acc.fees,slippage:acc.slippage,unfilled:acc.unfilled,fill:cfg.fill==='nextOpen'?'nextOpen':'close',slipBps:Math.max(0,Number(cfg.slipBps)||0),friction:(acc.fees+acc.slippage)/cfg.capital,trades:acc.trades,sells:sells.length,wins:sells.filter(x=>x.pnl>0).length,buys:acc.trades.filter(x=>x.type==='buy').length,
       shares:acc.shares,cost:acc.cost,cash:acc.cash,state,series,bh:{...summary(bh,bhNav,bhMdd,bhFlows,cfg.capital),series:bhSeries},dca:{...summary(dca,dcaNav,dcaMdd,flows,contributed),series:dcaSeries}};
   }
 
@@ -2466,7 +2487,7 @@ const E=ChaoweiEngine;
 // dcaPeriods 'auto' = one installment per month of the backtest window; sync = use the observation settings above.
 const BT_DEFAULT={v:4,family:'dca',preset:'smartDca',strategy:'smart_dca_water',params:{...E.PARAMS.smart_dca_water},
   ref:{window:'240',anchorMode:'wick',anchorCount:5,method:'equal'},capital:1200000,entryTranches:0,dcaPeriods:'auto',capitalMode:'pool',sync:true,period:'5',
-  fee:0.1425,discount:100,tax:0.1,parking:1.5,drip:true,wholeShares:false,markers:true};
+  fee:0.1425,discount:100,tax:0.1,fill:'nextOpen',slipBps:5,parking:1.5,drip:true,wholeShares:false,markers:true};
 // v2 stored the classic builder's fields at the top level; keep the user's swing settings.
 // v3 defaulted to 12 installments, which spent C in the first year of a five-year test; 12 becomes 'auto'.
 function btMigrate(b){
@@ -2546,7 +2567,7 @@ const btTopRef=()=>({window:String(settings.window),anchorMode:settings.anchorMo
 const btRef=()=>settings.bt.sync?btTopRef():settings.bt.ref;
 function btMonths(){if(!bars.length)return 0;const s=btStart(settings.bt.period),e=btEnd();let n=0;for(let i=s;i<=e;i++)if(i===s||bars[i].date.slice(0,7)!==bars[i-1].date.slice(0,7))n++;return n}
 const btN=()=>settings.bt.dcaPeriods==='auto'?btMonths():settings.bt.dcaPeriods;
-const btCfg=(over={})=>{const b=settings.bt,k=[2,3,4].includes(Number(b.entryTranches))?Number(b.entryTranches):0,params={...b.params};if(k&&b.strategy==='classic'){if(params.entry==='fib')params.levels=params.levels.slice(0,k);else params.adds=k-1}return{ref:{...btRef()},capital:b.capital,entryTranches:k,dcaPeriods:b.dcaPeriods,capitalMode:b.capitalMode,fee:b.fee,discount:b.discount,tax:b.tax,parking:b.parking,drip:b.drip,wholeShares:b.wholeShares,strategy:b.strategy,params,...over}};
+const btCfg=(over={})=>{const b=settings.bt,k=[2,3,4].includes(Number(b.entryTranches))?Number(b.entryTranches):0,params={...b.params};if(k&&b.strategy==='classic'){if(params.entry==='fib')params.levels=params.levels.slice(0,k);else params.adds=k-1}return{ref:{...btRef()},capital:b.capital,entryTranches:k,dcaPeriods:b.dcaPeriods,capitalMode:b.capitalMode,fee:b.fee,discount:b.discount,tax:b.tax,fill:b.fill==='close'?'close':'nextOpen',slipBps:b.fill==='close'?0:Number.isFinite(b.slipBps)?b.slipBps:5,parking:b.parking,drip:b.drip,wholeShares:b.wholeShares,strategy:b.strategy,params,...over}};
 
 /* ---------- form ---------- */
 function btFieldHtml([key,label,type,extra,visible],p){
@@ -2575,11 +2596,11 @@ function btFillForm(){
   const ref=btRef();$('btSync').checked=!!b.sync;
   customOption($('btWindow'),ref.window,ref.window+' 交易日（自訂）');set('btWindow',ref.window);set('btAnchorMode',ref.anchorMode);set('btAnchorCount',ref.anchorCount);set('btMethod',ref.method);
   for(const id of ['btWindow','btAnchorMode','btAnchorCount','btMethod'])$(id).disabled=!!b.sync;
-  set('btFee',b.fee);set('btDiscount',b.discount);set('btTax',b.tax);set('btParking',b.parking);$('btDrip').checked=!!b.drip;$('btWhole').checked=!!b.wholeShares;
+  set('btFee',b.fee);set('btFill',b.fill==='close'?'close':'nextOpen');set('btSlip',Number.isFinite(b.slipBps)?b.slipBps:5);$('btSlip').disabled=b.fill==='close';set('btDiscount',b.discount);set('btTax',b.tax);set('btParking',b.parking);$('btDrip').checked=!!b.drip;$('btWhole').checked=!!b.wholeShares;
   const card=$('backtestCard');card.querySelectorAll('.bt-if-average').forEach(e=>e.classList.toggle('hidden',ref.anchorMode!=='average'));
   card.querySelectorAll('.bt-if-classic').forEach(e=>e.classList.toggle('hidden',b.strategy!=='classic'));
   btRenderSplit();
-  $('btFriction').textContent='買賣一次成本 '+fmt(b.fee*b.discount/100*2+b.tax,4)+'%';
+  {const slip=b.fill==='close'?0:Number.isFinite(b.slipBps)?b.slipBps:5;$('btFriction').textContent=(b.fill==='close'?'T 日收盤（理想）':'T+1 開盤')+' · 買賣一次成本 '+fmt(b.fee*b.discount/100*2+b.tax+slip/100*2,4)+'%'}
   $('btMarkers').setAttribute('aria-pressed',String(!!b.markers));
   btRenderParams();
 }
@@ -2605,7 +2626,7 @@ function btReadForm(){
   // Unticking sync starts from the observation settings, then the step-3 fields are the backtest's own.
   const wasSync=b.sync;b.sync=$('btSync').checked;
   if(!b.sync)b.ref=wasSync?btTopRef():{window:$('btWindow').value,anchorMode:$('btAnchorMode').value,anchorCount:Math.round(num('btAnchorCount',1,20,5)),method:$('btMethod').value==='fib'?'fib':'equal'};
-  b.fee=num('btFee',0,1,0.1425);b.discount=num('btDiscount',10,100,100);b.tax=num('btTax',0,1,0.1);b.parking=num('btParking',0,10,1.5);b.drip=$('btDrip').checked;b.wholeShares=$('btWhole').checked;
+  b.fee=num('btFee',0,1,0.1425);b.fill=$('btFill').value==='close'?'close':'nextOpen';b.slipBps=num('btSlip',0,100,5);b.discount=num('btDiscount',10,100,100);b.tax=num('btTax',0,1,0.1);b.parking=num('btParking',0,10,1.5);b.drip=$('btDrip').checked;b.wholeShares=$('btWhole').checked;
   $('btParams').querySelectorAll('[data-k]').forEach(el=>{const k=el.dataset.k,v=el.type==='checkbox'?el.checked:el.tagName==='SELECT'?el.value:Number(el.value);
     b.params[k]=el.tagName==='SELECT'&&/^-?\d+(\.\d+)?$/.test(v)?Number(v):(typeof v==='number'&&!Number.isFinite(v)?b.params[k]:v)});
   const levels=[...$('btParams').querySelectorAll('[data-level]:checked')].map(x=>Number(x.dataset.level)).sort((x,y)=>x-y);if($('btParams').querySelector('[data-level]'))b.params.levels=levels.length?levels:[0.382];
@@ -2763,6 +2784,16 @@ function btRenderTrades(){
   $('btTradesTitle').textContent='交易明細（'+r.trades.length+' 筆）';
   $('btTrades').innerHTML=rows.length?`<table><thead><tr><th>日期</th><th>動作</th><th>價格</th><th>股數</th><th>金額</th><th>報酬</th><th>原因</th></tr></thead><tbody>${rows.map(t=>`<tr><td>${t.date}</td><td class="${t.type}">${t.type==='buy'?(t.kind==='dca'?'定投':t.kind==='drip'?'配息再投入':'買進'):'賣出'}</td><td>${fmt(t.price,2)}</td><td>${fmt(t.shares,0)}</td><td class="amount-cell"><span class="bt-bar" style="--w:${Math.abs(t.amount)/maxAmount*100}%"></span><span>${fmt(t.amount,0)}</span></td><td class="${cls(t.ret)}">${t.ret!=null?`<span class="bt-bar" style="--w:${Math.round(Math.abs(t.ret)/maxRet*100)}%"></span>${pctText(t.ret)}`:''}</td><td>${t.reason}</td></tr>`).join('')}</tbody></table>${list.length>400?'<p class="small">只顯示最近 400 筆；完整明細請下載 CSV。</p>':''}`:'<p class="small">沒有符合的交易。</p>';
 }
+/* Q03: the same rules under the other fill model, so the cost of waiting for the next open (plus slippage) is visible.
+   T+1 open is the default; the comparison is the ideal same-day close without slippage. */
+function btRenderFill(ctx,cfg,start,end,r){
+  let box=$('btFillCompare');if(!box){box=document.createElement('div');box.id='btFillCompare';box.className='bt-fill-compare';$('btKpis').after(box)}
+  const next=r.fill==='nextOpen',alt=E.run(ctx,next?{...cfg,fill:'close',slipBps:0}:{...cfg,fill:'nextOpen',slipBps:cfg.slipBps||5},start,end);
+  const rows=next?[['T+1 開盤＋滑價 '+fmt(r.slipBps,0)+' bps（目前）',r],['T 日收盤（理想，無滑價）',alt]]:[['T 日收盤（目前，理想無滑價）',r],['T+1 開盤＋滑價 '+fmt(alt.slipBps,0)+' bps',alt]];
+  const real=next?r:alt,ideal=next?alt:r,dx=real.xirr-ideal.xirr,de=real.equity-ideal.equity,span=Math.max(.01,...rows.map(([,x])=>Math.abs(x.xirr||0)));
+  box.innerHTML='<div class="bt-fill-head"><p class="kicker teal">成交模型對照</p><b class="bt-fill-gap '+(dx<-5e-5?'down':dx>5e-5?'up':'')+'">T+1 對理想 '+(dx>0?'+':dx<0?'−':'')+fmt(Math.abs(dx)*100,2)+' 個百分點</b></div><p class="small bt-fill-sub">訊號都在 T 日收盤確認；差別只在成交價與時點。</p>'+rows.map(([label,x])=>{const v=x.xirr||0;return'<div class="bt-fill-row"><span>'+label+'</span><i class="bt-fill-bar"><i class="'+(v>=0?'up-bg':'down-bg')+'" style="width:'+(Math.abs(v)/span*100).toFixed(1)+'%"></i></i><b class="'+(v>0?'up':v<0?'down':'')+'">'+pctText(x.xirr)+'</b></div>'}).join('')+
+    '<p class="small">延遲到 T+1 開盤並計入滑價，年化'+(Math.abs(dx)<5e-5?'幾乎不變':(dx<0?'少 ':'多 ')+fmt(Math.abs(dx)*100,2)+' 個百分點')+'，期末'+(de<0?'少 ':'多 ')+money(Math.abs(de))+'。真實模型的摩擦成本：手續費與稅 '+money(real.fees)+'＋滑價 '+money(real.slippage)+'，合計佔本金 '+fmt(real.friction*100,2)+'%'+(real.unfilled?'；期末最後一天的 '+real.unfilled+' 筆訊號因無下一個開盤而未成交':'')+'。</p>';
+}
 function renderBacktest(){
   btBarsRef=bars;
   if(!bars.length||bars.length<60){$('btKpis').innerHTML='<p class="small">需要至少 60 個交易日才能回測。</p>';btResult=null;applyMarkers();return}
@@ -2779,10 +2810,11 @@ function renderBacktest(){
   // Same three lines on every benchmark card: annualised (XIRR) big; total return and final value small.
   const wan=v=>fmt(v/10000,v>=1e7?0:1)+' 萬',sub=x=>'總報酬 '+pctText(x.ret)+' · 期末 '+wan(x.equity);
   const k=[['策略績效',r.xirr,v=>pctText(v),sub(r)],['定期定額基準',r.dca.xirr,v=>pctText(v),sub(r.dca)],['買進持有基準',r.bh.xirr,v=>pctText(v),sub(r.bh)],['最大回落',r.mdd,v=>'−'+fmt(v*100,1)+'%','定期定額 −'+fmt(r.dca.mdd*100,1)+'%']];
-  const small=[['期間',r.start+' 至 '+r.end],['資金基數',money(r.contributed)+(r.monthly?'（每月入金）':'')],['實動資金年化',pctText(r.roic)],['期末現金',money(r.cash)],['Calmar',r.calmar!=null?fmt(r.calmar,2):'—'],['Sharpe',r.sharpe!=null?fmt(r.sharpe,2):'—'],['平均持股比例',fmt(r.utilization*100,0)+'%'],['股利入帳',money(r.dividends)],['停泊利息',money(r.interest)],['手續費與稅',money(r.fees)],['基準手續費','定額 '+money(r.dca.fees)+'／持有 '+money(r.bh.fees)],['交易',r.buys+' 買／'+r.sells+' 賣'+(r.sells?'（勝率 '+fmt(r.wins/r.sells*100,0)+'%）':'')]];
+  const small=[['期間',r.start+' 至 '+r.end],['資金基數',money(r.contributed)+(r.monthly?'（每月入金）':'')],['實動資金年化',pctText(r.roic)],['期末現金',money(r.cash)],['Calmar',r.calmar!=null?fmt(r.calmar,2):'—'],['Sharpe',r.sharpe!=null?fmt(r.sharpe,2):'—'],['平均持股比例',fmt(r.utilization*100,0)+'%'],['股利入帳',money(r.dividends)],['停泊利息',money(r.interest)],['手續費與稅',money(r.fees)],['滑價成本',money(r.slippage||0)],['摩擦成本合計',fmt((r.friction||0)*100,2)+'% 本金'],['基準手續費','定額 '+money(r.dca.fees)+'／持有 '+money(r.bh.fees)],['交易',r.buys+' 買／'+r.sells+' 賣'+(r.sells?'（勝率 '+fmt(r.wins/r.sells*100,0)+'%）':'')]];
   if(!$('btKpis').querySelector('.bt-big'))$('btKpis').innerHTML=`<p class="bt-kpi-note">大字＝年化報酬（XIRR，依實際入金日計算）</p><div class="bt-big">${k.map((_,j)=>`<div><small></small><b data-k="${j}"></b><span></span></div>`).join('')}</div><div class="bt-small"></div>`;
   $('btKpis').querySelectorAll('.bt-big>div').forEach((el,j)=>{const [label,v,f,sub]=k[j];el.querySelector('small').textContent=label;el.querySelector('span').textContent=sub;const b=el.querySelector('b');b.className=j<3?(v>0?'up':v<0?'down':''):'';btAnimate(b,v,f)});
   $('btKpis').querySelector('.bt-small').innerHTML=small.map(([a,b])=>`<span><small>${a}</small>${b}</span>`).join('');
+  btRenderFill(ctx,cfg,start,end,r);
   btDrawCharts(r);
   $('btNow').innerHTML=btAction(r);
   // Leveraged and inverse ETFs decay in sideways markets; averaging down without a stop is the risky combination.
@@ -3837,7 +3869,7 @@ const TrainingMath=(()=>{
 
 /* Member holdout experiment. Nothing is selected using validation performance. */
 (()=>{
-  const panel=document.createElement('details');panel.className='metric-detail training-lab';panel.id='trainingLab';panel.innerHTML='<summary>站在歷史當下驗證</summary><p>用前段資料選一次規則，鎖定後才驗證後段。日期、目標與候選範圍由你決定。</p><div class="training-flow"><span>1 訓練期選規則</span><span>2 鎖定條件</span><span>3 後段獨立驗證</span></div><div class="training-fields"><label>訓練起日<input type="date" id="trainFrom"></label><label>訓練迄日<input type="date" id="trainUntil"></label><label>驗證起日<input type="date" id="testFrom"></label><label>驗證迄日<input type="date" id="testUntil"></label><label>只按訓練期選擇<select id="trainMetric"><option value="xirr">年化報酬最高</option><option value="calmar">Calmar 最高</option></select></label><label>參考窗候選<select id="trainScope"><option value="fixed">固定目前觀察窗</option><option value="search">另比較 60／120／240 日</option></select></label></div><div class="training-actions"><button class="pill" type="button" id="trainRun">鎖定規則並驗證</button><button class="pill mini" type="button" id="trainCancel" disabled>取消計算</button></div><p class="small" id="trainStatus" aria-live="polite">訓練至少 60 日、驗證至少 20 日；新 ETF 會使用實際可得資料。</p><div id="trainingResult"></div><details><summary>怎麼讀這個實驗？</summary><p class="small">驗證首日以同樣資金、空手開始，持倉不承接訓練期。只比較既有固定策略與選定觀察窗；不是未來最佳策略的保證。日期切割不代表樣本外結果一定較好；反覆看驗證成績再調參，也可能過度配適。沿用回測的收盤成交、配息、費用與入金假設；使用目前整理的分割還原歷史，並非當年逐日保存的原始資料版本。</p></details>';
+  const panel=document.createElement('details');panel.className='metric-detail training-lab';panel.id='trainingLab';panel.innerHTML='<summary>站在歷史當下驗證</summary><p>用前段資料選一次規則，鎖定後才驗證後段。日期、目標與候選範圍由你決定。</p><div class="training-flow"><span>1 訓練期選規則</span><span>2 鎖定條件</span><span>3 後段獨立驗證</span></div><div class="training-fields"><label>訓練起日<input type="date" id="trainFrom"></label><label>訓練迄日<input type="date" id="trainUntil"></label><label>驗證起日<input type="date" id="testFrom"></label><label>驗證迄日<input type="date" id="testUntil"></label><label>只按訓練期選擇<select id="trainMetric"><option value="xirr">年化報酬最高</option><option value="calmar">Calmar 最高</option></select></label><label>參考窗候選<select id="trainScope"><option value="fixed">固定目前觀察窗</option><option value="search">另比較 60／120／240 日</option></select></label></div><div class="training-actions"><button class="pill" type="button" id="trainRun">鎖定規則並驗證</button><button class="pill mini" type="button" id="trainCancel" disabled>取消計算</button></div><p class="small" id="trainStatus" aria-live="polite">訓練至少 60 日、驗證至少 20 日；新 ETF 會使用實際可得資料。</p><div id="trainingResult"></div><details><summary>怎麼讀這個實驗？</summary><p class="small">驗證首日以同樣資金、空手開始，持倉不承接訓練期。只比較既有固定策略與選定觀察窗；不是未來最佳策略的保證。日期切割不代表樣本外結果一定較好；反覆看驗證成績再調參，也可能過度配適。沿用回測的成交時點（預設 T+1 開盤＋滑價）、配息、費用與入金假設；使用目前整理的分割還原歷史，並非當年逐日保存的原始資料版本。</p></details>';
   $('btKpis').before(panel);const runner=createOptimizerRunner();let generation=0,code='',signature='',locked=null;
   const ids=['trainFrom','trainUntil','testFrom','testUntil','trainMetric','trainScope'];
   function fill(){if(!bars.length)return;const sig=selected+'|'+bars[0].date+'|'+bars.at(-1).date;if(signature===sig)return;signature=sig;generation++;runner.cancel();code=selected;locked=null;$('trainRun').disabled=false;$('trainCancel').disabled=true;$('trainingResult').replaceChildren();const d=TrainingMath.defaults(bars);if(!d)return;const saved=settings.holdout?.code===selected?settings.holdout:null;for(const[id,k]of[['trainFrom','from'],['trainUntil','until'],['testFrom','testFrom'],['testUntil','testTo']])$(id).value=saved?.[k]||d[k];$('trainMetric').value=saved?.metric||'xirr';$('trainScope').value=saved?.scope||'fixed';$('trainStatus').textContent=`${selected} 實際日 K ${bars[0].date} 至 ${bars.at(-1).date}；本實驗與上方全期排行獨立。`}
@@ -4092,7 +4124,7 @@ const StrategyBoard=(()=>{
  async function prepare(){const info=B.inspect(board);if(info.errors.length)throw Error(info.errors[0]);const codes=[...new Set(info.board.nodes.filter(n=>n.type==='asset'&&info.used.has(n.id)).map(n=>n.params.code))];if(codes.length>8)throw Error('同一次研究最多 8 檔 ETF。');for(const code of codes){if(!catalog.some(e=>e.code===code))throw Error(code+' 不在目前台灣 ETF 名錄。');if(/[KMSC]$/.test(code))throw Error('白板組合目前只合併新台幣報價 ETF；外幣掛牌需另計匯率。')}await Promise.all(codes.map(load));return B.compile(board,bundles,E)}
  async function preview(){const mine=++previewGen;if(!board.nodes.length){note('空白白板 · 從一張 ETF 卡開始');return}try{const info=B.inspect(board);if(info.errors.length){note(info.errors[0]);return}const c=await prepare();if(mine!==previewGen)return;compiled=c;render();const valid=c.plans.every(p=>p.flags.at(-1)!=null);note((valid?'條件已核對':'有條件歷史不足')+' · 確認收盤 '+[...new Set(c.plans.map(p=>p.bundle.ctx.bars.at(-1).date))].join('／')+(c.warnings.length?' · '+c.warnings.length+' 張未接入':''));}catch(e){if(mine===previewGen)note(e.message)}}
  $('boardRun').onclick=async()=>{if(!isMember){$('accountTop').click();return}const mine=++runGen,rev=revision;$('boardRun').disabled=true;$('boardRunStatus').textContent='核對條件與共同資料…';try{const c=await prepare();if(mine!==runGen||rev!==revision)return;const from=$('boardFrom').value,to=$('boardTo').value,capital=Number($('boardCapital').value);if(!from||!to||from>=to)throw Error('請輸入先後正確的日期。');if(!(capital>=10000&&capital<=100000000))throw Error('研究預算須在一萬至一億元之間。');const firsts=c.plans.map(p=>{const i=p.flags.findIndex(v=>v!=null);return i<0?null:p.bundle.ctx.bars[Math.min(p.bundle.ctx.n-1,i+1)].date});if(firsts.some(x=>x==null))throw Error('有條件尚無足夠歷史；可縮短均線／觀察窗或換 ETF。');const actualFrom=[from,...firsts].sort().at(-1),actualTo=[to,...c.plans.map(p=>p.bundle.ctx.bars.at(-1).date)].sort()[0];if(actualFrom>=actualTo)throw Error('條件成熟日期晚於結束日，請調整區間。');B.install(E);const calendars=c.plans.map(p=>new Set(p.bundle.ctx.bars.map(b=>b.date))),common=c.plans[0].bundle.ctx.bars.map(b=>b.date).filter(d=>d>=actualFrom&&d<=actualTo&&calendars.every(set=>set.has(d)));if(common.length<20)throw Error('共同交易日不足 20 日。');const sharedFrom=common[0],sharedTo=common.at(-1),base=btCfg(),runs=[];for(const p of c.plans){const ctx=p.bundle.ctx,a=ctx.bars.findIndex(b=>b.date>=sharedFrom),z=ctx.bars.findLastIndex(b=>b.date<=sharedTo);if(z-a<19)throw Error(p.code+' 在所選區間不足 20 個交易日。');ctx.tradeTax=Float64Array.from(ctx.bars,b=>/B$/.test(p.code)&&b.date>='2017-01-01'&&b.date<='2026-12-31'?0:base.tax/100);const cfg={...base,capital:capital*p.weight/100,capitalMode:'pool',dcaPeriods:'auto',strategy:'board_rule',params:{flags:p.flags,on:p.on,off:p.off},ref:{window:'240',anchorMode:'wick',anchorCount:5,method:'equal'}};if(cfg.capital>0)runs.push({...E.run(ctx,cfg,a,z),code:p.code});await new Promise(r=>setTimeout(r,0));if(mine!==runGen||rev!==revision)return}result=B.aggregate(runs,capital,capital*(1-c.total/100),base.parking);renderResult(result,c,base,from,actualFrom);compiled=c;render();}catch(e){if(mine===runGen)$('boardRunStatus').textContent=e.message}finally{$('boardRun').disabled=false}};
- function renderResult(r,c,base,requested,actual){$('boardRunResult').innerHTML=`<div class="board-result-kpis">${[['研究年化',pctText(r.xirr),r.xirr],['同期定額',pctText(r.benchmarkXirr),r.benchmarkXirr],['最大回落',fmt(r.mdd*100,1)+'%',-r.mdd]].map(([a,b,v])=>`<div><small>${a}</small><strong class="${v>0?'up':v<0?'down':''}">${b}</strong></div>`).join('')}</div><p class="small">${r.from} 至 ${r.to} · ${r.series.length} 個共同交易日 · ${c.plans.map(p=>p.code+' '+p.weight+'%').join('、')} · 未配置現金 ${fmt(100-c.total,0)}%</p><div class="board-result-chart" id="boardResultChart" aria-label="白板研究與同期定額資產曲線"></div><div class="bt-equity-legend"><span class="s">白板研究</span><span class="d">同期定額</span></div><details class="metric-detail"><summary>交易與條件覆蓋</summary><p class="small">共 ${r.trades.length} 筆調整，費稅 ${money(r.fees)}。條件當日已知，次日收盤成交；與原頁面當日收盤成交假設不同，請看本區基準。</p><div>${c.plans.map(p=>`<p class="small">${p.code}：成立持股 ${p.on}%／不成立 ${p.off}%；前段資料不足時不進場。</p>`).join('')}</div><button class="pill mini" type="button" id="boardTradesExport">匯出交易 CSV</button></details>`;chart?.remove();chart=LightweightCharts.createChart($('boardResultChart'),{...chartOptions(),height:290});sLine=chart.addLineSeries({color:'#148c9a',lineWidth:3,priceLineVisible:false,priceFormat:{type:'custom',formatter:v=>fmt(v/10000,1)+'萬'}});dLine=chart.addLineSeries({color:'#c18c25',lineWidth:2,priceLineVisible:false,priceFormat:{type:'custom',formatter:v=>fmt(v/10000,1)+'萬'}});sLine.setData(r.series.map(x=>({time:x.time,value:x.value})));dLine.setData(r.series.map(x=>({time:x.time,value:x.dca})));chart.timeScale().fitContent();$('boardTradesExport').onclick=()=>{const rows=['日期,ETF,方向,價格,股數,金額,理由',...r.trades.map(t=>[t.date,t.code,t.type,t.price,t.shares,t.amount,t.reason].map(x=>'"'+String(x).replaceAll('"','""')+'"').join(','))];const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+rows.join('\n')],{type:'text/csv;charset=utf-8'}));a.download='chaowei-board-trades.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};$('boardRunStatus').textContent=(actual>requested?'依條件可用日期縮至 '+actual+' 起。':'')+'完成；結果是歷史研究，不保證勝過定額。';$('boardAssumptions').textContent=`股票型稅率採所選假設；原型債券 ETF 在 2017–2026 日資料採免稅。手續費 ${base.fee}% × ${base.discount}% 折扣、交易稅 ${base.tax}%、停泊年息 ${base.parking}%、${base.drip?'股利再投入':'股利留現金'}、${base.wholeShares?'整股':'允許小數股'}。`;const out=$('boardRunResult');Object.assign(out.dataset,{xirr:r.xirr,benchmark:r.benchmarkXirr,mdd:r.mdd,from:r.from,to:r.to,trades:r.trades.length});}
+ function renderResult(r,c,base,requested,actual){$('boardRunResult').innerHTML=`<div class="board-result-kpis">${[['研究年化',pctText(r.xirr),r.xirr],['同期定額',pctText(r.benchmarkXirr),r.benchmarkXirr],['最大回落',fmt(r.mdd*100,1)+'%',-r.mdd]].map(([a,b,v])=>`<div><small>${a}</small><strong class="${v>0?'up':v<0?'down':''}">${b}</strong></div>`).join('')}</div><p class="small">${r.from} 至 ${r.to} · ${r.series.length} 個共同交易日 · ${c.plans.map(p=>p.code+' '+p.weight+'%').join('、')} · 未配置現金 ${fmt(100-c.total,0)}%</p><div class="board-result-chart" id="boardResultChart" aria-label="白板研究與同期定額資產曲線"></div><div class="bt-equity-legend"><span class="s">白板研究</span><span class="d">同期定額</span></div><details class="metric-detail"><summary>交易與條件覆蓋</summary><p class="small">共 ${r.trades.length} 筆調整，費稅 ${money(r.fees)}。條件當日已知，次日收盤成交；與回測區預設的 T+1 開盤成交不同，請看本區基準。</p><div>${c.plans.map(p=>`<p class="small">${p.code}：成立持股 ${p.on}%／不成立 ${p.off}%；前段資料不足時不進場。</p>`).join('')}</div><button class="pill mini" type="button" id="boardTradesExport">匯出交易 CSV</button></details>`;chart?.remove();chart=LightweightCharts.createChart($('boardResultChart'),{...chartOptions(),height:290});sLine=chart.addLineSeries({color:'#148c9a',lineWidth:3,priceLineVisible:false,priceFormat:{type:'custom',formatter:v=>fmt(v/10000,1)+'萬'}});dLine=chart.addLineSeries({color:'#c18c25',lineWidth:2,priceLineVisible:false,priceFormat:{type:'custom',formatter:v=>fmt(v/10000,1)+'萬'}});sLine.setData(r.series.map(x=>({time:x.time,value:x.value})));dLine.setData(r.series.map(x=>({time:x.time,value:x.dca})));chart.timeScale().fitContent();$('boardTradesExport').onclick=()=>{const rows=['日期,ETF,方向,價格,股數,金額,理由',...r.trades.map(t=>[t.date,t.code,t.type,t.price,t.shares,t.amount,t.reason].map(x=>'"'+String(x).replaceAll('"','""')+'"').join(','))];const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+rows.join('\n')],{type:'text/csv;charset=utf-8'}));a.download='chaowei-board-trades.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};$('boardRunStatus').textContent=(actual>requested?'依條件可用日期縮至 '+actual+' 起。':'')+'完成；結果是歷史研究，不保證勝過定額。';$('boardAssumptions').textContent=`股票型稅率採所選假設；原型債券 ETF 在 2017–2026 日資料採免稅。手續費 ${base.fee}% × ${base.discount}% 折扣、交易稅 ${base.tax}%、停泊年息 ${base.parking}%、${base.drip?'股利再投入':'股利留現金'}、${base.wholeShares?'整股':'允許小數股'}。`;const out=$('boardRunResult');Object.assign(out.dataset,{xirr:r.xirr,benchmark:r.benchmarkXirr,mdd:r.mdd,from:r.from,to:r.to,trades:r.trades.length});}
  $('boardHelp').onclick=()=>{let d=$('boardGuide');if(d){d.open=!d.open;return}d=document.createElement('details');d.id='boardGuide';d.className='metric-detail';d.open=true;d.innerHTML='<summary>四步完成一張白板</summary><ol><li>加入 ETF 卡，點編輯選標的。</li><li>加入條件卡，設定指標與門檻。</li><li>連右側圓點到下一張左側圓點；先點連出、再點接入也可以。</li><li>條件接配置，配置接組合；確認預算不超過 100%，再選日期回測。</li></ol><p class="small">拖卡片標題移動，拖空白處平移；Ctrl／Command＋滾輪縮放。鍵盤可用方向鍵移動卡片；不方便拖曳時，使用步驟清單與管理連線。未連入組合的卡片不參與計算。</p>';$('boardStatus').after(d)};
  $('boardTo').value=new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Taipei'});$('boardFrom').value=String(new Date().getFullYear()-5)+'-01-01';for(const id of ['boardFrom','boardTo','boardCapital'])$(id).addEventListener('change',()=>{runGen++;result=null;$('boardRunResult').replaceChildren();chart?.remove();chart=null;$('boardRunStatus').textContent='日期或預算已變更，請重新執行。'});
  const oldProfile=window.chaoweiApplyProfile;window.chaoweiApplyProfile=p=>{oldProfile(p);if(!dirty&&settings.strategyBoard){try{board=B.clean(settings.strategyBoard);render();preview()}catch{}}};window.addEventListener('chaowei-page-changed',()=>{if(document.body.dataset.page==='board'){render();preview();chart?.resize($('boardResultChart')?.clientWidth||300,290)}});window.addEventListener('chaowei-typography-changed',()=>{drawWires();chart?.applyOptions(chartOptions())});window.addEventListener('chaowei-snapshot-updated',e=>{const m=/history\/([0-9A-Z]{4,6})\.json/.exec(e.detail.path);if(m&&bundles.has(m[1])){bundles.delete(m[1]);if(document.body.dataset.page==='board')preview()}});new ResizeObserver(drawWires).observe(nodes);setInterval(()=>{if(document.body.dataset.page==='board'&&!document.hidden){bundles.clear();preview()}},300000);render();preview();
@@ -4278,7 +4310,7 @@ const StrategyBoard=(()=>{
 
  function paintRisk(){const node=$('researchRiskContent'),r=btResult;if(!r){node.innerHTML='<h3>先完成一次回測</h3><p class="small">這裡會使用同一個回測結果，顯示風險與資金參與。</p><a class="pill" href="#backtestCard">前往策略與回測</a>';return}
   const info=r.sharpeInfo,events=r.drawdowns||[],usage=E.positionUsage(r),held=Math.round(r.utilization*100);
-  node.innerHTML=`<p class="kicker teal">RISK / ${selected}</p><h3>跌多深，也看等多久。</h3><p class="small">${r.start} 至 ${r.end} · 依目前回測規則</p><div class="rd-risk-values"><div><small>最大回落</small><strong class="down">${fmt(r.mdd*100,1)}%</strong></div><div><small>Sharpe</small><strong>${r.sharpe==null?'不適用':fmt(r.sharpe,2)}</strong></div></div><p class="small">${r.sharpe==null?info?.reason||'有效樣本不足':'超額報酬按相同日曆區間扣除現金基準；年化 245 期。'}</p><h4>平均配置</h4><div class="rd-exposure" role="img" aria-label="期間平均持股 ${held}%，現金 ${100-held}%"><i style="width:${held}%"></i></div><p class="small">持股 ${held}% · 現金 ${100-held}%（期間平均）</p><div class="rd-risk-mini"><span>買進 <b>${r.buys} 次</b></span><span>有部位 <b>${usage.held} 日</b></span></div><a class="pill mini" href="#fundingComparison">查看資金與分批試算</a><h4>主要回撤</h4><div class="rd-drawdown-list"></div><details class="metric-detail"><summary>計算口徑與交易假設</summary><p class="small">回撤以排除外部入金的 NAV 計算。恢復定義為回到或超過前高；交易日與日曆天分開。成交仍沿用現有收盤模型，非可保證的成交價。完整實驗規則見下方回測設定。</p></details>`;
+  node.innerHTML=`<p class="kicker teal">RISK / ${selected}</p><h3>跌多深，也看等多久。</h3><p class="small">${r.start} 至 ${r.end} · 依目前回測規則</p><div class="rd-risk-values"><div><small>最大回落</small><strong class="down">${fmt(r.mdd*100,1)}%</strong></div><div><small>Sharpe</small><strong>${r.sharpe==null?'不適用':fmt(r.sharpe,2)}</strong></div></div><p class="small">${r.sharpe==null?info?.reason||'有效樣本不足':'超額報酬按相同日曆區間扣除現金基準；年化 245 期。'}</p><h4>平均配置</h4><div class="rd-exposure" role="img" aria-label="期間平均持股 ${held}%，現金 ${100-held}%"><i style="width:${held}%"></i></div><p class="small">持股 ${held}% · 現金 ${100-held}%（期間平均）</p><div class="rd-risk-mini"><span>買進 <b>${r.buys} 次</b></span><span>有部位 <b>${usage.held} 日</b></span></div><a class="pill mini" href="#fundingComparison">查看資金與分批試算</a><h4>主要回撤</h4><div class="rd-drawdown-list"></div><details class="metric-detail"><summary>計算口徑與交易假設</summary><p class="small">回撤以排除外部入金的 NAV 計算。恢復定義為回到或超過前高；交易日與日曆天分開。成交依回測設定：預設訊號於 T 日收盤確認、T+1 開盤成交並計入單邊滑價（可改為 T 日收盤理想對照），仍非可保證的成交價。完整實驗規則見下方回測設定。</p></details>`;
   const list=node.querySelector('.rd-drawdown-list');if(!events.length)list.textContent='此段淨值沒有可辨識的回撤事件。';const deepest=events[0]?.depth||1;for(const event of events.slice(0,3)){const e=make('details','rd-drawdown');e.innerHTML=`<summary><span class="down">−${fmt(event.depth*100,1)}%</span><i class="rd-dd-bar" aria-hidden="true"><i style="width:${Math.round(event.depth/deepest*100)}%"></i></i><b>${event.ongoing?'尚未恢復':event.tradingDays+' 個交易日'}</b></summary><dl><dt>前高</dt><dd>${event.peak}</dd><dt>谷底</dt><dd>${event.trough}</dd><dt>恢復</dt><dd>${event.recovery||'至期末仍未恢復'}</dd><dt>歷時</dt><dd>${event.tradingDays} 個交易日／${event.calendarDays} 天</dd></dl>`;list.append(e)}
  }
  const oldBacktest=renderBacktest;renderBacktest=function(...args){const out=oldBacktest(...args);paintRisk();return out};

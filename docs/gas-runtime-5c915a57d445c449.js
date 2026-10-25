@@ -206,8 +206,8 @@ function installChaoweiIdentity(host){
     finally{retry.disabled=false}
   };
   window.chaoweiProfileChanged=settings=>{if(!user||applying)return;clearTimeout(saveTimer);saveTimer=setTimeout(()=>write(settings),900)};
-  $('savePlan').addEventListener('click',async()=>{if(!user)return;const name=$('planName').value.trim();if(!name){status('請先輸入方案名稱');return}const settings=getLocal();const existing=plans.findIndex(p=>p.name===name);const item={name,settings,createdAt:new Date().toISOString()};if(existing>=0)plans[existing]=item;else plans.push(item);plans=plans.slice(-12);showPlans();$('planList').value=String(plans.findIndex(p=>p.name===name));await write(settings)});
-  $('applyPlan').addEventListener('click',()=>{if(!user)return;const p=plans[Number($('planList').value)];if(!p)return;window.chaoweiApplyProfile?.({settings:p.settings});status(`已套用「${p.name}」`)});
+  $('savePlan').addEventListener('click',async()=>{if(!user)return;const name=$('planName').value.trim();if(!name){status('請先輸入方案名稱');return}const settings=getLocal();const existing=plans.findIndex(p=>p.name===name);const item={name,settings,createdAt:new Date().toISOString()};if(existing>=0)plans[existing]=item;else plans.push(item);plans=plans.slice(-12);showPlans();$('planList').value=String(plans.findIndex(p=>p.name===name));window.chaoweiPlanApplied?.(name);await write(settings)});
+  $('applyPlan').addEventListener('click',()=>{if(!user)return;const p=plans[Number($('planList').value)];if(!p)return;window.chaoweiApplyProfile?.({settings:p.settings});window.chaoweiPlanApplied?.(p.name);status(`已套用「${p.name}」`)});
   async function signedIn(next){user=next;clearTimeout(saveTimer);window.chaoweiSetMember?.(!!user);$('googleSignIn').classList.toggle('hidden',!!user);$('googleSignOut').classList.toggle('hidden',!user);$('accountPlans').classList.toggle('hidden',!user);const label=user?'我的帳號與外觀':'登入與外觀';$('accountTop').querySelector('.nav-label').textContent=label;$('accountTop').setAttribute('aria-label',label);$('accountTop').title=label;$('displaySyncNote').textContent=user?'外觀、權重與追蹤清單會同步到你的 Google 帳號。':'外觀與權重目前存在此瀏覽器；登入後可跨裝置同步。';
     if(!user){retry.classList.add('hidden');status(ready?'尚未登入；可繼續使用免費行情與本機設定。':'正在檢查登入服務…');plans=[];showPlans();return}
     status(`已登入 ${user.email} · 正在讀取同步設定…`);
@@ -560,7 +560,7 @@ function technical(all){
 
 /* ---------- Chart ---------- */
 function themeColors(){const dark=document.body.classList.contains('dark');return{text:dark?'#a5c0c1':'#617982',grid:dark?'#24434b':'#e7efef',border:dark?'#34525a':'#dce8e8',bg:'transparent'}}
-function uiFontScale(){return settings.font==='xlarge'?1.48:settings.font==='large'?1.36:1.24}
+function uiFontScale(){return settings.font==='xlarge'?1.38:settings.font==='large'?1.24:1.1}
 function chartOptions(){
   const c=themeColors();
   return{autoSize:true,layout:{background:{type:'solid',color:c.bg},textColor:c.text,fontSize:Math.round(13*uiFontScale()),fontFamily:'-apple-system,BlinkMacSystemFont,"Noto Sans TC","Microsoft JhengHei",sans-serif'},
@@ -1202,8 +1202,16 @@ function chipChart({title,unit,width,dates,kind,series,line,right,note,bands=[],
       const rp=right.data.map((v,i)=>Number.isFinite(v)?`${x(i)},${ry(v)}`:null).filter(Boolean);el('polyline',{points:rp.join(' '),fill:'none',stroke:right.color,'stroke-width':1.6,'stroke-dasharray':'5 4'});
       for(const v of [rh,rl]){const t=el('text',{x:W-R+6,y:ry(v)+4,class:'chip-axis'});t.textContent=fmt(v,v>=100?0:1)}}}
   }
-  // Date labels: first, middle, last.
-  for(const i of [...new Set([0,Math.floor((n-1)/2),n-1])]){const t=el('text',{x:x(i),y:H-6,'text-anchor':i===0?'start':i===n-1?'end':'middle',class:'chip-axis'});t.textContent=n>260?dates[i].slice(0,7):dates[i].slice(5)}
+  // Month labels at the first data point of each month (every 2nd, 3rd… month when space is short); the year is
+  // added on January and on the first label. A short tick marks every month.
+  const starts=[];dates.forEach((d,i)=>{if(i===0||d.slice(0,7)!==dates[i-1].slice(0,7))starts.push(i)});
+  // A partial first month (data starting near month end) would crowd the next label; label from the next month.
+  const labelled=starts.length>1&&x(starts[1])-x(starts[0])<48?starts.slice(1):starts;
+  const stride=Math.max(1,Math.ceil(labelled.length*46/Math.max(1,W-L-R)));let shown=0;
+  for(const i of starts)el('line',{x1:x(i),x2:x(i),y1:H-B,y2:H-B+4,stroke:'var(--muted)',opacity:.5});
+  labelled.forEach((i,k)=>{if(k%stride)return;
+    const m=Number(dates[i].slice(5,7)),t=el('text',{x:x(i),y:H-6,'text-anchor':i===0?'start':'middle',class:'chip-axis'});
+    t.textContent=!shown||m===1?dates[i].slice(0,4)+'/'+m:m+'月';shown++});
   const guide=el('line',{x1:0,x2:0,y1:T,y2:H-B,stroke:'var(--muted)','stroke-width':1,opacity:0});
   wrap.append(svg);
   const legend=document.createElement('p');legend.className='chip-legend';
@@ -1437,10 +1445,28 @@ momentumRender();
    the water-level range at day i uses bars before i only. */
 function createChaoweiEngine(){
   const DAY=86400000;
+  // Returns and their cash benchmark cover the same calendar interval, including weekends.
+  function riskSharpe(series,annualRate,tradeCount){
+    if(!tradeCount)return{value:null,reason:'無實際交易',observations:Math.max(0,series.length-1)};
+    const excess=[];
+    for(let i=1;i<series.length;i++){const a=series[i-1],b=series[i],days=(Date.parse(b.time)-Date.parse(a.time))/DAY;if(!(a.nav>0&&b.nav>0&&days>0))continue;const x=b.nav/a.nav-1-(Math.pow(1+annualRate,days/365)-1);if(Number.isFinite(x))excess.push(x)}
+    if(excess.length<5)return{value:null,reason:'有效期間不足',observations:excess.length};
+    const mean=excess.reduce((s,x)=>s+x,0)/excess.length,sd=Math.sqrt(excess.reduce((s,x)=>s+(x-mean)**2,0)/(excess.length-1));
+    return{value:sd<1e-10?null:mean/sd*Math.sqrt(245),reason:sd<1e-10?'超額波動接近零':'',observations:excess.length,mean,sd,annualPeriods:245};
+  }
+  // Work from the time-weighted NAV, never the cash-flow-inflated account balance.
+  function drawdownEvents(series){
+    const events=[];let peak=null,event=null;
+    for(let i=0;i<series.length;i++){const p=series[i];if(!(p.nav>0))continue;if(!peak){peak={...p,i};continue}
+      if(p.nav>=peak.nav-1e-12){if(event){event.recovery=p.time;event.tradingDays=i-peak.i;event.calendarDays=Math.round((Date.parse(p.time)-Date.parse(peak.time))/DAY);event.ongoing=false;events.push(event);event=null}peak={...p,i}}
+      else{const depth=1-p.nav/peak.nav;if(!event)event={peak:peak.time,trough:p.time,recovery:null,depth,tradingDays:i-peak.i,calendarDays:Math.round((Date.parse(p.time)-Date.parse(peak.time))/DAY),ongoing:true};if(depth>event.depth){event.depth=depth;event.trough=p.time}event.tradingDays=i-peak.i;event.calendarDays=Math.round((Date.parse(p.time)-Date.parse(peak.time))/DAY)}
+    }
+    if(event)events.push(event);return events.sort((a,b)=>b.depth-a.depth);
+  }
   /* ---------- indicators ---------- */
   function sma(a,n){const out=new Float64Array(a.length).fill(NaN);let s=0;for(let i=0;i<a.length;i++){s+=a[i];if(i>=n)s-=a[i-n];if(i>=n-1)out[i]=s/n}return out}
   function prepare(bars,dividends,macro){
-    const n=bars.length,close=Float64Array.from(bars,b=>b.close),high=Float64Array.from(bars,b=>b.high),low=Float64Array.from(bars,b=>b.low),vol=Float64Array.from(bars,b=>b.volume);
+    const n=bars.length,close=Float64Array.from(bars,b=>b.close),open=Float64Array.from(bars,b=>Number(b.open)>0?Number(b.open):b.close),high=Float64Array.from(bars,b=>b.high),low=Float64Array.from(bars,b=>b.low),vol=Float64Array.from(bars,b=>b.volume);
     const ma20=sma(close,20),ma60=sma(close,60),ma120=sma(close,120),ma200=sma(close,200),volMa20=sma(vol,20);
     const bbUp=new Float64Array(n).fill(NaN),bbLo=new Float64Array(n).fill(NaN),bw=new Float64Array(n).fill(NaN),bwRank=new Float64Array(n).fill(NaN);
     for(let i=19;i<n;i++){let s=0;for(let j=i-19;j<=i;j++)s+=(close[j]-ma20[i])**2;const sd=Math.sqrt(s/20);bbUp[i]=ma20[i]+2*sd;bbLo[i]=ma20[i]-2*sd;bw[i]=(bbUp[i]-bbLo[i])/ma20[i]}
@@ -1454,7 +1480,7 @@ function createChaoweiEngine(){
     const div=new Float64Array(n);const byDate=new Map(bars.map((b,i)=>[b.date,i]));
     for(const [date,amount] of dividends||[]){const i=byDate.get(date);if(i!=null)div[i]+=amount}
     const monthStart=bars.map((b,i)=>i===0||b.date.slice(0,7)!==bars[i-1].date.slice(0,7));
-    return{bars,n,close,high,low,vol,ma20,ma60,ma120,ma200,volMa20,bbUp,bbLo,bw,bwRank,rsi,atr,hh22,sigma,div,monthStart,macro:macro||null,refCache:new Map(),scoreCache:new Map()};
+    return{bars,n,open,close,high,low,vol,ma20,ma60,ma120,ma200,volMa20,bbUp,bbLo,bw,bwRank,rsi,atr,hh22,sigma,div,monthStart,macro:macro||null,refCache:new Map(),scoreCache:new Map()};
   }
   // Reference high/low at day i from the window of bars before i (no look-ahead).
   function reference(ctx,window,anchorMode,anchorCount){
@@ -1497,22 +1523,36 @@ function createChaoweiEngine(){
     for(let k=0;k<200;k++){const m=(a+b)/2,fm=f(m);if(Math.abs(fm)<1e-7)return m;if(fa*fm<0){b=m;fb=fm}else{a=m;fa=fm}}
     return(a+b)/2;
   }
-  function account(ctx,cfg){
-    const fee=cfg.fee/100*cfg.discount/100,tax=cfg.tax/100;
-    return{cash:0,shares:0,cost:0,fee,tax,fees:0,trades:[],divs:[],
+  /* Fill model. A decision on day i only sees data up to close[i].
+     fill 'close' (the original model): trade at close[i]. fill 'nextOpen': trade at open[i+1], the next session
+     inside the run window; an order on the window's last day is not filled (no data past the window is read).
+     slipBps moves every fill against the trader (buys higher, sells lower).
+     A T+1 order is booked on day i so strategy state (shares, cost) stays exact, but until the next open the
+     account still economically holds the old cash and shares: pendingCash/pendingShares undo the booking for
+     day i's valuation, overnight interest and the next day's dividend entitlement. */
+  function account(ctx,cfg,last){
+    const fee=cfg.fee/100*cfg.discount/100,tax=cfg.tax/100,next=cfg.fill==='nextOpen',slip=Math.max(0,Number(cfg.slipBps)||0)/10000;
+    last=last==null?ctx.n-1:last;
+    const fillAt=i=>{if(!next)return{j:i,ref:ctx.close[i]};if(i+1>last)return null;const o=ctx.open?.[i+1];return{j:i+1,ref:o>0?o:ctx.close[i+1]}};
+    return{cash:0,shares:0,cost:0,fee,tax,fees:0,slippage:0,unfilled:0,pendingCash:0,pendingShares:0,trades:[],divs:[],
       buy(i,amount,reason,kind){
-        const c=ctx.close[i],spend=Math.min(amount,this.cash);if(!(spend>0))return 0;
-        let sh=spend/(c*(1+fee));if(cfg.wholeShares)sh=Math.floor(sh);if(!(sh>0))return 0;
-        const gross=sh*c,f=gross*fee;this.cash-=gross+f;this.shares+=sh;this.cost+=gross+f;this.fees+=f;
-        this.trades.push({i,date:ctx.bars[i].date,type:'buy',kind:kind||'buy',price:c,shares:sh,amount:gross+f,reason});return sh;
+        const at=fillAt(i),spend=Math.min(amount,this.cash);if(!(spend>0))return 0;if(!at){this.unfilled++;return 0}
+        const c=at.ref*(1+slip);let sh=spend/(c*(1+fee));if(cfg.wholeShares)sh=Math.floor(sh);if(!(sh>0))return 0;
+        const gross=sh*c,f=gross*fee;this.cash-=gross+f;this.shares+=sh;this.cost+=gross+f;this.fees+=f;this.slippage+=sh*(c-at.ref);
+        if(at.j>i){this.pendingCash+=gross+f;this.pendingShares+=sh}
+        this.trades.push({i:at.j,...(at.j>i?{signal:i}:{}),date:ctx.bars[at.j].date,type:'buy',kind:kind||'buy',price:c,shares:sh,amount:gross+f,reason});return sh;
       },
       sell(i,sh,reason,kind){
-        sh=Math.min(sh,this.shares);if(cfg.wholeShares)sh=Math.floor(sh+1e-9);if(!(sh>0))return 0;
-        const c=ctx.close[i],gross=sh*c,f=gross*(fee+(Number.isFinite(ctx.tradeTax?.[i])?ctx.tradeTax[i]:tax)),costPart=this.cost*sh/this.shares,net=gross-f,pnl=net-costPart;
-        this.cash+=net;this.shares-=sh;this.cost-=costPart;this.fees+=f;if(this.shares<1e-9){this.shares=0;this.cost=0}
-        this.trades.push({i,date:ctx.bars[i].date,type:'sell',kind:kind||'sell',price:c,shares:sh,amount:net,pnl,ret:pnl/costPart,reason});return net;
+        sh=Math.min(sh,this.shares);if(cfg.wholeShares)sh=Math.floor(sh+1e-9);if(!(sh>0))return 0;const at=fillAt(i);if(!at){this.unfilled++;return 0}
+        const c=at.ref*(1-slip),gross=sh*c,f=gross*(fee+(Number.isFinite(ctx.tradeTax?.[at.j])?ctx.tradeTax[at.j]:tax)),costPart=this.cost*sh/this.shares,net=gross-f,pnl=net-costPart;
+        this.cash+=net;this.shares-=sh;this.cost-=costPart;this.fees+=f;this.slippage+=sh*(at.ref-c);if(this.shares<1e-9){this.shares=0;this.cost=0}
+        if(at.j>i){this.pendingCash-=net;this.pendingShares-=sh}
+        this.trades.push({i:at.j,...(at.j>i?{signal:i}:{}),date:ctx.bars[at.j].date,type:'sell',kind:kind||'sell',price:c,shares:sh,amount:net,pnl,ret:pnl/costPart,reason});return net;
       },
-      value(i){return this.cash+this.shares*ctx.close[i]},
+      // Economic holdings tonight: orders waiting for tomorrow's open are not yet filled.
+      held(){return this.shares-this.pendingShares},
+      value(i){return this.cash+this.pendingCash+this.held()*ctx.close[i]},
+      settle(){this.pendingCash=0;this.pendingShares=0},
       toWeight(i,w,reason){const c=ctx.close[i],total=this.value(i),cur=this.shares*c,target=total*w;
         if(target>cur)return this.buy(i,(target-cur),reason,'rebalance');if(target<cur)return this.sell(i,(cur-target)/c,reason,'rebalance');return 0}
     };
@@ -1530,9 +1570,9 @@ function createChaoweiEngine(){
     const auto=cfg.dcaPeriods==null||cfg.dcaPeriods==='auto',N=auto?months.length:Math.max(1,Math.round(Number(cfg.dcaPeriods)||12));
     const monthly=cfg.capitalMode==='monthly',lump=!monthly,base=cfg.capital/N,dcaMonths=new Set(months.slice(0,N));
     const inflowAt=monthly?new Map(months.slice(0,N).map(i=>[i,base])):new Map([[start,cfg.capital]]);
-    const park=Math.pow(1+cfg.parking/100,1/365)-1,acc=account(ctx,cfg),state={};
+    const park=Math.pow(1+cfg.parking/100,1/365)-1,acc=account(ctx,cfg,end),state={};
     // Benchmarks: buy-and-hold (C invested on day one) and 定期定額 (C ÷ N per month), same fees and tax.
-    const bh=account(ctx,cfg),dca=account(ctx,cfg);
+    const bh=account(ctx,cfg,end),dca=account(ctx,cfg,end);
     const flows=[],bhFlows=monthly?[[Date.parse(ctx.bars[start].date),-cfg.capital]]:flows,series=[],bhSeries=[],dcaSeries=[];
     let contributed=0,interest=0,dividends=0,nav=1,prevEq=0,peakNav=1,mdd=0,utilSum=0,days=0,lastT=Date.parse(ctx.bars[start].date),rets=[];
     let bhNav=1,bhPrev=0,bhPeak=1,bhMdd=0,dcaNav=1,dcaPrev=0,dcaPeak=1,dcaMdd=0;
@@ -1541,12 +1581,14 @@ function createChaoweiEngine(){
     for(let i=start;i<=end;i++){
       const t=Date.parse(ctx.bars[i].date),dd=Math.round((t-lastT)/DAY);lastT=t;
       // Interest on parked cash for the calendar days since the previous bar.
-      if(dd>0)for(const a of [acc,bh,dca]){const r=a.cash*(Math.pow(1+park,dd)-1);a.cash+=r;if(a===acc)interest+=r}
+      if(dd>0)for(const a of [acc,bh,dca]){const r=(a.cash+a.pendingCash)*(Math.pow(1+park,dd)-1);a.cash+=r;if(a===acc)interest+=r}
       const inflow=inflowAt.get(i)||0,bhIn=monthly?(i===start?cfg.capital:0):inflow;
       if(inflow){acc.cash+=inflow;dca.cash+=inflow;contributed+=inflow;flows.push([t,-inflow])}
       bh.cash+=bhIn;
       // Dividends on shares held before today's trades.
-      if(ctx.div[i]>0)for(const a of [acc,bh,dca]){const d=a.shares*ctx.div[i];if(d>0){a.cash+=d;a.divs.push([t,d]);if(a===acc)dividends+=d;if(cfg.drip)a.buy(i,d,'配息再投入','drip')}}
+      // Yesterday's T+1 orders fill at today's open: entitlement follows the holdings at yesterday's close.
+      if(ctx.div[i]>0)for(const a of [acc,bh,dca]){const d=a.held()*ctx.div[i];a.settle();if(d>0){a.cash+=d;a.divs.push([t,d]);if(a===acc)dividends+=d;if(cfg.drip)a.buy(i,d,'配息再投入','drip')}}
+      for(const a of [acc,bh,dca])a.settle();
       if(bhIn)bh.buy(i,bh.cash,'買進持有','bench');
       if(dcaMonths.has(i))dca.buy(i,base,'定期定額','bench');
       strat.day(i,ctx,cfg,acc,state,helpers,inflow);
@@ -1556,8 +1598,8 @@ function createChaoweiEngine(){
       if(series.length)rets.push(nav/series.at(-1).nav-1);
       const bq=bh.value(i);if(bhPrev>0)bhNav*=(bq-bhIn)/bhPrev;bhPrev=bq;bhPeak=Math.max(bhPeak,bhNav);bhMdd=Math.min(bhMdd,bhNav/bhPeak-1);
       const dq=dca.value(i);if(dcaPrev>0)dcaNav*=(dq-inflow)/dcaPrev;dcaPrev=dq;dcaPeak=Math.max(dcaPeak,dcaNav);dcaMdd=Math.min(dcaMdd,dcaNav/dcaPeak-1);
-      utilSum+=eq>0?acc.shares*c/eq:0;days++;
-      series.push({time:ctx.bars[i].date,value:eq,nav,dd:ddown,exposure:eq>0?acc.shares*c/eq:0,contributed});
+      utilSum+=eq>0?acc.held()*c/eq:0;days++;
+      series.push({time:ctx.bars[i].date,value:eq,nav,dd:ddown,exposure:eq>0?acc.held()*c/eq:0,contributed});
       bhSeries.push({time:ctx.bars[i].date,value:bq,nav:bhNav,dd:bhNav/bhPeak-1});dcaSeries.push({time:ctx.bars[i].date,value:dq,nav:dcaNav,dd:dcaNav/dcaPeak-1});
     }
     const tEnd=Date.parse(ctx.bars[end].date),years=Math.max(1/365,(tEnd-Date.parse(ctx.bars[start].date))/(365.25*DAY));
@@ -1567,11 +1609,11 @@ function createChaoweiEngine(){
     // hard did the money work?" for strategies that sit mostly in cash.
     const sleeve=acc.trades.map(x=>[Date.parse(x.date),x.type==='buy'?-x.amount:x.amount]).concat(acc.divs);
     if(acc.shares>0)sleeve.push([tEnd,acc.shares*ctx.close[end]]);sleeve.sort((x,y)=>x[0]-y[0]);
-    const s=summary(acc,nav,mdd,flows,contributed),mean=rets.reduce((x,y)=>x+y,0)/Math.max(1,rets.length),sd=Math.sqrt(rets.reduce((x,y)=>x+(y-mean)**2,0)/Math.max(1,rets.length-1));
+    const s=summary(acc,nav,mdd,flows,contributed),sharpeInfo=riskSharpe(series,cfg.parking/100,acc.trades.length);
     const sells=acc.trades.filter(x=>x.type==='sell'&&x.kind!=='rebalance');
     return{cfg,start:ctx.bars[start].date,end:ctx.bars[end].date,years,contributed,N,base,monthly,...s,roic:acc.trades.length?xirr(sleeve):null,
-      calmar:s.mdd>0?s.cagr/s.mdd:null,sharpe:sd>0?(mean-park)/sd*Math.sqrt(245):null,utilization:utilSum/Math.max(1,days),
-      interest,dividends,fees:acc.fees,trades:acc.trades,sells:sells.length,wins:sells.filter(x=>x.pnl>0).length,buys:acc.trades.filter(x=>x.type==='buy').length,
+      calmar:s.mdd>0?s.cagr/s.mdd:null,sharpe:sharpeInfo.value,sharpeInfo,drawdowns:drawdownEvents(series),utilization:utilSum/Math.max(1,days),
+      interest,dividends,fees:acc.fees,slippage:acc.slippage,unfilled:acc.unfilled,fill:cfg.fill==='nextOpen'?'nextOpen':'close',slipBps:Math.max(0,Number(cfg.slipBps)||0),friction:(acc.fees+acc.slippage)/cfg.capital,trades:acc.trades,sells:sells.length,wins:sells.filter(x=>x.pnl>0).length,buys:acc.trades.filter(x=>x.type==='buy').length,
       shares:acc.shares,cost:acc.cost,cash:acc.cash,state,series,bh:{...summary(bh,bhNav,bhMdd,bhFlows,cfg.capital),series:bhSeries},dca:{...summary(dca,dcaNav,dcaMdd,flows,contributed),series:dcaSeries}};
   }
 
@@ -1781,7 +1823,7 @@ function createChaoweiEngine(){
     {id:'coreSat',family:'mix',name:'70/30 核心衛星',...P('core_satellite',{})},
     {id:'rebalance',family:'mix',name:'50:50 動態再平衡',...P('rebalance_50_50',{})}
   ];
-  return{prepare,reference,water,score,lineFlow,run,xirr,fundingInfo,positionUsage,STRATEGIES,PARAMS,PRESETS,FAMILIES};
+  return{prepare,reference,water,score,lineFlow,run,xirr,fundingInfo,positionUsage,riskSharpe,drawdownEvents,STRATEGIES,PARAMS,PRESETS,FAMILIES};
 }
 const ChaoweiEngine=createChaoweiEngine();
 
@@ -1814,7 +1856,7 @@ const E=ChaoweiEngine;
 // dcaPeriods 'auto' = one installment per month of the backtest window; sync = use the observation settings above.
 const BT_DEFAULT={v:4,family:'dca',preset:'smartDca',strategy:'smart_dca_water',params:{...E.PARAMS.smart_dca_water},
   ref:{window:'240',anchorMode:'wick',anchorCount:5,method:'equal'},capital:1200000,entryTranches:0,dcaPeriods:'auto',capitalMode:'pool',sync:true,period:'5',
-  fee:0.1425,discount:100,tax:0.1,parking:1.5,drip:true,wholeShares:false,markers:true};
+  fee:0.1425,discount:100,tax:0.1,fill:'nextOpen',slipBps:5,parking:1.5,drip:true,wholeShares:false,markers:true};
 // v2 stored the classic builder's fields at the top level; keep the user's swing settings.
 // v3 defaulted to 12 installments, which spent C in the first year of a five-year test; 12 becomes 'auto'.
 function btMigrate(b){
@@ -1894,7 +1936,7 @@ const btTopRef=()=>({window:String(settings.window),anchorMode:settings.anchorMo
 const btRef=()=>settings.bt.sync?btTopRef():settings.bt.ref;
 function btMonths(){if(!bars.length)return 0;const s=btStart(settings.bt.period),e=btEnd();let n=0;for(let i=s;i<=e;i++)if(i===s||bars[i].date.slice(0,7)!==bars[i-1].date.slice(0,7))n++;return n}
 const btN=()=>settings.bt.dcaPeriods==='auto'?btMonths():settings.bt.dcaPeriods;
-const btCfg=(over={})=>{const b=settings.bt,k=[2,3,4].includes(Number(b.entryTranches))?Number(b.entryTranches):0,params={...b.params};if(k&&b.strategy==='classic'){if(params.entry==='fib')params.levels=params.levels.slice(0,k);else params.adds=k-1}return{ref:{...btRef()},capital:b.capital,entryTranches:k,dcaPeriods:b.dcaPeriods,capitalMode:b.capitalMode,fee:b.fee,discount:b.discount,tax:b.tax,parking:b.parking,drip:b.drip,wholeShares:b.wholeShares,strategy:b.strategy,params,...over}};
+const btCfg=(over={})=>{const b=settings.bt,k=[2,3,4].includes(Number(b.entryTranches))?Number(b.entryTranches):0,params={...b.params};if(k&&b.strategy==='classic'){if(params.entry==='fib')params.levels=params.levels.slice(0,k);else params.adds=k-1}return{ref:{...btRef()},capital:b.capital,entryTranches:k,dcaPeriods:b.dcaPeriods,capitalMode:b.capitalMode,fee:b.fee,discount:b.discount,tax:b.tax,fill:b.fill==='close'?'close':'nextOpen',slipBps:b.fill==='close'?0:Number.isFinite(b.slipBps)?b.slipBps:5,parking:b.parking,drip:b.drip,wholeShares:b.wholeShares,strategy:b.strategy,params,...over}};
 
 /* ---------- form ---------- */
 function btFieldHtml([key,label,type,extra,visible],p){
@@ -1923,11 +1965,11 @@ function btFillForm(){
   const ref=btRef();$('btSync').checked=!!b.sync;
   customOption($('btWindow'),ref.window,ref.window+' 交易日（自訂）');set('btWindow',ref.window);set('btAnchorMode',ref.anchorMode);set('btAnchorCount',ref.anchorCount);set('btMethod',ref.method);
   for(const id of ['btWindow','btAnchorMode','btAnchorCount','btMethod'])$(id).disabled=!!b.sync;
-  set('btFee',b.fee);set('btDiscount',b.discount);set('btTax',b.tax);set('btParking',b.parking);$('btDrip').checked=!!b.drip;$('btWhole').checked=!!b.wholeShares;
+  set('btFee',b.fee);set('btFill',b.fill==='close'?'close':'nextOpen');set('btSlip',Number.isFinite(b.slipBps)?b.slipBps:5);$('btSlip').disabled=b.fill==='close';set('btDiscount',b.discount);set('btTax',b.tax);set('btParking',b.parking);$('btDrip').checked=!!b.drip;$('btWhole').checked=!!b.wholeShares;
   const card=$('backtestCard');card.querySelectorAll('.bt-if-average').forEach(e=>e.classList.toggle('hidden',ref.anchorMode!=='average'));
   card.querySelectorAll('.bt-if-classic').forEach(e=>e.classList.toggle('hidden',b.strategy!=='classic'));
   btRenderSplit();
-  $('btFriction').textContent='買賣一次成本 '+fmt(b.fee*b.discount/100*2+b.tax,4)+'%';
+  {const slip=b.fill==='close'?0:Number.isFinite(b.slipBps)?b.slipBps:5;$('btFriction').textContent=(b.fill==='close'?'T 日收盤（理想）':'T+1 開盤')+' · 買賣一次成本 '+fmt(b.fee*b.discount/100*2+b.tax+slip/100*2,4)+'%'}
   $('btMarkers').setAttribute('aria-pressed',String(!!b.markers));
   btRenderParams();
 }
@@ -1953,7 +1995,7 @@ function btReadForm(){
   // Unticking sync starts from the observation settings, then the step-3 fields are the backtest's own.
   const wasSync=b.sync;b.sync=$('btSync').checked;
   if(!b.sync)b.ref=wasSync?btTopRef():{window:$('btWindow').value,anchorMode:$('btAnchorMode').value,anchorCount:Math.round(num('btAnchorCount',1,20,5)),method:$('btMethod').value==='fib'?'fib':'equal'};
-  b.fee=num('btFee',0,1,0.1425);b.discount=num('btDiscount',10,100,100);b.tax=num('btTax',0,1,0.1);b.parking=num('btParking',0,10,1.5);b.drip=$('btDrip').checked;b.wholeShares=$('btWhole').checked;
+  b.fee=num('btFee',0,1,0.1425);b.fill=$('btFill').value==='close'?'close':'nextOpen';b.slipBps=num('btSlip',0,100,5);b.discount=num('btDiscount',10,100,100);b.tax=num('btTax',0,1,0.1);b.parking=num('btParking',0,10,1.5);b.drip=$('btDrip').checked;b.wholeShares=$('btWhole').checked;
   $('btParams').querySelectorAll('[data-k]').forEach(el=>{const k=el.dataset.k,v=el.type==='checkbox'?el.checked:el.tagName==='SELECT'?el.value:Number(el.value);
     b.params[k]=el.tagName==='SELECT'&&/^-?\d+(\.\d+)?$/.test(v)?Number(v):(typeof v==='number'&&!Number.isFinite(v)?b.params[k]:v)});
   const levels=[...$('btParams').querySelectorAll('[data-level]:checked')].map(x=>Number(x.dataset.level)).sort((x,y)=>x-y);if($('btParams').querySelector('[data-level]'))b.params.levels=levels.length?levels:[0.382];
@@ -2111,6 +2153,16 @@ function btRenderTrades(){
   $('btTradesTitle').textContent='交易明細（'+r.trades.length+' 筆）';
   $('btTrades').innerHTML=rows.length?`<table><thead><tr><th>日期</th><th>動作</th><th>價格</th><th>股數</th><th>金額</th><th>報酬</th><th>原因</th></tr></thead><tbody>${rows.map(t=>`<tr><td>${t.date}</td><td class="${t.type}">${t.type==='buy'?(t.kind==='dca'?'定投':t.kind==='drip'?'配息再投入':'買進'):'賣出'}</td><td>${fmt(t.price,2)}</td><td>${fmt(t.shares,0)}</td><td class="amount-cell"><span class="bt-bar" style="--w:${Math.abs(t.amount)/maxAmount*100}%"></span><span>${fmt(t.amount,0)}</span></td><td class="${cls(t.ret)}">${t.ret!=null?`<span class="bt-bar" style="--w:${Math.round(Math.abs(t.ret)/maxRet*100)}%"></span>${pctText(t.ret)}`:''}</td><td>${t.reason}</td></tr>`).join('')}</tbody></table>${list.length>400?'<p class="small">只顯示最近 400 筆；完整明細請下載 CSV。</p>':''}`:'<p class="small">沒有符合的交易。</p>';
 }
+/* Q03: the same rules under the other fill model, so the cost of waiting for the next open (plus slippage) is visible.
+   T+1 open is the default; the comparison is the ideal same-day close without slippage. */
+function btRenderFill(ctx,cfg,start,end,r){
+  let box=$('btFillCompare');if(!box){box=document.createElement('div');box.id='btFillCompare';box.className='bt-fill-compare';$('btKpis').after(box)}
+  const next=r.fill==='nextOpen',alt=E.run(ctx,next?{...cfg,fill:'close',slipBps:0}:{...cfg,fill:'nextOpen',slipBps:cfg.slipBps||5},start,end);
+  const rows=next?[['T+1 開盤＋滑價 '+fmt(r.slipBps,0)+' bps（目前）',r],['T 日收盤（理想，無滑價）',alt]]:[['T 日收盤（目前，理想無滑價）',r],['T+1 開盤＋滑價 '+fmt(alt.slipBps,0)+' bps',alt]];
+  const real=next?r:alt,ideal=next?alt:r,dx=real.xirr-ideal.xirr,de=real.equity-ideal.equity,span=Math.max(.01,...rows.map(([,x])=>Math.abs(x.xirr||0)));
+  box.innerHTML='<div class="bt-fill-head"><p class="kicker teal">成交模型對照</p><b class="bt-fill-gap '+(dx<-5e-5?'down':dx>5e-5?'up':'')+'">T+1 對理想 '+(dx>0?'+':dx<0?'−':'')+fmt(Math.abs(dx)*100,2)+' 個百分點</b></div><p class="small bt-fill-sub">訊號都在 T 日收盤確認；差別只在成交價與時點。</p>'+rows.map(([label,x])=>{const v=x.xirr||0;return'<div class="bt-fill-row"><span>'+label+'</span><i class="bt-fill-bar"><i class="'+(v>=0?'up-bg':'down-bg')+'" style="width:'+(Math.abs(v)/span*100).toFixed(1)+'%"></i></i><b class="'+(v>0?'up':v<0?'down':'')+'">'+pctText(x.xirr)+'</b></div>'}).join('')+
+    '<p class="small">延遲到 T+1 開盤並計入滑價，年化'+(Math.abs(dx)<5e-5?'幾乎不變':(dx<0?'少 ':'多 ')+fmt(Math.abs(dx)*100,2)+' 個百分點')+'，期末'+(de<0?'少 ':'多 ')+money(Math.abs(de))+'。真實模型的摩擦成本：手續費與稅 '+money(real.fees)+'＋滑價 '+money(real.slippage)+'，合計佔本金 '+fmt(real.friction*100,2)+'%'+(real.unfilled?'；期末最後一天的 '+real.unfilled+' 筆訊號因無下一個開盤而未成交':'')+'。</p>';
+}
 function renderBacktest(){
   btBarsRef=bars;
   if(!bars.length||bars.length<60){$('btKpis').innerHTML='<p class="small">需要至少 60 個交易日才能回測。</p>';btResult=null;applyMarkers();return}
@@ -2127,10 +2179,11 @@ function renderBacktest(){
   // Same three lines on every benchmark card: annualised (XIRR) big; total return and final value small.
   const wan=v=>fmt(v/10000,v>=1e7?0:1)+' 萬',sub=x=>'總報酬 '+pctText(x.ret)+' · 期末 '+wan(x.equity);
   const k=[['策略績效',r.xirr,v=>pctText(v),sub(r)],['定期定額基準',r.dca.xirr,v=>pctText(v),sub(r.dca)],['買進持有基準',r.bh.xirr,v=>pctText(v),sub(r.bh)],['最大回落',r.mdd,v=>'−'+fmt(v*100,1)+'%','定期定額 −'+fmt(r.dca.mdd*100,1)+'%']];
-  const small=[['期間',r.start+' 至 '+r.end],['資金基數',money(r.contributed)+(r.monthly?'（每月入金）':'')],['實動資金年化',pctText(r.roic)],['期末現金',money(r.cash)],['Calmar',r.calmar!=null?fmt(r.calmar,2):'—'],['Sharpe',r.sharpe!=null?fmt(r.sharpe,2):'—'],['平均持股比例',fmt(r.utilization*100,0)+'%'],['股利入帳',money(r.dividends)],['停泊利息',money(r.interest)],['手續費與稅',money(r.fees)],['基準手續費','定額 '+money(r.dca.fees)+'／持有 '+money(r.bh.fees)],['交易',r.buys+' 買／'+r.sells+' 賣'+(r.sells?'（勝率 '+fmt(r.wins/r.sells*100,0)+'%）':'')]];
+  const small=[['期間',r.start+' 至 '+r.end],['資金基數',money(r.contributed)+(r.monthly?'（每月入金）':'')],['實動資金年化',pctText(r.roic)],['期末現金',money(r.cash)],['Calmar',r.calmar!=null?fmt(r.calmar,2):'—'],['Sharpe',r.sharpe!=null?fmt(r.sharpe,2):'—'],['平均持股比例',fmt(r.utilization*100,0)+'%'],['股利入帳',money(r.dividends)],['停泊利息',money(r.interest)],['手續費與稅',money(r.fees)],['滑價成本',money(r.slippage||0)],['摩擦成本合計',fmt((r.friction||0)*100,2)+'% 本金'],['基準手續費','定額 '+money(r.dca.fees)+'／持有 '+money(r.bh.fees)],['交易',r.buys+' 買／'+r.sells+' 賣'+(r.sells?'（勝率 '+fmt(r.wins/r.sells*100,0)+'%）':'')]];
   if(!$('btKpis').querySelector('.bt-big'))$('btKpis').innerHTML=`<p class="bt-kpi-note">大字＝年化報酬（XIRR，依實際入金日計算）</p><div class="bt-big">${k.map((_,j)=>`<div><small></small><b data-k="${j}"></b><span></span></div>`).join('')}</div><div class="bt-small"></div>`;
   $('btKpis').querySelectorAll('.bt-big>div').forEach((el,j)=>{const [label,v,f,sub]=k[j];el.querySelector('small').textContent=label;el.querySelector('span').textContent=sub;const b=el.querySelector('b');b.className=j<3?(v>0?'up':v<0?'down':''):'';btAnimate(b,v,f)});
   $('btKpis').querySelector('.bt-small').innerHTML=small.map(([a,b])=>`<span><small>${a}</small>${b}</span>`).join('');
+  btRenderFill(ctx,cfg,start,end,r);
   btDrawCharts(r);
   $('btNow').innerHTML=btAction(r);
   // Leveraged and inverse ETFs decay in sideways markets; averaging down without a stop is the risky combination.
@@ -2262,13 +2315,17 @@ function showTourStep(i){
   window.chaoweiTourTarget?.(target);
   $('tourCount').textContent=(i+1)+' / '+TOUR_STEPS.length;$('tourTitle').textContent=title;$('tourText').textContent=text;
   $('tourPrev').disabled=i===0;$('tourNext').textContent=i===TOUR_STEPS.length-1?'開始使用':'下一步';
-  if(target){
+  const bring=el=>{
     // Tall cards are aligned to their top edge (below the pinned summary bar); short ones are centred.
-    const r=target.getBoundingClientRect(),bar=$('siteHeader').getBoundingClientRect().height+24;
+    const r=el.getBoundingClientRect(),bar=$('siteHeader').getBoundingClientRect().height+24;
     const y=r.height>innerHeight*.6?r.top+scrollY-bar:r.top+scrollY-(innerHeight-r.height)/2;
     window.scrollTo({top:Math.max(0,sel==='.toolbar'?r.top+scrollY-120:y),behavior:'instant'});
-  }
+  };
+  if(target)bring(target);
   requestAnimationFrame(placeTour);$('tourNext').focus({preventScroll:true});
+  // Opening a step's panel can close or fill other panels a moment later (accordions, lazy charts), which moves
+  // the target without any scroll event. Follow it for a short while so the highlight never drifts away.
+  let last='',n=0;const follow=()=>{if(tourIndex!==i||++n>60)return;const el=document.querySelector(sel);if(el){const r=el.getBoundingClientRect(),key=Math.round(r.top)+':'+Math.round(r.height);if(last&&key!==last){bring(el);placeTour()}last=key}setTimeout(follow,50)};setTimeout(follow,50);
 }
 function startTour(){window.chaoweiBeginTour?.();closeDisplay?.();closeSearch?.();closeAccount?.();tourEls().classList.remove('hidden');document.body.classList.add('touring');showTourStep(0)}
 function endTour(){
@@ -2700,6 +2757,21 @@ function marginScore(){
   const r=(values.at(-1)-low)/(high-low);
   return 5*(settings.marginDirection==='low'?1-r:r);
 }
+// Factor order: ETF, index, volume, oil, FX, then EXTRA_FACTORS. Scores follow the chosen directions.
+function factorScores(){
+  const base=[position?.core,marketPosition?.index?.core,marketPosition?.volumeGrade==null||settings.volumeDirection==='off'?null:settings.volumeDirection==='low'?5-marketPosition.volumeScore:marketPosition.volumeScore,brentPosition?.core,fxPosition?.core];
+  const scores=[...base,...EXTRA_FACTORS.map(f=>f.score())];
+  if(polarityReady){for(const [i,key]of [[0,'etf'],[1,'index'],[2,'volume'],[3,'oil'],[4,'fx'],[6,'margin'],[7,'bank']])scores[i]=directionScore(key)}
+  return scores;
+}
+// One weighted score for any weight list (the sliders, or a saved plan), always from the latest data.
+function weightedScore(weights){
+  const w=(weights||[]).map(x=>Math.max(0,Number(x)||0)),sum=w.reduce((a,b)=>a+b,0),scores=factorScores();
+  if(sum<=0||!position)return{value:null,sum,scores,missing:-1};
+  const missing=w.findIndex((x,i)=>x>0&&!Number.isFinite(scores[i]));if(missing>=0)return{value:null,sum,scores,missing};
+  return{value:w.reduce((n,x,i)=>n+x*scores[i],0)/sum,sum,scores,missing:-1};
+}
+const currentWeights=()=>[...(settings.weights||[]).map(x=>Number(x)||0),...EXTRA_FACTORS.map(f=>Number($(f.id).value)||0)];
 const fiveFactorWeights=updateWeights;
 updateWeights=function(){
   fiveFactorWeights();
@@ -2710,12 +2782,8 @@ updateWeights=function(){
   const names=['本檔 ETF','大盤價格','大盤量能','布蘭特現貨','美元／新台幣',...EXTRA_FACTORS.map(f=>f.name)];
   $('weightBar').innerHTML=weights.map((w,i)=>w>0&&sum>0?`<span class="w${i}" style="width:${(w/sum*100).toFixed(2)}%" title="${names[i]} ${Math.round(w/sum*100)}%">${w/sum>=0.12?names[i]+' '+Math.round(w/sum*100)+'%':''}</span>`:'').join('');
   $('weightStatus').textContent=sum===100?'權重合計 100%':sum>0?`權重合計 ${sum}%，依比例換算成 100%`:'請至少設定一項權重';
-  const base=[position?.core,marketPosition?.index?.core,marketPosition?.volumeGrade==null||settings.volumeDirection==='off'?null:settings.volumeDirection==='low'?5-marketPosition.volumeScore:marketPosition.volumeScore,brentPosition?.core,fxPosition?.core];
-  const scores=[...base,...EXTRA_FACTORS.map(f=>f.score())];
-  if(polarityReady){for(const [i,key]of [[0,'etf'],[1,'index'],[2,'volume'],[3,'oil'],[4,'fx'],[6,'margin'],[7,'bank']])scores[i]=directionScore(key)}
-  const missing=weights.findIndex((w,i)=>w>0&&!Number.isFinite(scores[i]));
-  if(sum<=0||missing>=0||!position){$('combined').textContent='—';$('combinedExtra').textContent=sum<=0?'請至少設定一項權重':missing>=5?`${names[missing]}可用資料不足，暫停綜合分`:'選取的因子資料不足';$('weightPreview').textContent='';save();return}
-  const value=weights.reduce((n,w,i)=>n+w*scores[i],0)/sum;
+  const {value,scores,missing}=weightedScore(weights);
+  if(value==null){$('combined').textContent='—';$('combinedExtra').textContent=sum<=0?'請至少設定一項權重':missing>=5?`${names[missing]}可用資料不足，暫停綜合分`:'選取的因子資料不足';$('weightPreview').textContent='';save();return}
   $('combined').textContent=fmt(value,1)+' / 5';
   $('combinedExtra').textContent=EXTRA_FACTORS.map((f,i)=>extra[i]>0?`${f.name} ${fmt(scores[5+i],1)} 分`:'').filter(Boolean).join(' · ')||'延伸綜合分請參照各項位置';
   const etfScore=polarityReady?directionScore('etf'):position.core,d=value-etfScore;
@@ -3170,7 +3238,7 @@ const TrainingMath=(()=>{
 
 /* Member holdout experiment. Nothing is selected using validation performance. */
 (()=>{
-  const panel=document.createElement('details');panel.className='metric-detail training-lab';panel.id='trainingLab';panel.innerHTML='<summary>站在歷史當下驗證</summary><p>用前段資料選一次規則，鎖定後才驗證後段。日期、目標與候選範圍由你決定。</p><div class="training-flow"><span>1 訓練期選規則</span><span>2 鎖定條件</span><span>3 後段獨立驗證</span></div><div class="training-fields"><label>訓練起日<input type="date" id="trainFrom"></label><label>訓練迄日<input type="date" id="trainUntil"></label><label>驗證起日<input type="date" id="testFrom"></label><label>驗證迄日<input type="date" id="testUntil"></label><label>只按訓練期選擇<select id="trainMetric"><option value="xirr">年化報酬最高</option><option value="calmar">Calmar 最高</option></select></label><label>參考窗候選<select id="trainScope"><option value="fixed">固定目前觀察窗</option><option value="search">另比較 60／120／240 日</option></select></label></div><div class="training-actions"><button class="pill" type="button" id="trainRun">鎖定規則並驗證</button><button class="pill mini" type="button" id="trainCancel" disabled>取消計算</button></div><p class="small" id="trainStatus" aria-live="polite">訓練至少 60 日、驗證至少 20 日；新 ETF 會使用實際可得資料。</p><div id="trainingResult"></div><details><summary>怎麼讀這個實驗？</summary><p class="small">驗證首日以同樣資金、空手開始，持倉不承接訓練期。只比較既有固定策略與選定觀察窗；不是未來最佳策略的保證。日期切割不代表樣本外結果一定較好；反覆看驗證成績再調參，也可能過度配適。沿用回測的收盤成交、配息、費用與入金假設；使用目前整理的分割還原歷史，並非當年逐日保存的原始資料版本。</p></details>';
+  const panel=document.createElement('details');panel.className='metric-detail training-lab';panel.id='trainingLab';panel.innerHTML='<summary>站在歷史當下驗證</summary><p>用前段資料選一次規則，鎖定後才驗證後段。日期、目標與候選範圍由你決定。</p><div class="training-flow"><span>1 訓練期選規則</span><span>2 鎖定條件</span><span>3 後段獨立驗證</span></div><div class="training-fields"><label>訓練起日<input type="date" id="trainFrom"></label><label>訓練迄日<input type="date" id="trainUntil"></label><label>驗證起日<input type="date" id="testFrom"></label><label>驗證迄日<input type="date" id="testUntil"></label><label>只按訓練期選擇<select id="trainMetric"><option value="xirr">年化報酬最高</option><option value="calmar">Calmar 最高</option></select></label><label>參考窗候選<select id="trainScope"><option value="fixed">固定目前觀察窗</option><option value="search">另比較 60／120／240 日</option></select></label></div><div class="training-actions"><button class="pill" type="button" id="trainRun">鎖定規則並驗證</button><button class="pill mini" type="button" id="trainCancel" disabled>取消計算</button></div><p class="small" id="trainStatus" aria-live="polite">訓練至少 60 日、驗證至少 20 日；新 ETF 會使用實際可得資料。</p><div id="trainingResult"></div><details><summary>怎麼讀這個實驗？</summary><p class="small">驗證首日以同樣資金、空手開始，持倉不承接訓練期。只比較既有固定策略與選定觀察窗；不是未來最佳策略的保證。日期切割不代表樣本外結果一定較好；反覆看驗證成績再調參，也可能過度配適。沿用回測的成交時點（預設 T+1 開盤＋滑價）、配息、費用與入金假設；使用目前整理的分割還原歷史，並非當年逐日保存的原始資料版本。</p></details>';
   $('btKpis').before(panel);const runner=createOptimizerRunner();let generation=0,code='',signature='',locked=null;
   const ids=['trainFrom','trainUntil','testFrom','testUntil','trainMetric','trainScope'];
   function fill(){if(!bars.length)return;const sig=selected+'|'+bars[0].date+'|'+bars.at(-1).date;if(signature===sig)return;signature=sig;generation++;runner.cancel();code=selected;locked=null;$('trainRun').disabled=false;$('trainCancel').disabled=true;$('trainingResult').replaceChildren();const d=TrainingMath.defaults(bars);if(!d)return;const saved=settings.holdout?.code===selected?settings.holdout:null;for(const[id,k]of[['trainFrom','from'],['trainUntil','until'],['testFrom','testFrom'],['testUntil','testTo']])$(id).value=saved?.[k]||d[k];$('trainMetric').value=saved?.metric||'xirr';$('trainScope').value=saved?.scope||'fixed';$('trainStatus').textContent=`${selected} 實際日 K ${bars[0].date} 至 ${bars.at(-1).date}；本實驗與上方全期排行獨立。`}
@@ -3352,14 +3420,14 @@ const TrainingMath=(()=>{
  marketPage.className+=' section market-page';marketPage.innerHTML='<div class="section-heading"><div><p class="kicker teal">MARKET CONTEXT</p><h2>市場的其他刻度</h2><p class="sub">各項資料保留來源與更新日期；需要時再展開計分條件。</p></div><a href="#weights" class="pill">前往 ETF 權重</a></div>';marketPage.append($('market'));
  const stories=document.querySelector('.story-stage');guide.append($('method-story'));if(stories)guide.append(stories);const help=document.querySelector('.indicator-help');if(help){const link=document.createElement('a');link.className='pill mini guide-link';link.href='#technicalGuide';link.textContent='技術指標說明';help.before(link);help.id='technicalGuide';help.classList.add('metric-detail');guide.append(help)}
  const nav=document.createElement('nav');nav.id='pageNav';nav.className='page-nav';nav.setAttribute('aria-label','內容分頁');nav.innerHTML=[['homePage','首頁'],['explore','ETF 觀測'],['market','市場刻度'],['strategyBoardPage','策略白板'],['method-story','方法說明']].map(([id,t])=>`<a href="#${id}">${t}</a>`).join('');$('siteHeader').append(nav);const panels={home,etf,market:marketPage,board:boardPage,guide};let current='';
- const aliases={method:'weights','wave-lab':'waveStudy',chips:'chipCard',backtest:'backtestCard',top:'homePage',home:'homePage'};
+ const aliases={method:'weights','wave-lab':'waveStudy',chips:'chipCard',backtest:'backtestCard',top:'homePage',home:'homePage',board:'strategyBoardPage'};
  function destination(id){if(['homePage','matrixView','top',''].includes(id))return'home';if(id==='strategyBoardPage'||boardPage.contains($(id)))return'board';if(id==='market'||id==='marketPage'||marketPage.contains($(id)))return'market';if(id==='method-story'||id==='guidePage'||guide.contains($(id)))return'guide';return'etf'}
  function activate(key,id,scroll=true){const changed=current!==key;current=key;for(const[k,p]of Object.entries(panels)){p.hidden=k!==key;p.setAttribute('aria-hidden',String(k!==key));p.classList.toggle('route-active',k===key)}document.body.dataset.page=key;nav.querySelectorAll('a').forEach(a=>{const on=destination(a.hash.slice(1))===key;a.classList.toggle('active',on);on?a.setAttribute('aria-current','page'):a.removeAttribute('aria-current')});if(changed){window.dispatchEvent(new Event('resize'));requestAnimationFrame(()=>requestAnimationFrame(()=>window.dispatchEvent(new Event('chaowei-page-changed'))))}if(scroll){requestAnimationFrame(()=>{const target=$(id)||panels[key];let parent=target.closest('details');while(parent){parent.open=true;parent=parent.parentElement.closest('details')}target.scrollIntoView({block:'start',behavior:'instant'})})}}
  function follow(){const raw=decodeURIComponent(location.hash.slice(1)),id=aliases[raw]||raw||'homePage';activate(destination(id),id)}
  let tourReturn=null;window.chaoweiBeginTour=()=>{tourReturn={key:current,y:scrollY}};window.chaoweiEndTour=()=>{if(tourReturn){activate(tourReturn.key,'',false);window.scrollTo({top:tourReturn.y,behavior:'instant'});tourReturn=null}};
  window.chaoweiTourTarget=target=>{if(!target)return;const panel=target.closest('.route-page');if(panel){const key=Object.keys(panels).find(k=>panels[k]===panel);activate(key,target.id||panel.id,false)}let d=target.closest('details');while(d){d.open=true;d=d.parentElement.closest('details')}};
  window.chaoweiNavigate=(key,id)=>{const anchor=id||({home:'homePage',etf:'explore',market:'market',board:'strategyBoardPage',guide:'method-story'})[key];if(location.hash==='#'+anchor)activate(key,anchor);else location.hash=anchor};window.addEventListener('hashchange',follow);const oldPick=pick;pick=function(code){activate('etf','explore',false);if(!etf.contains($(location.hash.slice(1))))history.pushState(null,'','#explore');oldPick(code)};
- let filter='all';async function paintMatrix(){const r=await loadRadar();if(!r||!catalog.length){$('matrixDate').textContent='盤後總覽暫時無法載入，仍可搜尋 ETF。';return}const watch=Array.isArray(settings.watchlist)&&settings.watchlist.length?settings.watchlist:['0050','0056','00878','00919','00981A','009816'];const preferred=[...new Set([...watch,...r.rows.map(x=>x.code)])];const assets=preferred.map(code=>catalog.find(e=>e.code===code)).filter(Boolean).filter(e=>filter==='all'||(filter==='active'?e.type==='active':e.type!=='active')).slice(0,8);$('matrixCards').replaceChildren();for(const e of assets){const d=r.map.get(e.code),b=document.createElement('button');b.type='button';b.className='matrix-card';const score=Number.isFinite(d?.score)?d.score:null;b.innerHTML=`<span class="matrix-code">${e.code}</span><h3></h3><div class="matrix-price">${d?fmt(d.close,2):'—'}<small class="${d?.chg>=0?'up':'down'}">${d?pctText(d.chg/100):'尚無日資料'}</small></div><div class="matrix-meter"><i style="width:${score==null?0:score/5*100}%"></i></div><p class="small">${score==null?'資料不足':'水位 '+fmt(score,1)+' / 5'} · ${d?.date||'—'}</p>`;b.querySelector('h3').textContent=e.name;b.addEventListener('click',()=>pick(e.code));$('matrixCards').append(b)}$('matrixDate').textContent=`盤後快照 ${r.latest||r.rows.at(-1)?.date||'—'} · 點一張卡片進入觀測`;}
+ let filter='all';async function paintMatrix(){const r=await loadRadar();if(!r||!catalog.length){$('matrixDate').textContent='盤後總覽暫時無法載入，仍可搜尋 ETF。';return}const watch=Array.isArray(settings.watchlist)&&settings.watchlist.length?settings.watchlist:['0050','0056','00878','00919','00981A','009816'];const preferred=[...new Set([...watch,...r.rows.map(x=>x.code)])];const assets=preferred.map(code=>catalog.find(e=>e.code===code)).filter(Boolean).filter(e=>filter==='all'||(filter==='active'?e.type==='active':e.type!=='active')).slice(0,8);$('matrixCards').replaceChildren();for(const e of assets){const d=r.map.get(e.code),b=document.createElement('button');b.type='button';b.className='matrix-card';const score=Number.isFinite(d?.score)?d.score:null;b.innerHTML=`<span class="matrix-code">${e.code}</span><h3></h3><div class="matrix-price">${d?fmt(d.close,2):'—'}<small class="${d?.chg>=0?'up':'down'}">${d?pctText(d.chg/100):'尚無日資料'}</small></div><div class="matrix-meter"><i style="width:${score==null?0:score/5*100}%"></i></div><p class="small">${score==null?'資料不足':'水位 '+fmt(score,1)+' / 5'}${d?.date&&d.date!==(r.latest||r.rows.at(-1)?.date)?' · '+d.date:''}</p>`;b.querySelector('h3').textContent=e.name;b.addEventListener('click',()=>pick(e.code));$('matrixCards').append(b)}$('matrixDate').textContent=`盤後快照 ${r.latest||r.rows.at(-1)?.date||'—'} · 線圖為近 60 筆收盤（縱軸依區間高低），虛線 MA960；紅漲綠跌 · 點卡片進入觀測`;}
  $('matrixFilters').addEventListener('click',e=>{const b=e.target.closest('[data-matrix]');if(!b)return;filter=b.dataset.matrix;$('matrixFilters').querySelectorAll('button').forEach(n=>n.classList.toggle('active',n===b));paintMatrix()});const oldList=renderList;renderList=function(...a){const ret=oldList(...a);paintMatrix();return ret};paintMatrix();follow();
  const motion=new IntersectionObserver(entries=>entries.forEach(e=>e.target.classList.toggle('scene-in-view',e.isIntersecting)),{threshold:.15});motion.observe(art);features.querySelectorAll('.feature-entry').forEach((el,i)=>{el.dataset.scene=String(i);el.querySelector('figure').insertAdjacentHTML('beforeend','<span class="scene-motion" aria-hidden="true"><i></i><b></b></span>');motion.observe(el)});document.addEventListener('visibilitychange',()=>document.body.classList.toggle('page-background',document.hidden));
 })();
@@ -3425,7 +3493,7 @@ const StrategyBoard=(()=>{
  async function prepare(){const info=B.inspect(board);if(info.errors.length)throw Error(info.errors[0]);const codes=[...new Set(info.board.nodes.filter(n=>n.type==='asset'&&info.used.has(n.id)).map(n=>n.params.code))];if(codes.length>8)throw Error('同一次研究最多 8 檔 ETF。');for(const code of codes){if(!catalog.some(e=>e.code===code))throw Error(code+' 不在目前台灣 ETF 名錄。');if(/[KMSC]$/.test(code))throw Error('白板組合目前只合併新台幣報價 ETF；外幣掛牌需另計匯率。')}await Promise.all(codes.map(load));return B.compile(board,bundles,E)}
  async function preview(){const mine=++previewGen;if(!board.nodes.length){note('空白白板 · 從一張 ETF 卡開始');return}try{const info=B.inspect(board);if(info.errors.length){note(info.errors[0]);return}const c=await prepare();if(mine!==previewGen)return;compiled=c;render();const valid=c.plans.every(p=>p.flags.at(-1)!=null);note((valid?'條件已核對':'有條件歷史不足')+' · 確認收盤 '+[...new Set(c.plans.map(p=>p.bundle.ctx.bars.at(-1).date))].join('／')+(c.warnings.length?' · '+c.warnings.length+' 張未接入':''));}catch(e){if(mine===previewGen)note(e.message)}}
  $('boardRun').onclick=async()=>{if(!isMember){$('accountTop').click();return}const mine=++runGen,rev=revision;$('boardRun').disabled=true;$('boardRunStatus').textContent='核對條件與共同資料…';try{const c=await prepare();if(mine!==runGen||rev!==revision)return;const from=$('boardFrom').value,to=$('boardTo').value,capital=Number($('boardCapital').value);if(!from||!to||from>=to)throw Error('請輸入先後正確的日期。');if(!(capital>=10000&&capital<=100000000))throw Error('研究預算須在一萬至一億元之間。');const firsts=c.plans.map(p=>{const i=p.flags.findIndex(v=>v!=null);return i<0?null:p.bundle.ctx.bars[Math.min(p.bundle.ctx.n-1,i+1)].date});if(firsts.some(x=>x==null))throw Error('有條件尚無足夠歷史；可縮短均線／觀察窗或換 ETF。');const actualFrom=[from,...firsts].sort().at(-1),actualTo=[to,...c.plans.map(p=>p.bundle.ctx.bars.at(-1).date)].sort()[0];if(actualFrom>=actualTo)throw Error('條件成熟日期晚於結束日，請調整區間。');B.install(E);const calendars=c.plans.map(p=>new Set(p.bundle.ctx.bars.map(b=>b.date))),common=c.plans[0].bundle.ctx.bars.map(b=>b.date).filter(d=>d>=actualFrom&&d<=actualTo&&calendars.every(set=>set.has(d)));if(common.length<20)throw Error('共同交易日不足 20 日。');const sharedFrom=common[0],sharedTo=common.at(-1),base=btCfg(),runs=[];for(const p of c.plans){const ctx=p.bundle.ctx,a=ctx.bars.findIndex(b=>b.date>=sharedFrom),z=ctx.bars.findLastIndex(b=>b.date<=sharedTo);if(z-a<19)throw Error(p.code+' 在所選區間不足 20 個交易日。');ctx.tradeTax=Float64Array.from(ctx.bars,b=>/B$/.test(p.code)&&b.date>='2017-01-01'&&b.date<='2026-12-31'?0:base.tax/100);const cfg={...base,capital:capital*p.weight/100,capitalMode:'pool',dcaPeriods:'auto',strategy:'board_rule',params:{flags:p.flags,on:p.on,off:p.off},ref:{window:'240',anchorMode:'wick',anchorCount:5,method:'equal'}};if(cfg.capital>0)runs.push({...E.run(ctx,cfg,a,z),code:p.code});await new Promise(r=>setTimeout(r,0));if(mine!==runGen||rev!==revision)return}result=B.aggregate(runs,capital,capital*(1-c.total/100),base.parking);renderResult(result,c,base,from,actualFrom);compiled=c;render();}catch(e){if(mine===runGen)$('boardRunStatus').textContent=e.message}finally{$('boardRun').disabled=false}};
- function renderResult(r,c,base,requested,actual){$('boardRunResult').innerHTML=`<div class="board-result-kpis">${[['研究年化',pctText(r.xirr),r.xirr],['同期定額',pctText(r.benchmarkXirr),r.benchmarkXirr],['最大回落',fmt(r.mdd*100,1)+'%',-r.mdd]].map(([a,b,v])=>`<div><small>${a}</small><strong class="${v>0?'up':v<0?'down':''}">${b}</strong></div>`).join('')}</div><p class="small">${r.from} 至 ${r.to} · ${r.series.length} 個共同交易日 · ${c.plans.map(p=>p.code+' '+p.weight+'%').join('、')} · 未配置現金 ${fmt(100-c.total,0)}%</p><div class="board-result-chart" id="boardResultChart" aria-label="白板研究與同期定額資產曲線"></div><div class="bt-equity-legend"><span class="s">白板研究</span><span class="d">同期定額</span></div><details class="metric-detail"><summary>交易與條件覆蓋</summary><p class="small">共 ${r.trades.length} 筆調整，費稅 ${money(r.fees)}。條件當日已知，次日收盤成交；與原頁面當日收盤成交假設不同，請看本區基準。</p><div>${c.plans.map(p=>`<p class="small">${p.code}：成立持股 ${p.on}%／不成立 ${p.off}%；前段資料不足時不進場。</p>`).join('')}</div><button class="pill mini" type="button" id="boardTradesExport">匯出交易 CSV</button></details>`;chart?.remove();chart=LightweightCharts.createChart($('boardResultChart'),{...chartOptions(),height:290});sLine=chart.addLineSeries({color:'#148c9a',lineWidth:3,priceLineVisible:false,priceFormat:{type:'custom',formatter:v=>fmt(v/10000,1)+'萬'}});dLine=chart.addLineSeries({color:'#c18c25',lineWidth:2,priceLineVisible:false,priceFormat:{type:'custom',formatter:v=>fmt(v/10000,1)+'萬'}});sLine.setData(r.series.map(x=>({time:x.time,value:x.value})));dLine.setData(r.series.map(x=>({time:x.time,value:x.dca})));chart.timeScale().fitContent();$('boardTradesExport').onclick=()=>{const rows=['日期,ETF,方向,價格,股數,金額,理由',...r.trades.map(t=>[t.date,t.code,t.type,t.price,t.shares,t.amount,t.reason].map(x=>'"'+String(x).replaceAll('"','""')+'"').join(','))];const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+rows.join('\n')],{type:'text/csv;charset=utf-8'}));a.download='chaowei-board-trades.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};$('boardRunStatus').textContent=(actual>requested?'依條件可用日期縮至 '+actual+' 起。':'')+'完成；結果是歷史研究，不保證勝過定額。';$('boardAssumptions').textContent=`股票型稅率採所選假設；原型債券 ETF 在 2017–2026 日資料採免稅。手續費 ${base.fee}% × ${base.discount}% 折扣、交易稅 ${base.tax}%、停泊年息 ${base.parking}%、${base.drip?'股利再投入':'股利留現金'}、${base.wholeShares?'整股':'允許小數股'}。`;const out=$('boardRunResult');Object.assign(out.dataset,{xirr:r.xirr,benchmark:r.benchmarkXirr,mdd:r.mdd,from:r.from,to:r.to,trades:r.trades.length});}
+ function renderResult(r,c,base,requested,actual){$('boardRunResult').innerHTML=`<div class="board-result-kpis">${[['研究年化',pctText(r.xirr),r.xirr],['同期定額',pctText(r.benchmarkXirr),r.benchmarkXirr],['最大回落',fmt(r.mdd*100,1)+'%',-r.mdd]].map(([a,b,v])=>`<div><small>${a}</small><strong class="${v>0?'up':v<0?'down':''}">${b}</strong></div>`).join('')}</div><p class="small">${r.from} 至 ${r.to} · ${r.series.length} 個共同交易日 · ${c.plans.map(p=>p.code+' '+p.weight+'%').join('、')} · 未配置現金 ${fmt(100-c.total,0)}%</p><div class="board-result-chart" id="boardResultChart" aria-label="白板研究與同期定額資產曲線"></div><div class="bt-equity-legend"><span class="s">白板研究</span><span class="d">同期定額</span></div><details class="metric-detail"><summary>交易與條件覆蓋</summary><p class="small">共 ${r.trades.length} 筆調整，費稅 ${money(r.fees)}。條件當日已知，次日收盤成交；與回測區預設的 T+1 開盤成交不同，請看本區基準。</p><div>${c.plans.map(p=>`<p class="small">${p.code}：成立持股 ${p.on}%／不成立 ${p.off}%；前段資料不足時不進場。</p>`).join('')}</div><button class="pill mini" type="button" id="boardTradesExport">匯出交易 CSV</button></details>`;chart?.remove();chart=LightweightCharts.createChart($('boardResultChart'),{...chartOptions(),height:290});sLine=chart.addLineSeries({color:'#148c9a',lineWidth:3,priceLineVisible:false,priceFormat:{type:'custom',formatter:v=>fmt(v/10000,1)+'萬'}});dLine=chart.addLineSeries({color:'#c18c25',lineWidth:2,priceLineVisible:false,priceFormat:{type:'custom',formatter:v=>fmt(v/10000,1)+'萬'}});sLine.setData(r.series.map(x=>({time:x.time,value:x.value})));dLine.setData(r.series.map(x=>({time:x.time,value:x.dca})));chart.timeScale().fitContent();$('boardTradesExport').onclick=()=>{const rows=['日期,ETF,方向,價格,股數,金額,理由',...r.trades.map(t=>[t.date,t.code,t.type,t.price,t.shares,t.amount,t.reason].map(x=>'"'+String(x).replaceAll('"','""')+'"').join(','))];const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+rows.join('\n')],{type:'text/csv;charset=utf-8'}));a.download='chaowei-board-trades.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};$('boardRunStatus').textContent=(actual>requested?'依條件可用日期縮至 '+actual+' 起。':'')+'完成；結果是歷史研究，不保證勝過定額。';$('boardAssumptions').textContent=`股票型稅率採所選假設；原型債券 ETF 在 2017–2026 日資料採免稅。手續費 ${base.fee}% × ${base.discount}% 折扣、交易稅 ${base.tax}%、停泊年息 ${base.parking}%、${base.drip?'股利再投入':'股利留現金'}、${base.wholeShares?'整股':'允許小數股'}。`;const out=$('boardRunResult');Object.assign(out.dataset,{xirr:r.xirr,benchmark:r.benchmarkXirr,mdd:r.mdd,from:r.from,to:r.to,trades:r.trades.length});}
  $('boardHelp').onclick=()=>{let d=$('boardGuide');if(d){d.open=!d.open;return}d=document.createElement('details');d.id='boardGuide';d.className='metric-detail';d.open=true;d.innerHTML='<summary>四步完成一張白板</summary><ol><li>加入 ETF 卡，點編輯選標的。</li><li>加入條件卡，設定指標與門檻。</li><li>連右側圓點到下一張左側圓點；先點連出、再點接入也可以。</li><li>條件接配置，配置接組合；確認預算不超過 100%，再選日期回測。</li></ol><p class="small">拖卡片標題移動，拖空白處平移；Ctrl／Command＋滾輪縮放。鍵盤可用方向鍵移動卡片；不方便拖曳時，使用步驟清單與管理連線。未連入組合的卡片不參與計算。</p>';$('boardStatus').after(d)};
  $('boardTo').value=new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Taipei'});$('boardFrom').value=String(new Date().getFullYear()-5)+'-01-01';for(const id of ['boardFrom','boardTo','boardCapital'])$(id).addEventListener('change',()=>{runGen++;result=null;$('boardRunResult').replaceChildren();chart?.remove();chart=null;$('boardRunStatus').textContent='日期或預算已變更，請重新執行。'});
  const oldProfile=window.chaoweiApplyProfile;window.chaoweiApplyProfile=p=>{oldProfile(p);if(!dirty&&settings.strategyBoard){try{board=B.clean(settings.strategyBoard);render();preview()}catch{}}};window.addEventListener('chaowei-page-changed',()=>{if(document.body.dataset.page==='board'){render();preview();chart?.resize($('boardResultChart')?.clientWidth||300,290)}});window.addEventListener('chaowei-typography-changed',()=>{drawWires();chart?.applyOptions(chartOptions())});window.addEventListener('chaowei-snapshot-updated',e=>{const m=/history\/([0-9A-Z]{4,6})\.json/.exec(e.detail.path);if(m&&bundles.has(m[1])){bundles.delete(m[1]);if(document.body.dataset.page==='board')preview()}});new ResizeObserver(drawWires).observe(nodes);setInterval(()=>{if(document.body.dataset.page==='board'&&!document.hidden){bundles.clear();preview()}},300000);render();preview();
@@ -3477,6 +3545,18 @@ const StrategyBoard=(()=>{
  const render=renderBacktest;renderBacktest=function(...a){const out=render(...a);refresh();return out};refresh();
 })();
 
+/* Layout preference, kept on this device only: 「電腦版」 makes a phone render the full desktop layout (as a
+   1280px-wide page it can zoom), and on a computer a button opens the site in a phone-sized window, where the
+   real mobile layout applies (it follows the window width, so a narrow column inside this page would not). */
+(()=>{
+ const meta=document.querySelector('meta[name=viewport]'),narrow=matchMedia('(max-width: 760px)');
+ settings.layoutMode=settings.layoutMode==='desktop'?'desktop':'auto';
+ const apply=()=>{meta.setAttribute('content',settings.layoutMode==='desktop'?'width=1280':'width=device-width,initial-scale=1');$('layoutMode').value=settings.layoutMode};
+ $('layoutMode').addEventListener('change',e=>{settings.layoutMode=e.target.value==='desktop'?'desktop':'auto';save();apply()});
+ const phoneButton=()=>{$('openPhoneView').hidden=narrow.matches||settings.layoutMode==='desktop'&&screen.width<760};
+ $('openPhoneView').addEventListener('click',()=>window.open(location.href,'chaoweiPhoneView','width=400,height=860'));
+ narrow.addEventListener('change',phoneButton);apply();phoneButton();
+})();
 /* Shared disclosure and FAQ markup. No financial settings are changed here. */
 (()=>{
  const marketHeading=$('market').querySelector('h3');if(marketHeading){marketHeading.textContent='觀測因子';marketHeading.previousElementSibling?.remove()}
@@ -3495,6 +3575,167 @@ const StrategyBoard=(()=>{
  // toolbar keeps only the ranges plus 貼合畫面／回到最新區間. They stay available for keyboard users there.
  const zoom=$('chartCard').querySelector('.zoom-controls'),settingsPanel=$('chartIndicatorSettings');
  if(zoom&&settingsPanel){const box=document.createElement('div');box.className='zoom-moved';box.innerHTML='<span class="small">移動與縮放（也可用滑鼠滾輪、拖曳或雙指）</span>';box.append(zoom);settingsPanel.querySelector(':scope > summary').after(box)}
+})();
+
+/* ---------- Saved weight plan drives the main water level ----------
+   「儲存並套用到水位」 keeps the current weights on this device. While a plan is applied, the top bar, the big water
+   number and the gauge show that plan's weighted score, recomputed from the latest data on every refresh,
+   instead of this ETF's own price position. Moving the sliders afterwards does not change the main screen until
+   the plan is saved again. Scoring directions stay the global settings. A shared plan link shows its own weights. */
+(()=>{
+  const valid=p=>p&&Array.isArray(p.weights)&&p.weights.some(x=>Number(x)>0);
+  if(!valid(settings.appliedPlan))delete settings.appliedPlan;
+  const plan=()=>shareView?{weights:currentWeights(),name:'分享的方案'}:settings.appliedPlan||null;
+  const box=document.createElement('div');box.className='applied-plan';box.innerHTML='<p class="small" id="appliedStatus" aria-live="polite"></p><div><button class="action" type="button" id="applyWeights">儲存並套用到水位</button><button class="pill" type="button" id="clearApplied">改回只看本檔</button></div>';
+  $('weightPreview').after(box);
+  const label=$('grade').closest('.water-copy').querySelector('.overline'),plainLabel=label.textContent;
+  const note=document.createElement('p');note.className='small applied-note hidden';$('grade').after(note);
+  const barLabel=$('barGrade').previousElementSibling,plainBar=barLabel?.textContent;
+  const same=(a,b)=>JSON.stringify((a||[]).map(Number))===JSON.stringify((b||[]).map(Number));
+  function status(){
+    const p=settings.appliedPlan,changed=p&&!same(p.weights,currentWeights());
+    $('appliedStatus').textContent=shareView?'檢視分享的方案：主畫面水位依這組權重計算。':p?`主畫面水位使用「${p.name}」（${p.savedAt} 儲存）`+(changed?'；目前滑桿與已套用的不同，按「儲存並套用到水位」更新。':'。'):'主畫面水位目前只看本檔價格位置；按下按鈕後改用這組權重，並隨最新資料更新。';
+    $('clearApplied').hidden=!p||shareView;$('applyWeights').hidden=shareView;
+  }
+  function show(){
+    frame=0;status();const p=plan();
+    if(!p){label.textContent=plainLabel;if(barLabel)barLabel.textContent=plainBar;note.classList.add('hidden');return}
+    const r=weightedScore(p.weights);
+    if(r.value==null){label.textContent=plainLabel;if(barLabel)barLabel.textContent=plainBar;note.textContent='「'+p.name+'」部分因子資料不足，暫時顯示本檔價格水位。';note.classList.remove('hidden');return}
+    const v=r.value,own=r.scores[0];
+    $('grade').innerHTML=fmt(v,1)+'<small>/5</small>';$('barGrade').textContent=fmt(v,1)+' / 5';
+    // The gauge fills like the price gauge: a high score (favourable) is a low water line.
+    const cup=$('cupWater');cup.style.height=Math.max(0,Math.min(1,1-v/5))*100+'%';const [a,b]=tideColors(v);cup.style.setProperty('--w1',a);cup.style.setProperty('--w2',b);
+    label.textContent='綜合水位 · 我的權重';if(barLabel)barLabel.textContent='我的水位';
+    // The suggestion tag follows the plan score; the range sentence below still describes the ETF's own price.
+    const tag=$('action-etf');if(tag&&typeof DM!=='undefined'){const act=DM.action(v);tag.className='direction-action '+act.kind;tag.textContent=act.text}
+    const wt=$('waterText');if(wt&&wt.textContent&&!wt.textContent.startsWith('本檔價格'))wt.textContent='本檔價格'+wt.textContent;
+    const ex=$('extended');if(ex&&ex.textContent.startsWith('水位'))ex.textContent='本檔價格位置'+ex.textContent.slice(2);
+    note.textContent=`依「${p.name}」計算；本檔價格水位 ${Number.isFinite(own)?fmt(own,1):'—'} 分。`;note.classList.remove('hidden');
+  }
+  let frame=0;const schedule=()=>{if(!frame)frame=requestAnimationFrame(show)};
+  // Every path that rewrites the ETF score is followed by the plan score.
+  const rp=renderPosition;renderPosition=function(...a){const out=rp(...a);schedule();return out};
+  const uw=updateWeights;updateWeights=function(...a){const out=uw(...a);schedule();return out};
+  if(typeof refreshDirectionViews==='function'){const rd=refreshDirectionViews;refreshDirectionViews=function(...a){const out=rd(...a);schedule();return out}}
+  function apply(name){settings.appliedPlan={weights:currentWeights(),name:name||'我的權重',savedAt:new Date().toISOString().slice(0,10)};save();schedule()}
+  $('applyWeights').addEventListener('click',()=>apply(settings.appliedPlan?.name));
+  $('clearApplied').addEventListener('click',()=>{delete settings.appliedPlan;save();renderPosition();if(typeof refreshDirectionViews==='function')refreshDirectionViews();schedule()});
+  window.chaoweiPlanApplied=name=>{updateWeights();apply(name)};
+  schedule();
+})();
+
+/* ph8 visual rebuild. Move the existing controls: one source of data, no duplicate settings. */
+(()=>{
+ document.body.classList.add('editorial-site');
+ const make=(tag,cls,html)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(html)n.innerHTML=html;return n};
+ const figure=(name)=>{
+  const defs={price:'<path class="rd-draw" d="M15 130Q50 130 72 100T125 105T185 65T245 45T305 22"/><path class="rd-gridline" d="M15 155H305M15 100H305M15 45H305"/>',market:'<circle class="rd-ring rd-ring-a" cx="160" cy="90" r="64"/><circle class="rd-ring rd-ring-b" cx="160" cy="90" r="44"/><circle class="rd-ring rd-ring-c" cx="160" cy="90" r="22"/>',board:'<path class="rd-wire" d="M65 55H130Q160 55 160 90T200 125H245"/><rect x="18" y="28" width="70" height="54" rx="12"/><rect x="124" y="65" width="70" height="54" rx="12"/><rect x="232" y="101" width="70" height="54" rx="12"/>',learn:'<rect class="rd-leaf leaf-a" x="70" y="20" width="180" height="75" rx="14"/><rect class="rd-leaf leaf-b" x="70" y="53" width="180" height="75" rx="14"/><rect class="rd-leaf leaf-c" x="70" y="86" width="180" height="75" rx="14"/>'};
+  return `<svg viewBox="0 0 320 180" aria-hidden="true">${defs[name]}</svg>`;
+ };
+ const home=$('homePage'),hero=home.querySelector('.hero');
+ hero.querySelector('.kicker').textContent='TAIWAN ETF OBSERVATORY';
+ hero.querySelector('.hero-desc').textContent='先看位置，再定節奏。把價格、市場背景與自己的規則，放在同一張研究桌上。';
+ hero.querySelector('.hero-foot').innerHTML='<span>價格位置 · 自訂配置 · 歷史驗證</span><span>向下開始探索</span>';
+ const doors=make('section','purpose-section');doors.id='purposeDoors';
+ doors.innerHTML='<div class="section-heading"><div><p class="kicker teal">CHOOSE YOUR PERSPECTIVE</p><h2>今天，想先看什麼？</h2></div><p class="sub">從一個問題開始，不必一次學會全部。</p></div><div class="purpose-deck" role="group" aria-label="四種探索入口"></div>';
+ const purposes=[['price','看 ETF 的位置','從價格走勢，讀懂現在水位。','explore','打開 ETF 觀測'],['market','看市場背景','量能、油價與匯率，補齊視角。','market','打開市場刻度'],['board','組合研究','在空白白板，把條件連成規則。','strategyBoardPage','打開策略白板'],['learn','學會怎麼看','由水位到驗證，每一步都看得見。','guidePage','打開方法說明']];
+ purposes.forEach(([art,title,desc,target,action],i)=>{const card=make('article','purpose-door'+(i===0?' is-active':''));card.dataset.purpose=String(i);card.innerHTML=`<button class="purpose-select" type="button" aria-pressed="${i===0}" aria-label="展開${title}"><span class="purpose-index">0${i+1}</span><div class="purpose-art">${figure(art)}</div><h3>${title}</h3></button><div class="purpose-body"><p>${desc}</p><a href="#${target}" class="purpose-link">${action}</a></div>`;doors.querySelector('.purpose-deck').append(card);const activate=()=>{doors.querySelectorAll('.purpose-door').forEach((e,j)=>{e.classList.toggle('is-active',i===j);e.querySelector('button').setAttribute('aria-pressed',String(i===j))})};card.querySelector('button').onclick=activate;card.addEventListener('pointerenter',e=>{if(e.pointerType==='mouse')activate()});card.addEventListener('focusin',activate)});
+ hero.after(doors);
+
+ // Reuse the original six destinations as a single, pausable tool preview gallery.
+ const gallery=home.querySelector('.feature-gallery'),grid=gallery.querySelector('.feature-grid');
+ gallery.classList.add('tool-preview-section');gallery.querySelector('h2').textContent='好問題，值得一張好圖表。';
+ const labels=['price','market','price','learn','board','learn'];
+ grid.classList.add('tool-preview-rail');grid.querySelectorAll('.feature-entry').forEach((a,i)=>{a.querySelector('figure').innerHTML=figure(labels[i]);a.querySelector('figure').setAttribute('aria-label','功能操作概念示意');a.querySelector('figure').className='tool-preview-art';a.querySelectorAll('.scene-motion').forEach(x=>x.remove());a.classList.remove('scene-in-view')});
+ const galleryButtons=make('div','tool-preview-controls','<p class="small">概念預覽；點選後使用實際資料。</p><button type="button" class="pill mini" aria-pressed="false">暫停預覽</button>');grid.before(galleryButtons);
+ const reduced=matchMedia('(prefers-reduced-motion: reduce)'),railMotion={visible:false,hover:false,focus:false,manual:false,frame:0,last:0,direction:1};
+ const pauseRail=galleryButtons.querySelector('button');pauseRail.onclick=()=>{railMotion.manual=!railMotion.manual;pauseRail.setAttribute('aria-pressed',String(railMotion.manual));pauseRail.textContent=railMotion.manual?'播放預覽':'暫停預覽'};
+ grid.addEventListener('pointerenter',()=>railMotion.hover=true);grid.addEventListener('pointerleave',()=>railMotion.hover=false);grid.addEventListener('focusin',()=>railMotion.focus=true);grid.addEventListener('focusout',()=>railMotion.focus=false);grid.addEventListener('pointerdown',()=>{railMotion.manual=true;pauseRail.setAttribute('aria-pressed','true');pauseRail.textContent='播放預覽'});
+ function glide(t){const elapsed=Math.min(40,t-(railMotion.last||t));railMotion.last=t;if(railMotion.visible&&!railMotion.hover&&!railMotion.focus&&!railMotion.manual&&!reduced.matches&&!document.hidden&&!document.body.classList.contains('motion-paused')&&document.body.dataset.page==='home'){const end=grid.scrollWidth-grid.clientWidth;if(end>2){if(grid.scrollLeft>=end-1)railMotion.direction=-1;if(grid.scrollLeft<=1)railMotion.direction=1;grid.scrollLeft+=elapsed*.022*railMotion.direction}}railMotion.frame=requestAnimationFrame(glide)}
+ new IntersectionObserver(e=>{railMotion.visible=e[0].isIntersecting;if(railMotion.visible&&!railMotion.frame)railMotion.frame=requestAnimationFrame(glide);if(!railMotion.visible&&railMotion.frame){cancelAnimationFrame(railMotion.frame);railMotion.frame=0;railMotion.last=0}},{threshold:.1}).observe(gallery);
+
+ // The persistent ETF context stays above one stable chart and three research panels.
+ const content=$('explore').querySelector('.content'),consoleNode=make('div','quiet-research-desk');consoleNode.id='researchDesk';
+ const mainStage=make('div','research-chart-stage'),aside=make('aside','research-side');aside.setAttribute('aria-label','ETF 研究重點');
+ const tabs=make('div','research-side-tabs');tabs.setAttribute('role','tablist');tabs.setAttribute('aria-label','研究面板');
+ const panes=[];for(const[i,title]of ['概覽','風險','驗證'].entries()){const id='researchPane'+i,b=make('button','',`<span>0${i+1}</span>${title}`);b.id='researchTab'+i;b.type='button';b.setAttribute('role','tab');b.setAttribute('aria-controls',id);const pane=make('section','research-side-pane');pane.id=id;pane.setAttribute('role','tabpanel');pane.setAttribute('aria-labelledby',b.id);tabs.append(b);panes.push(pane);b.onclick=()=>sideTab(i);b.onkeydown=e=>{if(['ArrowRight','ArrowLeft','Home','End'].includes(e.key)){e.preventDefault();const n=e.key==='Home'?0:e.key==='End'?2:(i+(e.key==='ArrowRight'?1:2))%3;sideTab(n);$('researchTab'+n).focus()}}}
+ aside.append(tabs,...panes);consoleNode.append(mainStage,aside);const view=document.querySelector('.view-card');view.before(consoleNode);mainStage.append(view,$('status'),$('chartCard'));
+ const scoreGrid=document.querySelector('.score-grid');panes[0].append(scoreGrid);
+ const techDetail=make('details','study-drawer');techDetail.id='deskTechnical';techDetail.innerHTML='<summary>技術讀數與動量</summary>';techDetail.append($('techRead'));const momentum=document.querySelector('.momentum-panel');if(momentum)techDetail.append(momentum);if($('strengthStudy'))techDetail.append($('strengthStudy'));panes[0].append(techDetail);
+ for(const id of ['drawer-chipCard','drawer-holderCard'])if($(id))panes[0].append($(id));
+ const risk=make('div','rd-risk-card member-only');risk.id='researchRisk';risk.innerHTML='<div class="member-lock"><div class="member-lock-box"><span class="member-badge">會員研究</span><h4>看懂回落與資金參與</h4><p>登入後，對照目前策略的風險與回撤恢復時間。</p><button class="action" type="button" data-open-account>使用 Google 登入</button></div></div><div id="researchRiskContent" data-member-gated><p class="small">使用下方策略回測後顯示。</p></div>';panes[1].append(risk);
+ const training=make('div','rd-training-card member-only');training.innerHTML='<div class="member-lock"><div class="member-lock-box"><span class="member-badge">會員研究</span><h4>站在歷史當下驗證</h4><p>前段選規則，鎖定後再看後段結果。</p><button class="action" type="button" data-open-account>使用 Google 登入</button></div></div><div class="rd-training-content" data-member-gated></div>';panes[2].append(training);training.querySelector('.rd-training-content').append($('trainingLab'));$('trainingLab').open=true;
+ let activeSide=0;function sideTab(i){activeSide=i;panes.forEach((p,j)=>{p.hidden=i!==j;const b=$('researchTab'+j);b.setAttribute('aria-selected',String(i===j));b.tabIndex=i===j?0:-1});if(i===1)paintRisk();window.dispatchEvent(new Event('resize'))}sideTab(0);
+
+ // Deeper tools share one shelf instead of stacking three long pages.
+ const shelf=make('section','research-workbench');shelf.id='researchWorkbench';const shelfTabs=make('div','research-work-tabs');shelfTabs.setAttribute('role','tablist');shelfTabs.setAttribute('aria-label','進階研究工具');const shelfPanes=[];
+ for(const[i,title]of ['策略與回測','波段與量測','配置與權重'].entries()){const b=make('button','',title),p=make('div','research-work-pane');b.type='button';b.id='workTab'+i;p.id='workPane'+i;p.setAttribute('role','tabpanel');p.setAttribute('aria-labelledby',b.id);b.setAttribute('role','tab');b.setAttribute('aria-controls',p.id);b.onclick=()=>workTab(i);b.onkeydown=e=>{if(['ArrowRight','ArrowLeft'].includes(e.key)){e.preventDefault();const n=(i+(e.key==='ArrowRight'?1:2))%3;workTab(n);$('workTab'+n).focus()}};shelfTabs.append(b);shelfPanes.push(p)}
+ shelf.append(shelfTabs,...shelfPanes);consoleNode.after(shelf);shelfPanes[0].append($('backtestCard'));for(const id of ['drawer-waveStudy','drawer-measurePanel'])if($(id))shelfPanes[1].append($(id));const pins=document.querySelector('.wave-pin-panel')?.closest('.study-drawer');if(pins)shelfPanes[1].append(pins);const weightDrawer=$('drawer-weights');if(weightDrawer)shelfPanes[2].append(weightDrawer);else shelfPanes[2].append($('weights'));
+ function workTab(i){shelfPanes.forEach((p,j)=>{p.hidden=i!==j;const b=$('workTab'+j);b.setAttribute('aria-selected',String(i===j));b.tabIndex=i===j?0:-1});window.dispatchEvent(new Event('resize'));requestAnimationFrame(()=>window.dispatchEvent(new Event('chaowei-page-changed')))}workTab(0);
+ function revealTarget(node){if(!node)return;panes.forEach((p,i)=>{if(p.contains(node))sideTab(i)});shelfPanes.forEach((p,i)=>{if(p.contains(node)){workTab(i);let d=node.closest('details');while(d){d.open=true;d=d.parentElement.closest('details')}}})}
+ const previousTour=window.chaoweiTourTarget;window.chaoweiTourTarget=node=>{revealTarget(node);previousTour?.(node)};
+ function onHash(){const aliases={method:'weights',backtest:'backtestCard','wave-lab':'waveStudy',chips:'chipCard'};revealTarget($(aliases[location.hash.slice(1)]||location.hash.slice(1)))}window.addEventListener('hashchange',onHash);onHash();
+
+ function paintRisk(){const node=$('researchRiskContent'),r=btResult;if(!r){node.innerHTML='<h3>先完成一次回測</h3><p class="small">這裡會使用同一個回測結果，顯示風險與資金參與。</p><a class="pill" href="#backtestCard">前往策略與回測</a>';return}
+  const info=r.sharpeInfo,events=r.drawdowns||[],usage=E.positionUsage(r),held=Math.round(r.utilization*100);
+  node.innerHTML=`<p class="kicker teal">RISK / ${selected}</p><h3>跌多深，也看等多久。</h3><p class="small">${r.start} 至 ${r.end} · 依目前回測規則</p><div class="rd-risk-values"><div><small>最大回落</small><strong class="down">${fmt(r.mdd*100,1)}%</strong></div><div><small>Sharpe</small><strong>${r.sharpe==null?'不適用':fmt(r.sharpe,2)}</strong></div></div><p class="small">${r.sharpe==null?info?.reason||'有效樣本不足':'超額報酬按相同日曆區間扣除現金基準；年化 245 期。'}</p><h4>平均配置</h4><div class="rd-exposure" role="img" aria-label="期間平均持股 ${held}%，現金 ${100-held}%"><i style="width:${held}%"></i></div><p class="small">持股 ${held}% · 現金 ${100-held}%（期間平均）</p><div class="rd-risk-mini"><span>買進 <b>${r.buys} 次</b></span><span>有部位 <b>${usage.held} 日</b></span></div><a class="pill mini" href="#fundingComparison">查看資金與分批試算</a><h4>主要回撤</h4><div class="rd-drawdown-list"></div><details class="metric-detail"><summary>計算口徑與交易假設</summary><p class="small">回撤以排除外部入金的 NAV 計算。恢復定義為回到或超過前高；交易日與日曆天分開。成交依回測設定：預設訊號於 T 日收盤確認、T+1 開盤成交並計入單邊滑價（可改為 T 日收盤理想對照），仍非可保證的成交價。完整實驗規則見下方回測設定。</p></details>`;
+  const list=node.querySelector('.rd-drawdown-list');if(!events.length)list.textContent='此段淨值沒有可辨識的回撤事件。';const deepest=events[0]?.depth||1;for(const event of events.slice(0,3)){const e=make('details','rd-drawdown');e.innerHTML=`<summary><span class="down">−${fmt(event.depth*100,1)}%</span><i class="rd-dd-bar" aria-hidden="true"><i style="width:${Math.round(event.depth/deepest*100)}%"></i></i><b>${event.ongoing?'尚未恢復':event.tradingDays+' 個交易日'}</b></summary><dl><dt>前高</dt><dd>${event.peak}</dd><dt>谷底</dt><dd>${event.trough}</dd><dt>恢復</dt><dd>${event.recovery||'至期末仍未恢復'}</dd><dt>歷時</dt><dd>${event.tradingDays} 個交易日／${event.calendarDays} 天</dd></dl>`;list.append(e)}
+ }
+ const oldBacktest=renderBacktest;renderBacktest=function(...args){const out=oldBacktest(...args);paintRisk();return out};
+ const previousMember=window.chaoweiSetMember;window.chaoweiSetMember=value=>{previousMember(value);paintRisk()};window.chaoweiSetMember(isMember);
+
+ // Turn the existing institutional snapshot into signed bars; null stays missing.
+ const oldChip=renderChip;renderChip=function(...args){const out=oldChip(...args),row=chipRows.find(r=>r[0]===$('chipDate').value)||chipRows.at(-1),grid=$('chipContents').querySelector('.chip-grid');if(!row||!grid)return out;
+  grid.classList.add('rd-flow-chart');grid.replaceChildren();const max=Math.max(1,...row.slice(1,5).filter(Number.isFinite).map(Math.abs));['外陸資','投信','自營商','合計'].forEach((label,i)=>{const v=row[i+1],line=make('div','rd-flow-row');line.innerHTML='<span></span><div class="rd-flow-axis"><i></i></div><b></b>';line.firstChild.textContent=label;const b=line.lastChild;b.textContent=Number.isFinite(v)?(v>0?'+':'')+fmt(v/1000,1)+' 張':'未公布';if(Number.isFinite(v)){const w=Math.abs(v)/max*48,bar=line.querySelector('i');bar.style.width=w+'%';bar.style.left=(v>=0?50:50-w)+'%';bar.className=v>=0?'rd-positive':'rd-negative';b.className=v>0?'up':v<0?'down':''}grid.append(line)});grid.setAttribute('role','img');grid.setAttribute('aria-label',row[0]+' 三大法人買賣超，左側賣超、右側買超，單位張');return out};if(chipRows.length)renderChip();
+
+ // All historical context is computed from acquired data. No synthetic 5-year history.
+ const marketHeader=make('div','market-overview');marketHeader.id='marketOverview';marketHeader.innerHTML='<div><p class="kicker teal">THE BIGGER PICTURE</p><h3>背景不同，讀數各有節奏。</h3><p class="small">保留各來源發布頻率；分數方向由你設定。</p></div><div class="market-overview-stats"><div><small>可用因子</small><strong id="rdAvailable">—</strong></div></div><div class="rd-factor-bars" id="rdFactorBars" role="img"></div>';$('market').prepend(marketHeader);
+ const factorDefs=[['indexScore',()=>market.map(x=>({date:x.date,value:x.index})),v=>fmt(v,2)+' 點'],['volumeScore',()=>market.map(x=>({date:x.date,value:x.volume/1e8})),v=>fmt(v,2)+' 億股'],['brentScore',()=>oilDays,v=>fmt(v,2)+' 美元／桶'],['fxScore',()=>fx,v=>fmt(v,3)+' 新台幣／美元'],['mktMarginScore',()=>marginDays.slice(1).map((x,i)=>({date:x.date,value:x.value-marginDays[i].value})),v=>signNum(v,1)+' 億元'],['bankScore',()=>bankDays,v=>signNum(v,2)+' 億元']];
+ function paintFactors(){let available=0;for(const[id,get,format]of factorDefs){const card=$(id)?.closest('.factor');if(!card)continue;card.classList.add('rd-market-card');let graph=card.querySelector('.rd-factor-context');if(!graph){graph=make('div','rd-factor-context');card.querySelector('h4').after(graph)}const all=get().filter(x=>Number.isFinite(x.value)),last=all.at(-1);if(!last){graph.innerHTML='<p class="small">尚無可用歷史資料</p>';continue}const cutoff=new Date(last.date+'T00:00:00Z');cutoff.setUTCFullYear(cutoff.getUTCFullYear()-5);const prior=all.filter(x=>x.date>=cutoff.toISOString().slice(0,10)&&x.date<last.date),rank=prior.length>=20?prior.filter(x=>x.value<=last.value).length/prior.length:null;if(Number.isFinite(parseFloat($(id).textContent)))available++;
+   // Taiwan colours on the 30-point line: levels compare with 30 points ago, flows (margin, bank) use today's sign.
+   const flow=id==='mktMarginScore'||id==='bankScore',dir=Math.sign(flow?last.value:last.value-all.slice(-30)[0].value),tone=dir>0?' rise':dir<0?' fall':'';
+   graph.innerHTML=`<strong class="factor-value">${format(last.value)}</strong><span class="rd-source-date">${last.date}</span><div class="rd-spark${tone}">${factorSpark(all)}</div><div class="rd-percentile"><span>${prior.length>=20?'歷史位置 · '+prior.length+' 筆':'歷史樣本不足'}</span><b>${rank==null?'—':'P'+Math.round(rank*100)}</b></div><div class="rd-percentile-track" role="img" aria-label="${rank==null?'歷史百分位不足':prior.length+' 筆樣本中位於第 '+Math.round(rank*100)+' 百分位'}"><i style="left:${rank==null?0:rank*100}%" ${rank==null?'hidden':''}></i></div>`;
+   // Taller trend: stretch the 30-point line to the card's plot height, keeping a constant stroke width.
+   const svg=graph.querySelector('.rd-spark svg');if(svg){svg.setAttribute('preserveAspectRatio','none');svg.querySelector('polyline')?.setAttribute('vector-effect','non-scaling-stroke')}
+  }$('rdAvailable').textContent=available+' / '+factorDefs.length;
+  // One bar per factor score (0-5). The colour follows the suggestion tag: 4+ red (add), 2 or less green (trim).
+  const short={indexScore:'加權',volumeScore:'成交',brentScore:'原油',fxScore:'匯率',mktMarginScore:'融資',bankScore:'官股'},bars=$('rdFactorBars'),said=[];bars.replaceChildren();for(const[id]of factorDefs){const v=parseFloat($(id)?.textContent),col=make('div','rd-factor-bar'+(v>=4?' rise':v<=2?' fall':''));col.innerHTML='<b></b><span><i></i></span><small></small>';col.querySelector('b').textContent=Number.isFinite(v)?fmt(v,1):'—';col.querySelector('i').style.height=(Number.isFinite(v)?v/5*100:0)+'%';col.querySelector('small').textContent=short[id];said.push(short[id]+(Number.isFinite(v)?' '+fmt(v,1)+' 分':' 無資料'));bars.append(col)}bars.setAttribute('aria-label','各因子分數，滿分 5：'+said.join('、'));
+ }
+ let factorFrame=0;const factorsChanged=()=>{if(!factorFrame)factorFrame=requestAnimationFrame(()=>{factorFrame=0;paintFactors()})};for(const[id]of factorDefs)new MutationObserver(factorsChanged).observe($(id),{childList:true,subtree:true,characterData:true});factorsChanged();
+
+ // Matrix trends fetch through the same cached history API, at most two concurrent requests.
+ const matrixCache=new Map();let matrixQueue=[],matrixRunning=0;
+ // The vertical scale follows the 60 closes only, so a quiet stretch still shows its swings. MA960 is drawn
+ // when it sits inside that range; otherwise a label says whether it lies above or below and at what level.
+ function spark(values,average){if(values.length<2)return'<span class="small">可用走勢不足</span>';const lo=Math.min(...values),hi=Math.max(...values),pad=(hi-lo)*.08||hi*.002||1,min=lo-pad,span=hi+pad-min;const ma=average.filter(Number.isFinite),inside=ma.length&&ma.every(v=>v>=min&&v<=min+span),points=a=>a.map((v,i)=>Number.isFinite(v)?`${6+i*288/(a.length-1)},${100-(v-min)/span*94}`:null).filter(Boolean).join(' ');
+  const maLine=inside?'<polyline fill="none" stroke="var(--rd-amber)" stroke-dasharray="4 3" stroke-width="1.7" vector-effect="non-scaling-stroke" points="'+points(average)+'"/>':'',maNote=ma.length&&!inside?`<span class="rd-ma-note">MA960 ${fmt(ma.at(-1),2)} 在${ma.at(-1)<min?'下方':'上方'}</span>`:'';
+  return`<svg viewBox="0 0 300 104" preserveAspectRatio="none" role="img" aria-label="近 ${values.length} 筆收盤走勢，縱軸 ${fmt(lo,2)} 至 ${fmt(hi,2)}${ma.length?'；MA960 '+fmt(ma.at(-1),2):''}"><polyline fill="none" stroke="currentColor" stroke-width="2.2" vector-effect="non-scaling-stroke" points="${points(values)}"/>${maLine}</svg><span class="rd-spark-range"><span>${fmt(hi,2)}</span><span>${fmt(lo,2)}</span></span>${maNote}`}
+ function applyMatrix(card,rows){let graph=card.querySelector('.rd-matrix-spark');if(!graph){graph=make('div','rd-matrix-spark');card.querySelector('.matrix-meter').before(graph)}const from=Math.max(0,rows.length-60),list=rows.slice(from),avg=list.map((_,j)=>{const i=from+j;if(i<959)return null;let sum=0;for(let k=i-959;k<=i;k++)sum+=rows[k].close;return sum/960});graph.innerHTML=spark(list.map(x=>x.close),avg);graph.dataset.loaded='true';
+  // Taiwan colours: a 60-day rise draws red, a fall green. The legend is shown once above the grid; a card only notes missing MA960.
+  const first=list[0]?.close,last=list.at(-1)?.close;graph.classList.toggle('rise',last>first);graph.classList.toggle('fall',last<first);
+  if(!avg.some(Number.isFinite)){const note=make('small','rd-matrix-note');note.textContent='MA960 歷史不足';graph.append(note)}}
+ function drain(){while(matrixRunning<2&&matrixQueue.length){const task=matrixQueue.shift();matrixRunning++;fetch('/api/history?code='+encodeURIComponent(task.code)).then(r=>{if(!r.ok)throw Error('history unavailable');return r.json()}).then(d=>{const rows=(d.bars||[]).filter(b=>b&&Number.isFinite(b.close)&&!b.intraday);matrixCache.set(task.code,rows);if(task.card.isConnected)applyMatrix(task.card,rows)}).catch(()=>{if(task.card.isConnected){const n=make('p','small');n.textContent='趨勢暫不可用';task.card.append(n)}}).finally(()=>{matrixRunning--;drain()})}}
+ const matrixObserver=new IntersectionObserver(entries=>{for(const e of entries)if(e.isIntersecting){const card=e.target,code=card.querySelector('.matrix-code')?.textContent.trim();matrixObserver.unobserve(card);if(matrixCache.has(code))applyMatrix(card,matrixCache.get(code));else{matrixQueue.push({card,code});drain()}}},{rootMargin:'200px'});
+ const matrixMutation=new MutationObserver(()=>{$('matrixCards').querySelectorAll('.matrix-card:not([data-rd-observed])').forEach(card=>{card.dataset.rdObserved='true';matrixObserver.observe(card)})});matrixMutation.observe($('matrixCards'),{childList:true});$('matrixCards').querySelectorAll('.matrix-card').forEach(card=>{card.dataset.rdObserved='true';matrixObserver.observe(card)});
+
+ // Method: a small teaching theatre, followed by the original questions in one column.
+ const guide=$('guidePage'),theatre=make('section','method-theatre');theatre.id='methodTheatre';theatre.innerHTML='<div><p class="kicker teal">LEARN BY SEEING</p><h2>先看懂，再設定。</h2><p>三個觀念，從價格位置走到歷史驗證。</p><div class="method-scenes" role="tablist" aria-label="原理教學"></div><button type="button" class="pill mini" id="methodAutoPause" aria-pressed="false">暫停教學</button></div><div class="method-scene-stage" id="methodSceneStage" aria-live="off"></div>';guide.prepend(theatre);
+ const guideNav=$('pageNav').querySelector('a[href="#method-story"]');if(guideNav)guideNav.href='#guidePage';
+ const marketNav=$('pageNav').querySelector('a[href="#market"]');if(marketNav)marketNav.href='#marketPage';
+ const scenes=[['價格與水位','price','從已選觀察窗量出相對位置。低價分高是預設方向；切換方向時，分數跟著重算。'],['分批與配置','board','資金只分配一次。分幾批與每批目標可自己設定；實際金額仍受可用現金限制。'],['歷史驗證','learn','先在前段選規則，再鎖定檢查後段。看完驗證再改條件，就是新的實驗。']];let scene=0,sceneVisible=false,scenePaused=false,sceneFocus=false;
+ const sceneButtons=theatre.querySelector('.method-scenes');function paintScene(i){scene=i;sceneButtons.querySelectorAll('button').forEach((b,j)=>{b.setAttribute('aria-selected',String(i===j));b.tabIndex=i===j?0:-1});$('methodSceneStage').innerHTML='<div class="method-large-figure">'+figure(scenes[i][1])+'</div><p class="kicker">0'+(i+1)+' / 03</p><h3>'+scenes[i][0]+'</h3><p>'+scenes[i][2]+'</p>'}
+ scenes.forEach(([title],i)=>{const b=make('button','',`0${i+1} ${title}`);b.type='button';b.setAttribute('role','tab');b.setAttribute('aria-controls','methodSceneStage');b.onclick=()=>{scenePaused=true;syncPause();paintScene(i)};b.onkeydown=e=>{if(['ArrowLeft','ArrowRight'].includes(e.key)){e.preventDefault();const j=(i+(e.key==='ArrowRight'?1:2))%3;sceneButtons.children[j].click();sceneButtons.children[j].focus()}};sceneButtons.append(b)});paintScene(0);
+ const methodPause=$('methodAutoPause');function syncPause(){methodPause.textContent=scenePaused?'播放教學':'暫停教學';methodPause.setAttribute('aria-pressed',String(scenePaused))}methodPause.onclick=()=>{scenePaused=!scenePaused;syncPause()};theatre.addEventListener('focusin',()=>sceneFocus=true);theatre.addEventListener('focusout',()=>sceneFocus=false);new IntersectionObserver(e=>sceneVisible=e[0].isIntersecting,{threshold:.25}).observe(theatre);setInterval(()=>{if(sceneVisible&&!scenePaused&&!sceneFocus&&!document.hidden&&!reduced.matches&&!document.body.classList.contains('motion-paused')&&document.body.dataset.page==='guide')paintScene((scene+1)%3)},6500);
+ const faq=document.querySelector('.method-steps'),faqFilters=make('div','segment method-filters');faqFilters.setAttribute('role','group');faqFilters.setAttribute('aria-label','方法說明分類');const questions=[...faq.children].filter(e=>e.tagName==='DETAILS');questions.forEach((e,i)=>e.dataset.topic=i<5?'water':'research');[['all','全部問題'],['water','水位與分數'],['research','技術與驗證']].forEach(([id,label])=>{const b=make('button','',label);b.type='button';b.setAttribute('aria-pressed',String(id==='all'));b.onclick=()=>{questions.forEach(e=>e.hidden=id!=='all'&&e.dataset.topic!==id);faqFilters.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)))};faqFilters.append(b)});faq.before(faqFilters);
+ // Route aliases retain all old URLs, and #board now has an explicit destination.
+ if(location.hash==='#board')window.chaoweiNavigate('board');
+ document.querySelectorAll('a[href="#board"]').forEach(a=>a.href='#strategyBoardPage');
+ // The retained old intro rail is redundant with the new theatre; its text is kept in an expandable note.
+ const oldStory=guide.querySelector('.story-stage');if(oldStory){const archive=make('details','method-original');archive.innerHTML='<summary>再看三種觀測視角</summary>';oldStory.before(archive);archive.append(oldStory)}
+ // Resize the original charts after moving them; keep all ranges, markers, settings and auth contracts.
+ requestAnimationFrame(()=>window.dispatchEvent(new Event('resize')));
+ document.documentElement.dataset.designVersion='ph8-editorial-1';
 })();
 
 })();
