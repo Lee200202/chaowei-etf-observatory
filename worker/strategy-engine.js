@@ -77,7 +77,7 @@ function createChaoweiEngine(){
       },
       sell(i,sh,reason,kind){
         sh=Math.min(sh,this.shares);if(cfg.wholeShares)sh=Math.floor(sh+1e-9);if(!(sh>0))return 0;
-        const c=ctx.close[i],gross=sh*c,f=gross*(fee+tax),costPart=this.cost*sh/this.shares,net=gross-f,pnl=net-costPart;
+        const c=ctx.close[i],gross=sh*c,f=gross*(fee+(Number.isFinite(ctx.tradeTax?.[i])?ctx.tradeTax[i]:tax)),costPart=this.cost*sh/this.shares,net=gross-f,pnl=net-costPart;
         this.cash+=net;this.shares-=sh;this.cost-=costPart;this.fees+=f;if(this.shares<1e-9){this.shares=0;this.cost=0}
         this.trades.push({i,date:ctx.bars[i].date,type:'sell',kind:kind||'sell',price:c,shares:sh,amount:net,pnl,ret:pnl/costPart,reason});return net;
       },
