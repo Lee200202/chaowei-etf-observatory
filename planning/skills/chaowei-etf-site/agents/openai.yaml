@@ -1,0 +1,4 @@
+interface:
+  display_name: 潮位網站設計與驗收
+  short_description: 潮位 ETF 網站的設計、資料、評分、策略回測、診斷與發布規格
+  default_prompt: 使用 $chaowei-etf-site，依問題類別檢查潮位網站，引用對應規格並完成可驗收的修正。

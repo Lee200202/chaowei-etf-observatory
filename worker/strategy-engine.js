@@ -6,6 +6,24 @@
    the water-level range at day i uses bars before i only. */
 function createChaoweiEngine(){
   const DAY=86400000;
+  // Returns and their cash benchmark cover the same calendar interval, including weekends.
+  function riskSharpe(series,annualRate,tradeCount){
+    if(!tradeCount)return{value:null,reason:'無實際交易',observations:Math.max(0,series.length-1)};
+    const excess=[];
+    for(let i=1;i<series.length;i++){const a=series[i-1],b=series[i],days=(Date.parse(b.time)-Date.parse(a.time))/DAY;if(!(a.nav>0&&b.nav>0&&days>0))continue;const x=b.nav/a.nav-1-(Math.pow(1+annualRate,days/365)-1);if(Number.isFinite(x))excess.push(x)}
+    if(excess.length<5)return{value:null,reason:'有效期間不足',observations:excess.length};
+    const mean=excess.reduce((s,x)=>s+x,0)/excess.length,sd=Math.sqrt(excess.reduce((s,x)=>s+(x-mean)**2,0)/(excess.length-1));
+    return{value:sd<1e-10?null:mean/sd*Math.sqrt(245),reason:sd<1e-10?'超額波動接近零':'',observations:excess.length,mean,sd,annualPeriods:245};
+  }
+  // Work from the time-weighted NAV, never the cash-flow-inflated account balance.
+  function drawdownEvents(series){
+    const events=[];let peak=null,event=null;
+    for(let i=0;i<series.length;i++){const p=series[i];if(!(p.nav>0))continue;if(!peak){peak={...p,i};continue}
+      if(p.nav>=peak.nav-1e-12){if(event){event.recovery=p.time;event.tradingDays=i-peak.i;event.calendarDays=Math.round((Date.parse(p.time)-Date.parse(peak.time))/DAY);event.ongoing=false;events.push(event);event=null}peak={...p,i}}
+      else{const depth=1-p.nav/peak.nav;if(!event)event={peak:peak.time,trough:p.time,recovery:null,depth,tradingDays:i-peak.i,calendarDays:Math.round((Date.parse(p.time)-Date.parse(peak.time))/DAY),ongoing:true};if(depth>event.depth){event.depth=depth;event.trough=p.time}event.tradingDays=i-peak.i;event.calendarDays=Math.round((Date.parse(p.time)-Date.parse(peak.time))/DAY)}
+    }
+    if(event)events.push(event);return events.sort((a,b)=>b.depth-a.depth);
+  }
   /* ---------- indicators ---------- */
   function sma(a,n){const out=new Float64Array(a.length).fill(NaN);let s=0;for(let i=0;i<a.length;i++){s+=a[i];if(i>=n)s-=a[i-n];if(i>=n-1)out[i]=s/n}return out}
   function prepare(bars,dividends,macro){
@@ -136,10 +154,10 @@ function createChaoweiEngine(){
     // hard did the money work?" for strategies that sit mostly in cash.
     const sleeve=acc.trades.map(x=>[Date.parse(x.date),x.type==='buy'?-x.amount:x.amount]).concat(acc.divs);
     if(acc.shares>0)sleeve.push([tEnd,acc.shares*ctx.close[end]]);sleeve.sort((x,y)=>x[0]-y[0]);
-    const s=summary(acc,nav,mdd,flows,contributed),mean=rets.reduce((x,y)=>x+y,0)/Math.max(1,rets.length),sd=Math.sqrt(rets.reduce((x,y)=>x+(y-mean)**2,0)/Math.max(1,rets.length-1));
+    const s=summary(acc,nav,mdd,flows,contributed),sharpeInfo=riskSharpe(series,cfg.parking/100,acc.trades.length);
     const sells=acc.trades.filter(x=>x.type==='sell'&&x.kind!=='rebalance');
     return{cfg,start:ctx.bars[start].date,end:ctx.bars[end].date,years,contributed,N,base,monthly,...s,roic:acc.trades.length?xirr(sleeve):null,
-      calmar:s.mdd>0?s.cagr/s.mdd:null,sharpe:sd>0?(mean-park)/sd*Math.sqrt(245):null,utilization:utilSum/Math.max(1,days),
+      calmar:s.mdd>0?s.cagr/s.mdd:null,sharpe:sharpeInfo.value,sharpeInfo,drawdowns:drawdownEvents(series),utilization:utilSum/Math.max(1,days),
       interest,dividends,fees:acc.fees,trades:acc.trades,sells:sells.length,wins:sells.filter(x=>x.pnl>0).length,buys:acc.trades.filter(x=>x.type==='buy').length,
       shares:acc.shares,cost:acc.cost,cash:acc.cash,state,series,bh:{...summary(bh,bhNav,bhMdd,bhFlows,cfg.capital),series:bhSeries},dca:{...summary(dca,dcaNav,dcaMdd,flows,contributed),series:dcaSeries}};
   }
@@ -350,6 +368,6 @@ function createChaoweiEngine(){
     {id:'coreSat',family:'mix',name:'70/30 核心衛星',...P('core_satellite',{})},
     {id:'rebalance',family:'mix',name:'50:50 動態再平衡',...P('rebalance_50_50',{})}
   ];
-  return{prepare,reference,water,score,lineFlow,run,xirr,fundingInfo,positionUsage,STRATEGIES,PARAMS,PRESETS,FAMILIES};
+  return{prepare,reference,water,score,lineFlow,run,xirr,fundingInfo,positionUsage,riskSharpe,drawdownEvents,STRATEGIES,PARAMS,PRESETS,FAMILIES};
 }
 const ChaoweiEngine=createChaoweiEngine();

@@ -1,5 +1,7 @@
 # 潮位 ETF 觀測所
 
+目前可呼叫的設計、資料、評分、回測與驗收規格整理在 [chaowei-etf-site 技能](planning/skills/chaowei-etf-site/SKILL.md)，含十類按需讀取參考。可讀的 HTML 手冊由 `planning/skills/chaowei-etf-site/scripts/render_handbook.py` 在本機產生（不隨網站發布）。下文部分段落保留早期設計；來源、字級與預設策略有變動時，以技能中的日期標註、目前程式及實測核對，勿直接將舊數字當現況。
+
 以證交所盤後資料觀察 ETF 價格水位、台灣加權指數與成交股數，並結合期交所布蘭特原油期貨（BRF）近月結算價及中央銀行 USD/TWD 日資料。使用者可選擇觀察窗、黃金分割或等距刻度、自訂權重，並開啟 MA、布林通道、MACD、RSI、KD。分數是歷史相對位置，不是報酬預測。
 
 - GitHub Pages：<https://lee200202.github.io/chaowei-etf-observatory/>
