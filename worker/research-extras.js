@@ -145,8 +145,16 @@ function chipChart({title,unit,width,dates,kind,series,line,right,note,bands=[],
       const rp=right.data.map((v,i)=>Number.isFinite(v)?`${x(i)},${ry(v)}`:null).filter(Boolean);el('polyline',{points:rp.join(' '),fill:'none',stroke:right.color,'stroke-width':1.6,'stroke-dasharray':'5 4'});
       for(const v of [rh,rl]){const t=el('text',{x:W-R+6,y:ry(v)+4,class:'chip-axis'});t.textContent=fmt(v,v>=100?0:1)}}}
   }
-  // Date labels: first, middle, last.
-  for(const i of [...new Set([0,Math.floor((n-1)/2),n-1])]){const t=el('text',{x:x(i),y:H-6,'text-anchor':i===0?'start':i===n-1?'end':'middle',class:'chip-axis'});t.textContent=n>260?dates[i].slice(0,7):dates[i].slice(5)}
+  // Month labels at the first data point of each month (every 2nd, 3rd… month when space is short); the year is
+  // added on January and on the first label. A short tick marks every month.
+  const starts=[];dates.forEach((d,i)=>{if(i===0||d.slice(0,7)!==dates[i-1].slice(0,7))starts.push(i)});
+  // A partial first month (data starting near month end) would crowd the next label; label from the next month.
+  const labelled=starts.length>1&&x(starts[1])-x(starts[0])<48?starts.slice(1):starts;
+  const stride=Math.max(1,Math.ceil(labelled.length*46/Math.max(1,W-L-R)));let shown=0;
+  for(const i of starts)el('line',{x1:x(i),x2:x(i),y1:H-B,y2:H-B+4,stroke:'var(--muted)',opacity:.5});
+  labelled.forEach((i,k)=>{if(k%stride)return;
+    const m=Number(dates[i].slice(5,7)),t=el('text',{x:x(i),y:H-6,'text-anchor':i===0?'start':'middle',class:'chip-axis'});
+    t.textContent=!shown||m===1?dates[i].slice(0,4)+'/'+m:m+'月';shown++});
   const guide=el('line',{x1:0,x2:0,y1:T,y2:H-B,stroke:'var(--muted)','stroke-width':1,opacity:0});
   wrap.append(svg);
   const legend=document.createElement('p');legend.className='chip-legend';

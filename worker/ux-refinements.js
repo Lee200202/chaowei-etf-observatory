@@ -1,3 +1,15 @@
+/* Layout preference, kept on this device only: 「電腦版」 makes a phone render the full desktop layout (as a
+   1280px-wide page it can zoom), and on a computer a button opens the site in a phone-sized window, where the
+   real mobile layout applies (it follows the window width, so a narrow column inside this page would not). */
+(()=>{
+ const meta=document.querySelector('meta[name=viewport]'),narrow=matchMedia('(max-width: 760px)');
+ settings.layoutMode=settings.layoutMode==='desktop'?'desktop':'auto';
+ const apply=()=>{meta.setAttribute('content',settings.layoutMode==='desktop'?'width=1280':'width=device-width,initial-scale=1');$('layoutMode').value=settings.layoutMode};
+ $('layoutMode').addEventListener('change',e=>{settings.layoutMode=e.target.value==='desktop'?'desktop':'auto';save();apply()});
+ const phoneButton=()=>{$('openPhoneView').hidden=narrow.matches||settings.layoutMode==='desktop'&&screen.width<760};
+ $('openPhoneView').addEventListener('click',()=>window.open(location.href,'chaoweiPhoneView','width=400,height=860'));
+ narrow.addEventListener('change',phoneButton);apply();phoneButton();
+})();
 /* Shared disclosure and FAQ markup. No financial settings are changed here. */
 (()=>{
  const marketHeading=$('market').querySelector('h3');if(marketHeading){marketHeading.textContent='觀測因子';marketHeading.previousElementSibling?.remove()}

@@ -247,7 +247,7 @@ function technical(all){
 
 /* ---------- Chart ---------- */
 function themeColors(){const dark=document.body.classList.contains('dark');return{text:dark?'#a5c0c1':'#617982',grid:dark?'#24434b':'#e7efef',border:dark?'#34525a':'#dce8e8',bg:'transparent'}}
-function uiFontScale(){return settings.font==='xlarge'?1.48:settings.font==='large'?1.36:1.24}
+function uiFontScale(){return settings.font==='xlarge'?1.38:settings.font==='large'?1.24:1.1}
 function chartOptions(){
   const c=themeColors();
   return{autoSize:true,layout:{background:{type:'solid',color:c.bg},textColor:c.text,fontSize:Math.round(13*uiFontScale()),fontFamily:'-apple-system,BlinkMacSystemFont,"Noto Sans TC","Microsoft JhengHei",sans-serif'},

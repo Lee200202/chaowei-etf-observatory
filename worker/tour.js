@@ -43,13 +43,17 @@ function showTourStep(i){
   window.chaoweiTourTarget?.(target);
   $('tourCount').textContent=(i+1)+' / '+TOUR_STEPS.length;$('tourTitle').textContent=title;$('tourText').textContent=text;
   $('tourPrev').disabled=i===0;$('tourNext').textContent=i===TOUR_STEPS.length-1?'開始使用':'下一步';
-  if(target){
+  const bring=el=>{
     // Tall cards are aligned to their top edge (below the pinned summary bar); short ones are centred.
-    const r=target.getBoundingClientRect(),bar=$('siteHeader').getBoundingClientRect().height+24;
+    const r=el.getBoundingClientRect(),bar=$('siteHeader').getBoundingClientRect().height+24;
     const y=r.height>innerHeight*.6?r.top+scrollY-bar:r.top+scrollY-(innerHeight-r.height)/2;
     window.scrollTo({top:Math.max(0,sel==='.toolbar'?r.top+scrollY-120:y),behavior:'instant'});
-  }
+  };
+  if(target)bring(target);
   requestAnimationFrame(placeTour);$('tourNext').focus({preventScroll:true});
+  // Opening a step's panel can close or fill other panels a moment later (accordions, lazy charts), which moves
+  // the target without any scroll event. Follow it for a short while so the highlight never drifts away.
+  let last='',n=0;const follow=()=>{if(tourIndex!==i||++n>60)return;const el=document.querySelector(sel);if(el){const r=el.getBoundingClientRect(),key=Math.round(r.top)+':'+Math.round(r.height);if(last&&key!==last){bring(el);placeTour()}last=key}setTimeout(follow,50)};setTimeout(follow,50);
 }
 function startTour(){window.chaoweiBeginTour?.();closeDisplay?.();closeSearch?.();closeAccount?.();tourEls().classList.remove('hidden');document.body.classList.add('touring');showTourStep(0)}
 function endTour(){

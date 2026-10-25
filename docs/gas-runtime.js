@@ -560,7 +560,7 @@ function technical(all){
 
 /* ---------- Chart ---------- */
 function themeColors(){const dark=document.body.classList.contains('dark');return{text:dark?'#a5c0c1':'#617982',grid:dark?'#24434b':'#e7efef',border:dark?'#34525a':'#dce8e8',bg:'transparent'}}
-function uiFontScale(){return settings.font==='xlarge'?1.48:settings.font==='large'?1.36:1.24}
+function uiFontScale(){return settings.font==='xlarge'?1.38:settings.font==='large'?1.24:1.1}
 function chartOptions(){
   const c=themeColors();
   return{autoSize:true,layout:{background:{type:'solid',color:c.bg},textColor:c.text,fontSize:Math.round(13*uiFontScale()),fontFamily:'-apple-system,BlinkMacSystemFont,"Noto Sans TC","Microsoft JhengHei",sans-serif'},
@@ -1202,8 +1202,16 @@ function chipChart({title,unit,width,dates,kind,series,line,right,note,bands=[],
       const rp=right.data.map((v,i)=>Number.isFinite(v)?`${x(i)},${ry(v)}`:null).filter(Boolean);el('polyline',{points:rp.join(' '),fill:'none',stroke:right.color,'stroke-width':1.6,'stroke-dasharray':'5 4'});
       for(const v of [rh,rl]){const t=el('text',{x:W-R+6,y:ry(v)+4,class:'chip-axis'});t.textContent=fmt(v,v>=100?0:1)}}}
   }
-  // Date labels: first, middle, last.
-  for(const i of [...new Set([0,Math.floor((n-1)/2),n-1])]){const t=el('text',{x:x(i),y:H-6,'text-anchor':i===0?'start':i===n-1?'end':'middle',class:'chip-axis'});t.textContent=n>260?dates[i].slice(0,7):dates[i].slice(5)}
+  // Month labels at the first data point of each month (every 2nd, 3rd… month when space is short); the year is
+  // added on January and on the first label. A short tick marks every month.
+  const starts=[];dates.forEach((d,i)=>{if(i===0||d.slice(0,7)!==dates[i-1].slice(0,7))starts.push(i)});
+  // A partial first month (data starting near month end) would crowd the next label; label from the next month.
+  const labelled=starts.length>1&&x(starts[1])-x(starts[0])<48?starts.slice(1):starts;
+  const stride=Math.max(1,Math.ceil(labelled.length*46/Math.max(1,W-L-R)));let shown=0;
+  for(const i of starts)el('line',{x1:x(i),x2:x(i),y1:H-B,y2:H-B+4,stroke:'var(--muted)',opacity:.5});
+  labelled.forEach((i,k)=>{if(k%stride)return;
+    const m=Number(dates[i].slice(5,7)),t=el('text',{x:x(i),y:H-6,'text-anchor':i===0?'start':'middle',class:'chip-axis'});
+    t.textContent=!shown||m===1?dates[i].slice(0,4)+'/'+m:m+'月';shown++});
   const guide=el('line',{x1:0,x2:0,y1:T,y2:H-B,stroke:'var(--muted)','stroke-width':1,opacity:0});
   wrap.append(svg);
   const legend=document.createElement('p');legend.className='chip-legend';
@@ -2262,13 +2270,17 @@ function showTourStep(i){
   window.chaoweiTourTarget?.(target);
   $('tourCount').textContent=(i+1)+' / '+TOUR_STEPS.length;$('tourTitle').textContent=title;$('tourText').textContent=text;
   $('tourPrev').disabled=i===0;$('tourNext').textContent=i===TOUR_STEPS.length-1?'開始使用':'下一步';
-  if(target){
+  const bring=el=>{
     // Tall cards are aligned to their top edge (below the pinned summary bar); short ones are centred.
-    const r=target.getBoundingClientRect(),bar=$('siteHeader').getBoundingClientRect().height+24;
+    const r=el.getBoundingClientRect(),bar=$('siteHeader').getBoundingClientRect().height+24;
     const y=r.height>innerHeight*.6?r.top+scrollY-bar:r.top+scrollY-(innerHeight-r.height)/2;
     window.scrollTo({top:Math.max(0,sel==='.toolbar'?r.top+scrollY-120:y),behavior:'instant'});
-  }
+  };
+  if(target)bring(target);
   requestAnimationFrame(placeTour);$('tourNext').focus({preventScroll:true});
+  // Opening a step's panel can close or fill other panels a moment later (accordions, lazy charts), which moves
+  // the target without any scroll event. Follow it for a short while so the highlight never drifts away.
+  let last='',n=0;const follow=()=>{if(tourIndex!==i||++n>60)return;const el=document.querySelector(sel);if(el){const r=el.getBoundingClientRect(),key=Math.round(r.top)+':'+Math.round(r.height);if(last&&key!==last){bring(el);placeTour()}last=key}setTimeout(follow,50)};setTimeout(follow,50);
 }
 function startTour(){window.chaoweiBeginTour?.();closeDisplay?.();closeSearch?.();closeAccount?.();tourEls().classList.remove('hidden');document.body.classList.add('touring');showTourStep(0)}
 function endTour(){
@@ -3477,6 +3489,18 @@ const StrategyBoard=(()=>{
  const render=renderBacktest;renderBacktest=function(...a){const out=render(...a);refresh();return out};refresh();
 })();
 
+/* Layout preference, kept on this device only: 「電腦版」 makes a phone render the full desktop layout (as a
+   1280px-wide page it can zoom), and on a computer a button opens the site in a phone-sized window, where the
+   real mobile layout applies (it follows the window width, so a narrow column inside this page would not). */
+(()=>{
+ const meta=document.querySelector('meta[name=viewport]'),narrow=matchMedia('(max-width: 760px)');
+ settings.layoutMode=settings.layoutMode==='desktop'?'desktop':'auto';
+ const apply=()=>{meta.setAttribute('content',settings.layoutMode==='desktop'?'width=1280':'width=device-width,initial-scale=1');$('layoutMode').value=settings.layoutMode};
+ $('layoutMode').addEventListener('change',e=>{settings.layoutMode=e.target.value==='desktop'?'desktop':'auto';save();apply()});
+ const phoneButton=()=>{$('openPhoneView').hidden=narrow.matches||settings.layoutMode==='desktop'&&screen.width<760};
+ $('openPhoneView').addEventListener('click',()=>window.open(location.href,'chaoweiPhoneView','width=400,height=860'));
+ narrow.addEventListener('change',phoneButton);apply();phoneButton();
+})();
 /* Shared disclosure and FAQ markup. No financial settings are changed here. */
 (()=>{
  const marketHeading=$('market').querySelector('h3');if(marketHeading){marketHeading.textContent='觀測因子';marketHeading.previousElementSibling?.remove()}

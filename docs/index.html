@@ -365,6 +365,11 @@ body:not(.member) .wave-pin-panel.member-only{max-height:220px;min-height:180px}
 .chart{position:relative}.measure-overlay{position:absolute;inset:0;z-index:5;pointer-events:none;width:100%;height:100%;overflow:hidden}.measure-surface{position:absolute;inset:0 72px 0 0;z-index:7;cursor:crosshair;touch-action:none;user-select:none}
 .measure-panel{background:var(--mist);border:1px solid var(--line);border-radius:26px;padding:18px;margin:18px 0}.measure-panel h4{margin:0;font-size:calc((19px) * var(--text-scale,1))}.measure-panel .kicker{font-size:calc((13px) * var(--text-scale,1));margin:0 0 5px}.measure-panel details{margin:12px 0;border-top:1px solid var(--line);padding-top:12px}.measure-panel summary{cursor:pointer;font-size:calc((13px) * var(--text-scale,1));font-weight:750}.measure-help ol{font-size:calc((13px) * var(--text-scale,1));line-height:1.8;padding-left:22px}.measure-inputs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:12px 0}.measure-inputs label{display:grid;gap:6px;font-size:calc((13px) * var(--text-scale,1));color:var(--muted)}.measure-inputs input{width:100%;min-width:0;background:var(--paper);color:var(--ink);border:1px solid var(--line);border-radius:999px;padding:10px;font:inherit;min-height:42px}.measure-inputs input:read-only{opacity:.65}.measure-inputs select{width:100%;min-width:0}.measure-reading{padding:14px 0;min-height:72px}.measure-reading strong{font-size:calc((24px) * var(--text-scale,1));letter-spacing:-.04em}.measure-reading p{margin:5px 0}.measure-actions{display:flex;gap:8px;flex-wrap:wrap}.measure-row{display:flex;gap:7px;align-items:center;flex-wrap:wrap;border-top:1px solid var(--line);padding:10px 0;font-size:calc((13px) * var(--text-scale,1))}.measure-row span{flex:1;min-width:180px}.measure-panel button:disabled{opacity:.45}
 @media(max-width:760px){.measure-inputs{grid-template-columns:repeat(2,minmax(0,1fr))}.measure-panel .research-head{align-items:start;gap:8px;flex-wrap:wrap}}
+/* Chart text is set with the text scale already applied, so the build's 13px floor does not enlarge axes. */
+.chip-axis,.chip-band{font-size:calc(11px * var(--text-scale,1))}
+.chip-tip{font-size:calc(12px * var(--text-scale,1))}
+.chip-legend,.chip-trend-head span{font-size:calc(11px * var(--text-scale,1))}
+.chip-trend-head strong{font-size:calc(14px * var(--text-scale,1))}
 
 .topbar nav .nav-label,.brand-mark,.logo,.factor-icon,.launch-icon,.hero-art,.tile-wave,.tile-bars,.tile-ring,.tile-orbit{display:none!important}.topbar nav .nav-icon{display:block!important;margin:0}.topbar nav>.pill{display:grid;place-items:center;width:44px!important;min-width:44px!important;height:44px;padding:10px!important}
 .account-dialog{max-height:calc(100dvh - 32px);overflow:auto;padding-top:52px}.account-dialog h2{margin:10px 0 22px;font-size:calc((30px) * var(--text-scale,1))}.account-tabs{margin:0 0 20px}.account-tabs button[aria-selected=true]{background:var(--paper);color:var(--ink);box-shadow:0 2px 8px #24494f20}.account-appearance{display:grid;gap:13px}.account-appearance h3{font-size:calc((18px) * var(--text-scale,1));margin:0 0 3px}.account-appearance .label{margin:0}.account-appearance .usage-opt{font-size:calc((13px) * var(--text-scale,1))}.account-appearance select{width:100%}.account-appearance .wide{width:100%}.account-appearance .small{margin:0}.account-dialog .close-account{min-height:38px;padding:7px 13px}
@@ -377,7 +382,7 @@ body:not(.member) .wave-pin-panel.member-only{max-height:220px;min-height:180px}
 .factor-plain,.factor-detail-toggle{display:none}.basic-study .factor-plain,.basic-study .factor-detail-toggle{display:block}.basic-study .factor-detail{display:none}.basic-study .factor.details-open .factor-detail{display:block}.basic-study .factor.details-open .factor-plain{display:none}.factor-detail-toggle{margin-top:10px!important;font-size:calc((13px) * var(--text-scale,1));min-height:32px}.basic-study #raw,.basic-study #combinedExtra{display:none}.direction-action:before{content:'';display:inline-block;width:7px;height:7px;border-radius:50%;background:currentColor;margin-right:7px;vertical-align:1px}.viewport-tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 0 12px}.viewport-tools .small{flex:1;min-width:200px}.cache-note{margin:4px 0 0;font-size:calc((13px) * var(--text-scale,1))}.tour-card{max-height:calc(100vh - 24px);overflow:auto}.tour-spot{pointer-events:none}
 @media(max-width:760px){.hero-copy{padding:36px 24px}.story-tile{min-height:170px!important}.topbar nav{gap:3px}.topbar nav>.pill,.display-wrap>.pill{min-width:40px;padding:9px 7px;font-size:calc((13px) * var(--text-scale,1))}.brand{font-size:calc((19px) * var(--text-scale,1))}.study-mode-bar{gap:7px}.study-mode-bar .segment{flex:1}.study-mode-bar .segment button{padding:8px 10px}.study-drawer>summary{padding:15px 18px}.hero h1{font-size:calc((44px) * var(--text-scale,1))}.water-copy .factor-direction{max-width:100%;font-size:calc((13px) * var(--text-scale,1))}.factor-direction{font-size:calc((13px) * var(--text-scale,1))}}
 
-body{--text-scale:1.24;font-size:calc(16px * var(--text-scale));line-height:1.55}body.large{--text-scale:1.36}body.xlarge{--text-scale:1.48}
+body{--text-scale:1.1;font-size:calc(16px * var(--text-scale));line-height:1.55}body.large{--text-scale:1.24}body.xlarge{--text-scale:1.38}
 .hero h1{font-size:calc((clamp(36px,4vw,54px)) * var(--text-scale,1));letter-spacing:-.045em;line-height:1.18}.story-heading h2{font-size:calc((clamp(36px,4.4vw,56px)) * var(--text-scale,1));line-height:1.2;letter-spacing:-.045em}.section-heading h2,.method-intro h2,.member-story h2{font-size:calc((clamp(30px,3.5vw,44px)) * var(--text-scale,1));line-height:1.25;letter-spacing:-.035em}
 .chart-card .card-heading h3,.factor-card .card-heading h3,.weights-card .card-heading h3,.backtest-card .card-heading h3{font-size:calc((24px) * var(--text-scale,1));line-height:1.35}.grade{font-size:calc((clamp(48px,5vw,64px)) * var(--text-scale,1));line-height:1.15}.grade small{font-size:calc((19px) * var(--text-scale,1))}.price{font-size:calc((clamp(30px,3vw,42px)) * var(--text-scale,1))}.factor strong{font-size:calc((30px) * var(--text-scale,1))}.account-dialog h2{font-size:calc((27px) * var(--text-scale,1));line-height:1.35}
 .small,.sidebar-note,.factor p,footer,.chart-legend,.osc-legend,.cache-note{line-height:1.65}.controls label,.label,.weight label,.weight output{line-height:1.45}.topbar .brand{font-size:calc((21px) * var(--text-scale,1))}.topbar .brand small{font-size:calc((13px) * var(--text-scale,1))}.toolbar h3{font-size:calc((23px) * var(--text-scale,1))}.pill,.action{line-height:1.4}.toolbar-stats b,.toolbar-stats strong{line-height:1.3}.segment button{white-space:nowrap}.account-dialog .segment{flex-wrap:wrap}.factor-direction{white-space:normal;line-height:1.45}
@@ -450,6 +455,21 @@ svg text{font-size:calc(12px * var(--text-scale,1))}.measure-overlay text{font-s
 @keyframes ta-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
 .motion-paused .tranche-art circle{animation-play-state:paused}
 @media (prefers-reduced-motion: reduce){.tranche-art circle{animation:none}}
+/* Home feature cards: on wide screens the first two cards sit side by side with the image beside the text.
+   A square image (aspect-ratio 1 at full card height) was wider than its column on the narrower second card
+   and covered the text; the image now fills only its own column and is cropped to fit. */
+@media(min-width:1001px){
+ .feature-grid>.feature-entry:nth-child(-n+2) figure{aspect-ratio:auto!important;width:100%;min-width:0;height:100%;min-height:300px}
+ .feature-grid>.feature-entry:nth-child(-n+2) img{height:100%;object-fit:cover}
+ .feature-grid>.feature-entry:nth-child(-n+2)>div{min-width:0}
+}
+@media(max-width:600px){#homePage .hero-copy{padding-bottom:76px}}
+/* Method page carousel spans the whole dark panel: cards start at the panel's inner edge and slide out under its
+   rounded edge instead of being centred in a narrower strip with dark gaps on both sides. */
+#guidePage .story-rail-head,#guidePage .story-progress{max-width:none}
+#guidePage .story-rail{--edge:32px;--rail-card-width:min(560px,74%);max-width:none;width:auto;margin-inline:calc(var(--edge) * -1);padding:0 var(--edge) 10px;scroll-padding-inline:var(--edge)}
+#guidePage .story-tile{flex-basis:var(--rail-card-width);scroll-snap-align:start}
+@media(max-width:700px){#guidePage .story-rail{--edge:20px;--rail-card-width:84%}}
 </style>
 </head>
 <body>
@@ -467,7 +487,7 @@ svg text{font-size:calc(12px * var(--text-scale,1))}.measure-overlay text{font-s
       <section class="story-stage" aria-labelledby="storyTitle"><div class="story-heading reveal"><p class="kicker">A CLEARER WAY TO READ THE MARKET</p><span class="story-index">02 / 水位的三個視角</span><h2 id="storyTitle">看價格，<br>也看它<span>站在哪裡。</span></h2><p>一個分數不能替你做決定。它能先回答：現在離過去的低點與高點有多遠？</p></div><div class="story-rail-head"><span>左右滑動，認識觀測方式</span><div><button class="pill story-arrow" type="button" data-rail="storyRail" data-dir="-1" aria-label="上一張觀測卡">上張</button><button class="pill story-arrow" type="button" data-rail="storyRail" data-dir="1" aria-label="下一張觀測卡">下張</button></div></div><div class="story-rail" id="storyRail" tabindex="0" aria-label="水位觀測方式"><article class="story-tile"><span>01 / PRICE</span><div class="tile-wave" aria-hidden="true"></div><h3>價格水位</h3><p>用歷史區間量出目前位置；低水位得分較高。</p></article><article class="story-tile"><span>02 / TIME</span><div class="tile-bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><h3>時間視窗</h3><p>從 60 到 2400 個交易日，長短由你選擇。</p></article><article class="story-tile"><span>03 / CONTEXT</span><div class="tile-ring" aria-hidden="true"></div><h3>市場背景</h3><p>大盤、量能、原油與匯率，幫你看得更完整。</p></article></div></section>
       <section class="member-story reveal" aria-labelledby="memberStoryTitle"><div><p class="kicker teal">MAKE IT YOURS</p><h2 id="memberStoryTitle">你的觀測方式，<br>跟著你走。</h2><p>登入後可標記峰谷、研究波段與白板配置；追蹤、權重及研究草稿可跨裝置同步。</p><button class="action" type="button" data-open-account>使用 Google 登入 <span aria-hidden="true"></span></button></div><div class="member-story-visual" aria-hidden="true"><span>0050 · 追蹤中</span><strong>你的水位儀表板</strong><div><i></i><i></i><i></i></div><small>WAVES / CHIPS / WEIGHTS</small></div></section>
       
-      <div class="account-overlay hidden" id="accountOverlay" role="dialog" aria-modal="true" aria-labelledby="accountTitle"><div class="account-dialog card"><button class="pill close-account" id="closeAccount" type="button" aria-label="關閉帳號與外觀">關閉</button><p class="kicker teal">YOUR OBSERVATORY</p><h2 id="accountTitle">我的帳號與外觀</h2><div class="segment account-tabs" role="tablist" aria-label="帳號與偏好"><button type="button" role="tab" id="accountProfileTab" data-account-pane="profile" aria-selected="true" aria-controls="accountProfilePane">我的帳號</button><button type="button" role="tab" id="accountAppearanceTab" data-account-pane="appearance" aria-selected="false" aria-controls="accountAppearancePane" tabindex="-1">外觀與偏好</button></div><section id="accountProfilePane" role="tabpanel" aria-labelledby="accountProfileTab"><p>Google 登入可解鎖圖釘、波段、籌碼與白板回測，並同步追蹤 ETF、權重及外觀；行情與基本水位可直接看。</p><div class="account-status" id="accountStatus" role="status">正在檢查登入服務…</div><button class="action" id="googleSignIn" type="button">使用 Google 登入</button><button class="pill hidden" id="googleSignOut" type="button">登出</button><a class="small hidden" id="accountMainLink" href="https://lee200202.github.io/chaowei-etf-observatory/">前往主網站登入 </a><div class="account-plans hidden" id="accountPlans"><label for="planName">儲存目前權重方案</label><div><input id="planName" maxlength="20" placeholder="例如：保守進場"><button class="pill" id="savePlan" type="button">儲存方案</button></div><label for="planList">選擇已存方案</label><div><select id="planList"><option value="">選擇方案</option></select><button class="pill" id="applyPlan" type="button">套用</button></div></div><p class="small">未登入時的偏好仍保存在這台裝置；登入後會與你的帳號同步。</p></section><section id="accountAppearancePane" class="hidden" role="tabpanel" aria-labelledby="accountAppearanceTab"><div class="account-appearance" id="displayMenu" role="region" aria-label="外觀與偏好"><h3>外觀與偏好</h3><label class="label" for="fontSize">字體大小</label><select id="fontSize"><option value="normal">標準</option><option value="large">大</option><option value="xlarge">特大</option></select><label class="label">深淺色</label><button class="pill wide" id="theme" type="button">切換深淺色</button><button class="pill wide" id="startTour" type="button">使用教學</button><label class="bt-check usage-opt"><input type="checkbox" id="usageOptIn" checked>提供匿名使用統計</label><p class="small" id="displaySyncNote">外觀與權重目前存在此瀏覽器；登入連線完成後可跨裝置同步。</p></div></section></div></div>
+      <div class="account-overlay hidden" id="accountOverlay" role="dialog" aria-modal="true" aria-labelledby="accountTitle"><div class="account-dialog card"><button class="pill close-account" id="closeAccount" type="button" aria-label="關閉帳號與外觀">關閉</button><p class="kicker teal">YOUR OBSERVATORY</p><h2 id="accountTitle">我的帳號與外觀</h2><div class="segment account-tabs" role="tablist" aria-label="帳號與偏好"><button type="button" role="tab" id="accountProfileTab" data-account-pane="profile" aria-selected="true" aria-controls="accountProfilePane">我的帳號</button><button type="button" role="tab" id="accountAppearanceTab" data-account-pane="appearance" aria-selected="false" aria-controls="accountAppearancePane" tabindex="-1">外觀與偏好</button></div><section id="accountProfilePane" role="tabpanel" aria-labelledby="accountProfileTab"><p>Google 登入可解鎖圖釘、波段、籌碼與白板回測，並同步追蹤 ETF、權重及外觀；行情與基本水位可直接看。</p><div class="account-status" id="accountStatus" role="status">正在檢查登入服務…</div><button class="action" id="googleSignIn" type="button">使用 Google 登入</button><button class="pill hidden" id="googleSignOut" type="button">登出</button><a class="small hidden" id="accountMainLink" href="https://lee200202.github.io/chaowei-etf-observatory/">前往主網站登入 </a><div class="account-plans hidden" id="accountPlans"><label for="planName">儲存目前權重方案</label><div><input id="planName" maxlength="20" placeholder="例如：保守進場"><button class="pill" id="savePlan" type="button">儲存方案</button></div><label for="planList">選擇已存方案</label><div><select id="planList"><option value="">選擇方案</option></select><button class="pill" id="applyPlan" type="button">套用</button></div></div><p class="small">未登入時的偏好仍保存在這台裝置；登入後會與你的帳號同步。</p></section><section id="accountAppearancePane" class="hidden" role="tabpanel" aria-labelledby="accountAppearanceTab"><div class="account-appearance" id="displayMenu" role="region" aria-label="外觀與偏好"><h3>外觀與偏好</h3><label class="label" for="fontSize">字體大小</label><select id="fontSize"><option value="normal">標準</option><option value="large">大</option><option value="xlarge">特大</option></select><label class="label">深淺色</label><button class="pill wide" id="theme" type="button">切換深淺色</button><label class="label" for="layoutMode">版面</label><select id="layoutMode"><option value="auto">自動（依螢幕大小）</option><option value="desktop">電腦版（手機也顯示完整版面）</option></select><button class="pill wide" id="openPhoneView" type="button">以手機尺寸開啟新視窗</button><button class="pill wide" id="startTour" type="button">使用教學</button><label class="bt-check usage-opt"><input type="checkbox" id="usageOptIn" checked>提供匿名使用統計</label><p class="small" id="displaySyncNote">外觀與權重目前存在此瀏覽器；登入連線完成後可跨裝置同步。</p></div></section></div></div>
       <section class="section" id="explore">
         <div class="section-heading"><div><p class="kicker teal">EXPLORE</p><h2>選一檔 ETF，讀懂水位。</h2><p class="sub" id="catalogNote">讀取證交所 ETF 名錄中；資料以官方已公布日 K 為準。</p></div></div>
         <div class="search-launch card" id="openSearch" role="search"><span class="launch-icon" aria-hidden="true"></span><input id="homeSearch" type="search" placeholder="搜尋名稱、代號或追蹤指數，例如 009816、台灣50、高股息" autocomplete="off" aria-label="搜尋 ETF" aria-haspopup="dialog"><kbd>/</kbd></div><div class="quick inline" id="quickInline" aria-label="我的候選 ETF"></div>
@@ -1083,7 +1103,7 @@ function technical(all){
 
 /* ---------- Chart ---------- */
 function themeColors(){const dark=document.body.classList.contains('dark');return{text:dark?'#a5c0c1':'#617982',grid:dark?'#24434b':'#e7efef',border:dark?'#34525a':'#dce8e8',bg:'transparent'}}
-function uiFontScale(){return settings.font==='xlarge'?1.48:settings.font==='large'?1.36:1.24}
+function uiFontScale(){return settings.font==='xlarge'?1.38:settings.font==='large'?1.24:1.1}
 function chartOptions(){
   const c=themeColors();
   return{autoSize:true,layout:{background:{type:'solid',color:c.bg},textColor:c.text,fontSize:Math.round(13*uiFontScale()),fontFamily:'-apple-system,BlinkMacSystemFont,"Noto Sans TC","Microsoft JhengHei",sans-serif'},
@@ -1725,8 +1745,16 @@ function chipChart({title,unit,width,dates,kind,series,line,right,note,bands=[],
       const rp=right.data.map((v,i)=>Number.isFinite(v)?`${x(i)},${ry(v)}`:null).filter(Boolean);el('polyline',{points:rp.join(' '),fill:'none',stroke:right.color,'stroke-width':1.6,'stroke-dasharray':'5 4'});
       for(const v of [rh,rl]){const t=el('text',{x:W-R+6,y:ry(v)+4,class:'chip-axis'});t.textContent=fmt(v,v>=100?0:1)}}}
   }
-  // Date labels: first, middle, last.
-  for(const i of [...new Set([0,Math.floor((n-1)/2),n-1])]){const t=el('text',{x:x(i),y:H-6,'text-anchor':i===0?'start':i===n-1?'end':'middle',class:'chip-axis'});t.textContent=n>260?dates[i].slice(0,7):dates[i].slice(5)}
+  // Month labels at the first data point of each month (every 2nd, 3rd… month when space is short); the year is
+  // added on January and on the first label. A short tick marks every month.
+  const starts=[];dates.forEach((d,i)=>{if(i===0||d.slice(0,7)!==dates[i-1].slice(0,7))starts.push(i)});
+  // A partial first month (data starting near month end) would crowd the next label; label from the next month.
+  const labelled=starts.length>1&&x(starts[1])-x(starts[0])<48?starts.slice(1):starts;
+  const stride=Math.max(1,Math.ceil(labelled.length*46/Math.max(1,W-L-R)));let shown=0;
+  for(const i of starts)el('line',{x1:x(i),x2:x(i),y1:H-B,y2:H-B+4,stroke:'var(--muted)',opacity:.5});
+  labelled.forEach((i,k)=>{if(k%stride)return;
+    const m=Number(dates[i].slice(5,7)),t=el('text',{x:x(i),y:H-6,'text-anchor':i===0?'start':'middle',class:'chip-axis'});
+    t.textContent=!shown||m===1?dates[i].slice(0,4)+'/'+m:m+'月';shown++});
   const guide=el('line',{x1:0,x2:0,y1:T,y2:H-B,stroke:'var(--muted)','stroke-width':1,opacity:0});
   wrap.append(svg);
   const legend=document.createElement('p');legend.className='chip-legend';
@@ -2785,13 +2813,17 @@ function showTourStep(i){
   window.chaoweiTourTarget?.(target);
   $('tourCount').textContent=(i+1)+' / '+TOUR_STEPS.length;$('tourTitle').textContent=title;$('tourText').textContent=text;
   $('tourPrev').disabled=i===0;$('tourNext').textContent=i===TOUR_STEPS.length-1?'開始使用':'下一步';
-  if(target){
+  const bring=el=>{
     // Tall cards are aligned to their top edge (below the pinned summary bar); short ones are centred.
-    const r=target.getBoundingClientRect(),bar=$('siteHeader').getBoundingClientRect().height+24;
+    const r=el.getBoundingClientRect(),bar=$('siteHeader').getBoundingClientRect().height+24;
     const y=r.height>innerHeight*.6?r.top+scrollY-bar:r.top+scrollY-(innerHeight-r.height)/2;
     window.scrollTo({top:Math.max(0,sel==='.toolbar'?r.top+scrollY-120:y),behavior:'instant'});
-  }
+  };
+  if(target)bring(target);
   requestAnimationFrame(placeTour);$('tourNext').focus({preventScroll:true});
+  // Opening a step's panel can close or fill other panels a moment later (accordions, lazy charts), which moves
+  // the target without any scroll event. Follow it for a short while so the highlight never drifts away.
+  let last='',n=0;const follow=()=>{if(tourIndex!==i||++n>60)return;const el=document.querySelector(sel);if(el){const r=el.getBoundingClientRect(),key=Math.round(r.top)+':'+Math.round(r.height);if(last&&key!==last){bring(el);placeTour()}last=key}setTimeout(follow,50)};setTimeout(follow,50);
 }
 function startTour(){window.chaoweiBeginTour?.();closeDisplay?.();closeSearch?.();closeAccount?.();tourEls().classList.remove('hidden');document.body.classList.add('touring');showTourStep(0)}
 function endTour(){
@@ -4000,6 +4032,18 @@ const StrategyBoard=(()=>{
  const render=renderBacktest;renderBacktest=function(...a){const out=render(...a);refresh();return out};refresh();
 })();
 
+/* Layout preference, kept on this device only: 「電腦版」 makes a phone render the full desktop layout (as a
+   1280px-wide page it can zoom), and on a computer a button opens the site in a phone-sized window, where the
+   real mobile layout applies (it follows the window width, so a narrow column inside this page would not). */
+(()=>{
+ const meta=document.querySelector('meta[name=viewport]'),narrow=matchMedia('(max-width: 760px)');
+ settings.layoutMode=settings.layoutMode==='desktop'?'desktop':'auto';
+ const apply=()=>{meta.setAttribute('content',settings.layoutMode==='desktop'?'width=1280':'width=device-width,initial-scale=1');$('layoutMode').value=settings.layoutMode};
+ $('layoutMode').addEventListener('change',e=>{settings.layoutMode=e.target.value==='desktop'?'desktop':'auto';save();apply()});
+ const phoneButton=()=>{$('openPhoneView').hidden=narrow.matches||settings.layoutMode==='desktop'&&screen.width<760};
+ $('openPhoneView').addEventListener('click',()=>window.open(location.href,'chaoweiPhoneView','width=400,height=860'));
+ narrow.addEventListener('change',phoneButton);apply();phoneButton();
+})();
 /* Shared disclosure and FAQ markup. No financial settings are changed here. */
 (()=>{
  const marketHeading=$('market').querySelector('h3');if(marketHeading){marketHeading.textContent='觀測因子';marketHeading.previousElementSibling?.remove()}

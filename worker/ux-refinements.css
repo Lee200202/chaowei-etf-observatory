@@ -19,3 +19,18 @@
 @keyframes ta-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
 .motion-paused .tranche-art circle{animation-play-state:paused}
 @media (prefers-reduced-motion: reduce){.tranche-art circle{animation:none}}
+/* Home feature cards: on wide screens the first two cards sit side by side with the image beside the text.
+   A square image (aspect-ratio 1 at full card height) was wider than its column on the narrower second card
+   and covered the text; the image now fills only its own column and is cropped to fit. */
+@media(min-width:1001px){
+ .feature-grid>.feature-entry:nth-child(-n+2) figure{aspect-ratio:auto!important;width:100%;min-width:0;height:100%;min-height:300px}
+ .feature-grid>.feature-entry:nth-child(-n+2) img{height:100%;object-fit:cover}
+ .feature-grid>.feature-entry:nth-child(-n+2)>div{min-width:0}
+}
+@media(max-width:600px){#homePage .hero-copy{padding-bottom:76px}}
+/* Method page carousel spans the whole dark panel: cards start at the panel's inner edge and slide out under its
+   rounded edge instead of being centred in a narrower strip with dark gaps on both sides. */
+#guidePage .story-rail-head,#guidePage .story-progress{max-width:none}
+#guidePage .story-rail{--edge:32px;--rail-card-width:min(560px,74%);max-width:none;width:auto;margin-inline:calc(var(--edge) * -1);padding:0 var(--edge) 10px;scroll-padding-inline:var(--edge)}
+#guidePage .story-tile{flex-basis:var(--rail-card-width);scroll-snap-align:start}
+@media(max-width:700px){#guidePage .story-rail{--edge:20px;--rail-card-width:84%}}
