@@ -71,3 +71,10 @@ body.editorial-site #top.shell{max-width:1440px;padding:0 40px;margin:auto}.edit
 .editorial-site #top :is(h1,h2,h3,h4),.editorial-site #top .member-story-visual strong{text-wrap:balance}
 .editorial-site #top .market-overview-stats small{white-space:nowrap}
 @media(max-width:960px){.market-overview{flex-wrap:wrap}.market-overview>div:first-child{flex:1 1 100%}}
+/* Taller trend plots: matrix cards scale to the 60-close range; market cards stretch their 30-point line. */
+.editorial-site #top .rd-matrix-spark{position:relative;padding-right:52px}.editorial-site #top .rd-matrix-spark svg{height:110px}.rd-spark-range{position:absolute;right:0;top:0;height:110px;display:flex;flex-direction:column;justify-content:space-between;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;text-align:right}.rd-ma-note{display:block;font-size:11px;color:var(--rd-amber);margin-top:4px}
+.editorial-site #top .rd-spark{height:120px;margin:14px 0 12px}.editorial-site #top .rd-spark svg{height:120px;width:100%;display:block}
+@media(max-width:700px){.editorial-site #top .rd-matrix-spark{padding-right:44px}.editorial-site #top .rd-matrix-spark svg,.rd-spark-range{height:96px}.editorial-site #top .rd-spark,.editorial-site #top .rd-spark svg{height:104px}}
+.rd-spark-range>span:first-child:before{content:'高 '}.rd-spark-range>span:last-child:before{content:'低 '}
+@media(max-width:700px){.editorial-site #top .rd-matrix-spark{padding-right:0}.rd-spark-range{position:static;height:auto;flex-direction:row-reverse;justify-content:space-between}.rd-ma-note{white-space:nowrap;font-size:10px}}
+@media(min-width:701px){.editorial-site #top .rd-matrix-spark{padding-right:66px}.rd-spark-range{white-space:nowrap}}
