@@ -111,7 +111,16 @@ const load=async code=>{const d=await hist(code);return{d,bars:d.rows.map(([date
   near(r.roic,Math.pow(sell.amount/buy.amount,365/days)-1,1e-6,'ROIC is the round trip annualised over its holding days');
   assert.ok(r.roic>r.xirr,'higher than the whole-pot XIRR');
 }
-console.log('Engine checks passed: hand cases, parking, dividends, XIRR, DCA identity, no look-ahead, accounting, auto N, monthly mode, reserve, fees, ROIC.');
+/* 13. Base position: with 3 equal parts the first part is bought on day one and never sold; the swing parts are C ÷ 3 each. */
+{
+  const ctx=E.prepare(synth,[]),p=E.PRESETS.find(x=>x.id==='drop20'),r=E.run(ctx,cfgOf(p,{capital:300000,parking:0,params:{...p.params,adds:2,core:true}}),0);
+  const buys=r.trades.filter(t=>t.type==='buy'),sells=r.trades.filter(t=>t.type==='sell');
+  assert.equal(buys[0].date,synth[0].date,'base bought on the first day');near(buys[0].amount,100000,0.01,'base is C ÷ 3');
+  for(const t of buys.slice(1))near(t.amount,100000,0.01,'each swing part is C ÷ 3');
+  const baseShares=buys[0].shares,sold=sells.reduce((s,t)=>s+t.shares,0),bought=buys.slice(1).reduce((s,t)=>s+t.shares,0);
+  assert.ok(sells.length>0,'the swing part was sold');near(sold,bought,1e-6,'only swing shares are sold');near(r.shares,baseShares,1e-6,'base shares kept');
+}
+console.log('Engine checks passed: hand cases, parking, dividends, XIRR, DCA identity, no look-ahead, accounting, auto N, monthly mode, reserve, fees, ROIC, base position.');
 
 /* Results table (5 years, C = 1.2M, one installment per month, parking 1.5 %, DRIP on). */
 const pct=v=>v==null?'—':(v*100).toFixed(1).padStart(6)+'%';

@@ -7,7 +7,7 @@
   for(const [id,title]of [['measurePanel','區間量測'],['chipCard','法人與融資'],['holderCard','大戶持有分布'],['waveStudy','波段研究'],['weights','權重設定']]){const node=$(id),d=document.createElement('details');d.className='study-drawer';d.id='drawer-'+id;const s=document.createElement('summary');s.textContent=title;node.before(d);d.append(s,node);drawers.push(d)}
   const pin=document.querySelector('.wave-pin-panel');if(pin){const d=document.createElement('details');d.className='study-drawer';d.innerHTML='<summary>研究圖釘</summary>';pin.before(d);d.append(pin);drawers.push(d)}
   let lastMode='';
-  function apply(){const basic=settings.studyMode!=='full';document.body.classList.toggle('basic-study',basic);mode.querySelectorAll('[data-study-mode]').forEach(b=>b.setAttribute('aria-pressed',String((b.dataset.studyMode==='basic')===basic)));if(lastMode!==settings.studyMode){drawers.forEach(d=>d.open=!basic);lastMode=settings.studyMode}if(basic)document.body.classList.add('novice');else applyUiMode()}
+  function apply(){const basic=settings.studyMode!=='full';document.body.classList.toggle('basic-study',basic);mode.querySelectorAll('[data-study-mode]').forEach(b=>b.setAttribute('aria-pressed',String((b.dataset.studyMode==='basic')===basic)));if(lastMode!==settings.studyMode){drawers.forEach(d=>d.open=!basic);lastMode=settings.studyMode}settings.uiMode=basic?'novice':'expert';document.body.classList.toggle('novice',basic)}
   mode.addEventListener('click',e=>{const b=e.target.closest('[data-study-mode]');if(b){settings.studyMode=b.dataset.studyMode;apply();save()}});
   const cards=[...$('factorRail').children].filter(el=>el.querySelector('.factor-direction'));
   function refreshMeta(card){const meta=card.querySelector('p[id$="Meta"]');if(!meta)return;const plain=card.querySelector('.factor-plain');plain.textContent=meta.textContent.split(' · ').slice(0,2).join(' · ')}
@@ -20,5 +20,5 @@
   window.addEventListener('hashchange',followHash);
   const oldTour=endTour;endTour=function(){oldTour();settings.quickTourDone=true;save();introState()};
   const oldProfile=window.chaoweiApplyProfile;window.chaoweiApplyProfile=p=>{oldProfile(p);settings.studyMode=settings.studyMode==='full'?'full':'basic';apply();introState();followHash()};
-  apply();introState();followHash();
+  window.addEventListener('chaowei-study-mode-changed',apply);$('btMode').hidden=true;apply();introState();followHash();
 })();

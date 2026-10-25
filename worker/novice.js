@@ -1,11 +1,10 @@
 /* ---------- Beginner / expert mode for the backtest ---------- */
-// Beginner mode hides the fine-tuning fields; the hidden values are pinned to the safe defaults
-// (one installment per month, water levels synced with the observation settings above).
-settings.uiMode=settings.uiMode==='expert'?'expert':'novice';
+// Display mode only changes disclosure. It never changes money, installments or reference settings.
+settings.uiMode=settings.studyMode==='full'?'expert':settings.studyMode==='basic'?'novice':settings.uiMode==='expert'?'expert':'novice';
 function applyUiMode(){
   const novice=settings.uiMode==='novice';document.body.classList.toggle('novice',novice);
   $('btMode').querySelectorAll('[data-mode]').forEach(b=>{const on=b.dataset.mode===settings.uiMode;b.classList.toggle('active',on);b.setAttribute('aria-pressed',String(on))});
-  if(novice&&(settings.bt.dcaPeriods!=='auto'||!settings.bt.sync)){settings.bt.dcaPeriods='auto';settings.bt.sync=true;save();btFillForm();if(btResult)btSchedule()}
+  settings.studyMode=novice?'basic':'full';window.dispatchEvent(new Event('chaowei-study-mode-changed'));
 }
 $('btMode').addEventListener('click',e=>{const t=e.target.closest('[data-mode]');if(!t)return;settings.uiMode=t.dataset.mode;save();applyUiMode()});
 applyUiMode();

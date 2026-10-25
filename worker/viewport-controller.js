@@ -6,7 +6,7 @@
   function refresh(){
     frame=0;if(!lwc?.data.length){bounds=null;clear();return}const ts=lwc.main.timeScale(),r=ts.getVisibleLogicalRange(),safe=ViewportMath.clamp(r,lwc.data.length);if(!safe)return;
     if(!guard&&(Math.abs(safe.from-r.from)>.01||Math.abs(safe.to-r.to)>.01)){guard=true;ts.setVisibleLogicalRange(safe);guard=false}
-    const daily=lwc.daily||bars;if(source!==daily){source=daily;ctx={n:daily.length,bars:daily,refCache:new Map()};key=''}
+    $('chart').dataset.fromIndex=safe.from;$('chart').dataset.toIndex=safe.to;$('chart').dataset.barCount=lwc.data.length;const daily=lwc.daily||bars;if(source!==daily){source=daily;ctx={n:daily.length,bars:daily,refCache:new Map()};key=''}
     const end=Math.max(0,Math.min(lwc.data.length-1,Math.floor(safe.to))),at=ViewportMath.anchor(daily,lwc.data,end),anchor=daily[at];if(!anchor)return;
     const next=[at,settings.window,settings.anchorMode,settings.anchorCount,settings.method,settings.showLevels].join('|');
     if(next!==key){key=next;clear();const ref=E.reference(ctx,settings.window,settings.anchorMode,settings.anchorCount),low=ref.lo[at],high=ref.hi[at];bounds=settings.showLevels&&Number.isFinite(low)&&Number.isFinite(high)&&high>low?{low,high}:null;
