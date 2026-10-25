@@ -39,3 +39,9 @@ ph8只換排版：`worker/redesign.css`／`redesign.js` 最後載入，把既有
 - 短標籤不得直排：白板調色盤五鈕 `nowrap`＋小內距；基礎／完整切換在手機獨占一列；標題用 `text-wrap:balance` 避免一兩字孤行。
 - 淺色卡上的狀態標籤不用深底灰字；選中膠囊用墨色底＋紙色字。
 - 走勢小圖縱軸只依自身價格區間（上下各留8%），不可為了容納遠方MA960而壓扁成平線；MA960在區間外時改文字「MA960 數值 在下方／上方」，並標出區間高低。市場卡30筆線高120px（手機104px），`preserveAspectRatio="none"`＋`vector-effect="non-scaling-stroke"`。
+
+## B8　全版邊界與截圖（2026-10-25）
+
+全版指填滿一致的內容容器，仍保留閱讀安全邊距。`#top > main` 不再重複加左右24px；main、header、route共享最大1320px。市場的外層 `#market` 不再加28px內距。研究桌左圖右資訊是刻意分欄；策略／回測工作台及曲線占完整一列，不把右側抽屜當作未鋪滿的缺陷。
+
+卡片共用SVG時，path、circle、rect的fill／stroke必須覆蓋每一種承載容器；否則圈形會退回黑色填滿。暫停動畫後，路徑須以完整狀態顯示，不能停在stroke-dashoffset的隱藏初始幀。

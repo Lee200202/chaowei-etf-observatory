@@ -82,3 +82,15 @@ body.editorial-site #top.shell{max-width:1440px;padding:0 40px;margin:auto}.edit
 .bt-fill-compare{margin:16px 0;padding:18px 20px;border:1px solid var(--line);border-radius:20px;background:var(--paper)}.bt-fill-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:4px 12px;margin-bottom:8px}.bt-fill-head .kicker{margin:0}.bt-fill-row{display:grid;grid-template-columns:minmax(0,15em) minmax(60px,1fr) 5.5em;align-items:center;gap:12px;padding:6px 0;font-size:14px}.bt-fill-row b{text-align:right;font-variant-numeric:tabular-nums}.bt-fill-bar{display:block;height:10px;border-radius:10px;background:var(--line);overflow:hidden}.bt-fill-bar>i{display:block;height:100%;border-radius:inherit}.bt-fill-bar .up-bg{background:var(--tw-rise)}.bt-fill-bar .down-bg{background:var(--tw-fall)}.bt-fill-compare>p{margin:10px 0 0}
 @media(max-width:700px){.bt-fill-row{grid-template-columns:1fr 5em;row-gap:4px}.bt-fill-row>span{grid-column:1/-1}}
 .bt-fill-gap{font-size:14px;font-variant-numeric:tabular-nums;padding:3px 10px;border-radius:999px;border:1px solid currentColor;white-space:nowrap}.bt-fill-sub{margin:0 0 8px}
+/* One content edge: the legacy main padding otherwise insets every route twice. */
+body.editorial-site #top>main{width:100%;max-width:1320px;padding:0;margin-inline:auto}
+body.editorial-site #top>#siteHeader{width:100%;max-width:1320px;margin-inline:auto}
+.editorial-site #top #market{width:100%;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none}
+/* A sidebar is a deliberate split view, while the workbench and its charts use the full row. */
+.editorial-site #top .research-workbench,.editorial-site #top .research-work-pane,.editorial-site #top .research-work-pane>.backtest-card{width:100%;max-width:none;min-width:0}
+/* The gallery uses the same concept figures as the doors; circles need an explicit fill. */
+.tool-preview-art circle{fill:none;stroke:currentColor;stroke-width:16;opacity:.15;transform-origin:center;animation:rd-ring 5s ease-in-out infinite}
+.tool-preview-art .rd-ring-b{opacity:.3;animation-delay:.5s}.tool-preview-art .rd-ring-c{opacity:.6;animation-delay:1s}
+.tool-preview-art .rd-gridline{stroke-width:1;opacity:.2}.tool-preview-art .rd-wire{stroke-dasharray:9 7;animation:rd-wire 6s linear infinite}
+.tool-preview-art .rd-leaf{animation:rd-page 8s ease-in-out infinite}.tool-preview-art .leaf-b{fill:currentColor;fill-opacity:.25;animation-delay:.6s}.tool-preview-art .leaf-c{fill:currentColor;fill-opacity:.6;animation-delay:1.2s}
+.editorial-site.motion-paused #top .rd-draw{animation:none;stroke-dashoffset:0}
