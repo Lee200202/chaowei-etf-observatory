@@ -44,3 +44,5 @@ Google 會員 ID token 先核對專案、issuer、期限，再透過 Firebase ac
 既有 test:upgrade、gas、market、engine照跑；正式Pages及原GAS版本需另記。三尺寸五頁截圖、七題FAQ、對話雙圖、空開關／Escape、追問、帶入白板、回饋與未登入／減少動畫分別驗收。實際瀏覽器、合成會員替身與實體裝置分列；不宣稱已測未持有的實體手機。
 
 官方技術依據：[Gemini generateContent](https://ai.google.dev/api/generate-content)、[Gemini 3.5 Flash-Lite](https://ai.google.dev/gemini-api/docs/models/gemini-3.5-flash-lite)、[Google Search grounding](https://ai.google.dev/gemini-api/docs/google-search)、[Firebase Auth REST](https://firebase.google.com/docs/reference/rest/auth#section-get-account-info)。
+
+整合檢查補正：GAS僅保留Store.doPost入口，aiChat／aiFeedback先分流至quantPost_，原匿名統計其餘照常；已測憑證不進統計。訓練工具使用trainingLab深連結以避免捲動被頁首hash覆蓋。
