@@ -1,5 +1,6 @@
 // Firebase configuration is a public web-app identifier, never a server secret.
 function installChaoweiIdentity(host){
+  window.chaoweiGetIdToken=()=>Promise.resolve(null);
   const $=id=>document.getElementById(id);
   const status=t=>{$('accountStatus').textContent=t};
   if(host==='apps-script'){
@@ -9,6 +10,7 @@ function installChaoweiIdentity(host){
   const config={apiKey:'AIzaSyBSMEMIDfBUSVSPwQUdbs6mEV-SXkBHbbs',authDomain:'chaowei-etf-observatory.firebaseapp.com',projectId:'chaowei-etf-observatory',appId:'1:342380543762:web:f27d15c89c70fe94b57dcb'};
   const base='https://www.gstatic.com/firebasejs/13.0.0/';
   let auth,db,user=null,api,plans=[],saveTimer=0,applying=false,ready=false;
+  window.chaoweiGetIdToken=()=>user?user.getIdToken():Promise.resolve(null);
   const retry=document.createElement('button');retry.type='button';retry.className='pill mini hidden';retry.id='retryCloudSync';retry.textContent='重新同步雲端';$('accountStatus').after(retry);
   retry.addEventListener('click',()=>write(getLocal()));
   const profileRef=()=>api.doc(db,'users',user.uid);

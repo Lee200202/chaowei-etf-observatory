@@ -4,6 +4,7 @@ const PAGES_BASE='__PAGES_BASE__';
 const ALLOWED=/^(etf-catalog\.json|data\/(brent|oil-spot|fx)\.json|data\/history\/(market|margin|holders|histock-bank|intraday-volume|dividends|radar|[0-9A-Z]{4,6})\.json|data\/chips\/[0-9A-Z]{4,6}\.json)$/;
 
 function doGet(e){
+  if(e?.parameter?.api==='ai-status')return ContentService.createTextOutput(JSON.stringify(quantAiStatus())).setMimeType(ContentService.MimeType.JSON);
   if(e&&e.parameter&&(e.parameter.api==='bank'||e.parameter.api==='holders')){
     let result;try{result=e.parameter.api==='bank'?getBankHistory():getHolderHistory(e.parameter.code)}catch(err){result={rows:[],error:String(err.message).slice(0,160)}}
     const cb=String(e.parameter.callback||'');

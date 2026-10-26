@@ -28,6 +28,7 @@ const clampNum=(v,lo,hi,d)=>{const n=Number(v);return Number.isFinite(n)?Math.ma
 /* Parameter fields per strategy: [key,label,type,extra,visible(params)]. */
 const GRADE_OPTS=[['5','5 分（區間最低處）'],['4','4 分以上'],['3','3 分以上']];
 const BT_SCHEMA={
+  chat_ladder:[['core','保留核心','num',{min:0,max:90,step:5,unit:'%'}],['parts','加碼池分批','num',{min:1,max:10,step:1,unit:'批'}],['drop','首次自高點下跌','num',{min:1,max:90,step:1,unit:'%'}],['step','之後每再跌','num',{min:1,max:50,step:1,unit:'%'}],['takeProfit','衛星獲利出場（0＝持有）','num',{min:0,max:300,step:1,unit:'%'}],['window','前期高點觀察窗','num',{min:20,max:2400,step:20,unit:'日'}]],
   trend_pullback_ma60:[['core','保留核心','num',{min:10,max:90,step:5,unit:'%'}],['parts','加碼池分批','num',{min:2,max:4,step:1,unit:'批'}],['bias','前日 MA20 負乖離至少','num',{min:0.5,max:20,step:0.5,unit:'%'}],['cooldown','加碼間隔','num',{min:1,max:60,step:1,unit:'交易日'}]],
   kd_oversold_golden_dca:[['core','保留核心','num',{min:10,max:90,step:5,unit:'%'}],['parts','加碼池分批','num',{min:2,max:4,step:1,unit:'批'}],['low','金叉時 K 低於','num',{min:5,max:50,step:1}],['high','死叉時 K 高於','num',{min:60,max:95,step:1}],['trim','調節衛星獲利股數','num',{min:5,max:50,step:5,unit:'%'}],['cooldown','交易間隔','num',{min:1,max:60,step:1,unit:'交易日'}]],
   margin_fear_contrarian:[['core','保留核心','num',{min:10,max:90,step:5,unit:'%'}],['parts','加碼池分批','num',{min:2,max:4,step:1,unit:'批'}],['bias','MA60 負乖離至少','num',{min:1,max:30,step:0.5,unit:'%'}],['marginDrop','融資近五筆減少至少','num',{min:0.1,max:20,step:0.1,unit:'%'}],['minScore','價格水位至少','num',{min:0,max:5,step:0.1,unit:'分'}],['cooldown','加碼間隔','num',{min:1,max:60,step:1,unit:'交易日'}]],
@@ -55,6 +56,7 @@ const BT_SCHEMA={
   ma_offset_flow:[['ma','分界均線','num',{min:2,max:960,step:1,unit:'日'}],['offset','往右平移','num',{min:0,max:60,step:1,unit:'根'}],['flow','籌碼方向期數','num',{min:2,max:60,step:1,unit:'根'}]]
 };
 const BT_EXPLAIN={buy_hold:'資金到位後買進並持有；與定投使用相同費用、配息與成交模型。',regime_switch:'MA20 高於 MA60 採多頭配置，反向採防守配置；首次均線成熟前維持現金。',
+  chat_ladder:'對話轉成的回檔分批規則；核心保留、剩餘現金依批數投入。跌幅以該輪確認的前期高點為基準，不是每筆成交價的複利跌幅。停利為 0 時持有。',
   trend_pullback_ma60:'核心隨已到位資金建立；MA200 多頭中，前日碰季線或 MA20 負乖離達門檻，首根紅 K 收斂且不破前低才加碼。前段均線不足不加碼，核心保留。',
   kd_oversold_golden_dca:'KD(9,3,3) 低檔金叉時動用剩餘加碼池，每輪分批；高檔死叉且衛星扣成本後有獲利才小幅調節。核心與配息再投入股數保留；不是固定 2.5 倍扣款。',
   margin_fear_contrarian:'同時符合 MA60 負乖離、近五筆已公布市場融資餘額減幅及價格水位才加碼。融資至少延後一交易日使用，缺值或跨長缺口不觸發；核心保留。三項為 AND。',

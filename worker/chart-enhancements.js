@@ -25,7 +25,7 @@ let lastFocus=null,restoringSearchFocus=false,searchFocusTimer=null;
 function openSearch(){if(restoringSearchFocus||!$('searchOverlay').classList.contains('hidden'))return;lastFocus=document.activeElement;$('searchOverlay').classList.remove('hidden');document.body.classList.add('searching');renderList();searchFocusTimer=setTimeout(()=>{if(!$('searchOverlay').classList.contains('hidden')){$('search').focus();$('search').select()}},30)}
 // After a pick, focus must not jump back to the opener: the same Enter press would "click" it and reopen the sheet.
 function closeSearch(restore=true){if($('searchOverlay').classList.contains('hidden'))return;clearTimeout(searchFocusTimer);$('searchOverlay').classList.add('hidden');document.body.classList.remove('searching');if(restore){restoringSearchFocus=true;try{lastFocus?.focus?.({preventScroll:true})}finally{restoringSearchFocus=false}}else document.activeElement?.blur?.()}
-function pick(code){selected=code;closeSearch(false);renderList();loadBars();const t=document.querySelector('.toolbar');window.scrollTo({top:t.getBoundingClientRect().top+scrollY-12,behavior:'instant'})}
+function pick(code){chartRange='1m';if(lwc)lwc.routeRange=null;selected=code;closeSearch(false);renderList();loadBars();const t=document.querySelector('.toolbar');window.scrollTo({top:t.getBoundingClientRect().top+scrollY-12,behavior:'instant'})}
 /* Risk badge from the catalog name and index: inverse and leveraged first (their index names look like the core ones). */
 function etfRisk(code){
   const e=catalog.find(x=>x.code===code);if(!e)return null;const t=e.name+' '+(e.note||'');
@@ -651,3 +651,11 @@ document.querySelectorAll('.pane-resizer').forEach(bar=>{
   bar.addEventListener('dblclick',()=>{$(id).style.height='';delete settings.paneHeights[id];save()});
   bar.addEventListener('keydown',e=>{if(e.key!=='ArrowUp'&&e.key!=='ArrowDown')return;e.preventDefault();setPaneHeight(id,$(id).getBoundingClientRect().height+(e.key==='ArrowDown'?20:-20));save()});
 });
+
+// A chart resized while its route is hidden loses its time-scale range. Capture
+// before hiding, then restore after the route has a width, without resetting a
+// user's manual pan to the selected preset.
+window.chaoweiChartRouteView={
+ save(){if(lwc&&$('chart').clientWidth>1)lwc.routeRange=lwc.main.timeScale().getVisibleLogicalRange()},
+ restore(){if(!lwc||$('chart').clientWidth<2)return;const r=lwc.routeRange;if(r){for(const c of visiblePanes())c.timeScale().setVisibleLogicalRange(r)}else setVisible(chartRange)}
+};

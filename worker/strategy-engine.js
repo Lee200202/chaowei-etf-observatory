@@ -193,7 +193,7 @@ function createChaoweiEngine(){
   /* ---------- strategies ---------- */
   const monthDay=(ctx,i,start)=>ctx.monthStart[i]||i===start;
   function classicDay(i,ctx,cfg,acc,st,h,inflow){
-    const p=cfg.params,w=h.water,c=ctx.close[i],hi=w.hi[i],lo=w.lo[i],valid=hi>lo,parts=p.entry==='fib'?Math.min(p.levels.length,h.tranches||p.levels.length):(h.tranches||1+p.adds);
+    const p=cfg.params,w=h.water,c=ctx.close[i],hi=w.hi[i],lo=w.lo[i],valid=hi>lo,canBuy=!cfg.entryFlags||cfg.entryFlags[i]===true,parts=p.entry==='fib'?Math.min(p.levels.length,h.tranches||p.levels.length):(h.tranches||1+p.adds);
     // Optional base position: the first of the equal parts is bought on the first day and never sold, so the
     // strategy is not idle for years while waiting for a pullback; the remaining parts trade the swing.
     if(p.core&&p.basePct>0){if(inflow>0){const sh=acc.buy(i,inflow*p.basePct/100,'底倉：入金 '+p.basePct+'%（不賣）','entry');st.coreShares=(st.coreShares||0)+(sh||0)}st.coreDone=true}
@@ -205,7 +205,7 @@ function createChaoweiEngine(){
     let bought=false;
     if(maxBuys<1)return;
     if(!st.buys){
-      if(!valid)return;
+      if(!valid||!canBuy)return;
       let why=null;
       if(p.entry==='drop'&&c<=hi*(1-p.drop/100))why='首次買進：較區間高點下跌 '+((1-c/hi)*100).toFixed(1)+'%';
       else if(p.entry==='fib'&&c<=hi-p.levels[0]*(hi-lo))why='首次買進：回檔到 '+(p.levels[0]*100).toFixed(1)+'% 位階';
@@ -215,9 +215,9 @@ function createChaoweiEngine(){
     }
     const lastBuys=acc.trades.length;
     st.peak=Math.max(st.peak,c);
-    if(p.entry==='drop'){while(st.buys<maxBuys&&c<=st.hi*(1-(p.drop+st.buys*p.step)/100)){if(!acc.buy(i,tranche(),'加碼：較區間高點下跌 '+(p.drop+st.buys*p.step)+'%','add'))break;st.buys++;bought=true}}
-    else if(p.entry==='fib'){while(st.buys<maxBuys&&c<=st.hi-p.levels[st.buys]*(st.hi-st.lo)){if(!acc.buy(i,tranche(),'加碼：回檔到 '+(p.levels[st.buys]*100).toFixed(1)+'% 位階','add'))break;st.buys++;bought=true}}
-    else if(st.buys<maxBuys&&c<=st.last*(1-p.step/100)&&w.grade[i]>=p.buyGrade){if(acc.buy(i,tranche(),'加碼：較上次買價再跌 '+p.step+'%','add')){st.buys++;st.last=c;bought=true}}
+    if(canBuy&&p.entry==='drop'){while(st.buys<maxBuys&&c<=st.hi*(1-(p.drop+st.buys*p.step)/100)){if(!acc.buy(i,tranche(),'加碼：較區間高點下跌 '+(p.drop+st.buys*p.step)+'%','add'))break;st.buys++;bought=true}}
+    else if(canBuy&&p.entry==='fib'){while(st.buys<maxBuys&&c<=st.hi-p.levels[st.buys]*(st.hi-st.lo)){if(!acc.buy(i,tranche(),'加碼：回檔到 '+(p.levels[st.buys]*100).toFixed(1)+'% 位階','add'))break;st.buys++;bought=true}}
+    else if(canBuy&&st.buys<maxBuys&&c<=st.last*(1-p.step/100)&&w.grade[i]>=p.buyGrade){if(acc.buy(i,tranche(),'加碼：較上次買價再跌 '+p.step+'%','add')){st.buys++;st.last=c;bought=true}}
     for(const t of acc.trades.slice(lastBuys))if(t.type==='buy')st.swingCost=(st.swingCost||0)+t.amount;
     const swing=swingShares();if(bought||swing<1e-9)return;
     // Exits use the swing part's own average cost; the base position is not counted or sold.
@@ -277,6 +277,7 @@ function createChaoweiEngine(){
     if(signal){const before=acc.trades.length,sh=acc.buy(i,acc.cash/Math.max(1,p.parts-st.batches),reason+'：剩餘現金分批','add');if(sh&&acc.trades.length>before){st.satShares+=sh;st.satCost+=acc.trades.at(-1).amount;st.batches++;st.last=i}}
   }
   const STRATEGIES={
+    chat_ladder:{day(i,ctx,cfg,acc,st,h,inflow){const p=cfg.params,params={...PARAMS.classic,entry:'drop',drop:p.drop,step:p.step,adds:p.parts-1,core:p.core>0,basePct:p.core,exit:p.takeProfit>0?'gain':'hold',rise:p.takeProfit};classicDay(i,ctx,{...cfg,params},acc,st,{...h,tranches:0},inflow)}},
     trend_pullback_ma60:{day:reserveDay},kd_oversold_golden_dca:{day:reserveDay},margin_fear_contrarian:{day:reserveDay},
     buy_hold:{day(i,ctx,cfg,acc,st,h,inflow){if(inflow>0)acc.buy(i,acc.cash,'買進持有：投入已到位資金','bench')}},
     regime_switch:{day(i,ctx,cfg,acc,st,h,inflow){const p=cfg.params,fast=ctx.ma20[i],slow=ctx.ma60[i];if(!(fast>0&&slow>0))return;const on=fast>=slow,target=(on?p.bull:p.bear)/100,cur=acc.value(i)>0?acc.shares*ctx.close[i]/acc.value(i):0;if(st.on!==on||inflow>0||Math.abs(cur-target)>.1)acc.toWeight(i,target,on?'MA20 高於 MA60：順勢配置':'MA20 低於 MA60：防守配置');st.on=on}},
@@ -381,6 +382,7 @@ function createChaoweiEngine(){
   }
   /* ---------- defaults and presets ---------- */
   const PARAMS={
+    chat_ladder:{core:40,parts:3,drop:10,step:10,takeProfit:0,window:240},
     trend_pullback_ma60:{core:50,parts:3,bias:3.5,cooldown:8},
     kd_oversold_golden_dca:{core:45,parts:3,low:25,high:85,trim:15,cooldown:6},
     margin_fear_contrarian:{core:40,parts:3,bias:4,marginDrop:1,minScore:3.8,cooldown:10},
