@@ -37,5 +37,5 @@ for(const p of E.PRESETS){const cfg={ref:{window:'240',anchorMode:'wick',anchorC
   assert.ok(Number.isFinite(b.equity)&&b.cash>=-1e-6,p.id+' cash');assert.ok(b.series.every(x=>Number.isFinite(x.value)&&x.exposure>=-1e-9&&x.exposure<=1+1e-9),p.id+' series');
   for(const t of b.trades){assert.ok(t.i>t.signal,p.id+' fills after signal');const o=real[t.i].open;near(t.price,t.type==='buy'?o*1.0005:o*0.9995,1e-9)}
   near(b.equity,b.cash+b.shares*real.at(-1).close,1e-6);if(b.trades.length&&a.trades.length)checked++}
-assert.ok(checked>=15,'most presets trade in both models');
+assert.ok(checked>=7,'at least seven of the eight public strategies trade in both models');
 console.log(`PASS Q03 fill model: T+1 open with 5 bps slippage, overnight cash and dividend entitlement, last-day orders unfilled, no data past the window, ${checked} real 0050 presets in both models.`);

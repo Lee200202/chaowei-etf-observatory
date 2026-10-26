@@ -1,6 +1,6 @@
 function optimizerBatch(engine,ctx,candidates,start,end,onProgress){
   const rows=[],begun=performance.now();let dcaRef=null;
-  for(let i=0;i<candidates.length;i++){const c=candidates[i],r=engine.run(ctx,c.cfg,start,end);dcaRef=dcaRef||{xirr:r.dca.xirr,mdd:r.dca.mdd,cagr:r.dca.cagr};rows.push({p:c.p,w:c.w,usesWater:c.usesWater,r:{xirr:r.xirr,mdd:r.mdd,calmar:r.calmar,dca:{xirr:r.dca.xirr}}});if(i%3===0||i===candidates.length-1)onProgress?.(i+1,candidates.length)}
+  for(let i=0;i<candidates.length;i++){const c=candidates[i],r=engine.run(ctx,c.cfg,start,end);dcaRef=dcaRef||{xirr:r.dca.xirr,mdd:r.dca.mdd,cagr:r.dca.cagr};rows.push({p:c.p,w:c.w,usesWater:c.usesWater,r:{xirr:r.xirr,cagr:r.cagr,annual:r.monthly?r.xirr:r.cagr,mdd:r.mdd,calmar:r.calmar,dca:{xirr:r.dca.xirr,cagr:r.dca.cagr}}});if(i%3===0||i===candidates.length-1)onProgress?.(i+1,candidates.length)}
   return{rows,dcaRef,computeMs:performance.now()-begun};
 }
 function createOptimizerRunner(){

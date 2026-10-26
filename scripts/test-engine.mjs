@@ -14,7 +14,7 @@ const near=(a,b,tol,msg)=>assert.ok(Math.abs(a-b)<=tol,`${msg}: ${a} vs ${b}`);
 const synth=[];{let d=new Date('2024-01-01T00:00:00Z');const push=c=>{while(d.getUTCDay()%6===0)d.setUTCDate(d.getUTCDate()+1);const v=Math.round(c*100)/100;synth.push({date:d.toISOString().slice(0,10),open:v,high:v,low:v,close:v,volume:1e6});d.setUTCDate(d.getUTCDate()+1)};
   for(let i=0;i<400;i++)push(100);for(let k=0;k<30;k++)push(100-25*(k+1)/30);for(let k=0;k<30;k++)push(75+25*(k+1)/30);for(let i=0;i<20;i++)push(100)}
 {
-  const ctx=E.prepare(synth,[]),p=E.PRESETS.find(x=>x.id==='drop20'),r=E.run(ctx,cfgOf(p,{capitalMode:'lump',capital:400000}),0);
+  const ctx=E.prepare(synth,[]),p=E.LEGACY_PRESETS.find(x=>x.id==='drop20'),r=E.run(ctx,cfgOf(p,{capitalMode:'lump',capital:400000}),0);
   assert.equal(r.trades.length,2);assert.equal(r.trades[0].price,80);assert.equal(r.trades[1].price,96.67);
   near(r.trades[0].amount,100000,0.01,'first tranche is a quarter of the pot');
   const sh=100000/(80*1.001425),expected=sh*96.67*(1-0.001425-0.001)-100000;near(r.trades[1].pnl,expected,0.01,'round-trip P&L with fee and tax');
@@ -29,7 +29,7 @@ const synth=[];{let d=new Date('2024-01-01T00:00:00Z');const push=c=>{while(d.ge
 /* 3. Dividends: buy-and-hold at 100 with a 5 dividend; DRIP buys more shares, no-DRIP keeps cash. */
 {
   const bars=['2025-01-02','2025-01-03','2025-01-06'].map(date=>({date,open:100,high:100,low:100,close:100,volume:1}));
-  const ctx=E.prepare(bars,[['2025-01-03',5]]),dca=E.PRESETS.find(x=>x.id==='dca');
+  const ctx=E.prepare(bars,[['2025-01-03',5]]),dca=E.LEGACY_PRESETS.find(x=>x.id==='dca');
   const on=E.run(ctx,cfgOf(dca,{capitalMode:'lump',capital:100000,fee:0,tax:0}),0),off=E.run(ctx,cfgOf(dca,{capitalMode:'lump',capital:100000,fee:0,tax:0,drip:false}),0);
   near(on.bh.equity,105000,1e-6,'buy-and-hold gains the dividend');near(on.dividends,100000/12/100*5,1e-6,'DCA holds one installment (C ÷ 12) and receives its dividend');
   near(off.bh.equity,105000,1e-6,'dividend kept as cash without DRIP');
@@ -46,14 +46,14 @@ const load=async code=>{const d=await hist(code);return{d,bars:d.rows.map(([date
 
 /* 5. Same base, different split: 定期定額 buys C ÷ 12 per month, a 4-stage strategy buys C ÷ 4 per stage. */
 {
-  const {bars,div}=await load('0050'),ctx=E.prepare(bars,div),start=bars.length-1220,r=E.run(ctx,cfgOf(E.PRESETS.find(x=>x.id==='dca')),start);
+  const {bars,div}=await load('0050'),ctx=E.prepare(bars,div),start=bars.length-1220,r=E.run(ctx,cfgOf(E.LEGACY_PRESETS.find(x=>x.id==='dca')),start);
   const buys=r.trades.filter(t=>t.kind==='dca');assert.equal(buys.length,12);for(const t of buys)near(t.amount,1200000/12,1e-6,'each installment is C ÷ 12');
-  const s=E.run(ctx,cfgOf(E.PRESETS.find(x=>x.id==='drop20')),start),first=s.trades.find(t=>t.type==='buy');if(first)near(first.amount,1200000/4,1e-6,'first stage is C ÷ 4');
+  const s=E.run(ctx,cfgOf(E.LEGACY_PRESETS.find(x=>x.id==='drop20')),start),first=s.trades.find(t=>t.type==='buy');if(first)near(first.amount,1200000/4,1e-6,'first stage is C ÷ 4');
   near(r.contributed,1200000,0,'one capital base');near(s.contributed,1200000,0,'same capital base');
 }
 /* 5b. Plain DCA strategy equals the DCA benchmark exactly. */
 {
-  const {bars,div}=await load('0050'),ctx=E.prepare(bars,div),start=bars.length-1220,r=E.run(ctx,cfgOf(E.PRESETS.find(x=>x.id==='dca')),start);
+  const {bars,div}=await load('0050'),ctx=E.prepare(bars,div),start=bars.length-1220,r=E.run(ctx,cfgOf(E.LEGACY_PRESETS.find(x=>x.id==='dca')),start);
   near(r.equity,r.dca.equity,1e-6,'DCA strategy matches the benchmark');
 }
 /* 6. No look-ahead: running on data cut at day k gives the same trades up to k. */
@@ -76,23 +76,23 @@ const load=async code=>{const d=await hist(code);return{d,bars:d.rows.map(([date
 {
   const {bars,div}=await load('0050'),ctx=E.prepare(bars,div),start=bars.length-1220;
   const months=bars.slice(start).filter((b,k)=>k===0||b.date.slice(0,7)!==bars[start+k-1].date.slice(0,7)).length;
-  const r=E.run(ctx,cfgOf(E.PRESETS.find(x=>x.id==='dca'),{dcaPeriods:'auto'}),start),buys=r.trades.filter(t=>t.kind==='dca');
+  const r=E.run(ctx,cfgOf(E.LEGACY_PRESETS.find(x=>x.id==='dca'),{dcaPeriods:'auto'}),start),buys=r.trades.filter(t=>t.kind==='dca');
   assert.equal(r.N,months);assert.equal(buys.length,months);for(const t of buys)near(t.amount,1200000/months,1e-6,'auto installment is C ÷ months');
   assert.ok(r.cash<1200000/months,'nothing left over beyond one installment');
 }
 /* 9. Monthly deposits: C ÷ N arrives each month; buy-and-hold still invests C on day one with its own flows. */
 {
   const {bars,div}=await load('0050'),ctx=E.prepare(bars,div),start=bars.length-1220;
-  const r=E.run(ctx,cfgOf(E.PRESETS.find(x=>x.id==='dca'),{dcaPeriods:'auto',capitalMode:'monthly'}),start);
+  const r=E.run(ctx,cfgOf(E.LEGACY_PRESETS.find(x=>x.id==='dca'),{dcaPeriods:'auto',capitalMode:'monthly'}),start);
   near(r.contributed,1200000,1e-6,'deposits add up to C');near(r.dca.equity,r.equity,1e-6,'DCA strategy equals the benchmark');
-  near(r.bh.ret,E.run(ctx,cfgOf(E.PRESETS.find(x=>x.id==='dca'),{dcaPeriods:'auto'}),start).bh.ret,1e-9,'buy-and-hold is the same in both modes');
+  near(r.bh.ret,E.run(ctx,cfgOf(E.LEGACY_PRESETS.find(x=>x.id==='dca'),{dcaPeriods:'auto'}),start).bh.ret,1e-9,'buy-and-hold is the same in both modes');
   near(r.roic,r.xirr,1e-6,'fully invested: deployed-capital return equals XIRR');
 }
 /* 10. Reserve buffer: multiplier strategies never spend more than the released installments plus sales and dividends. */
 {
   for(const code of ['0050','00631L']){const {bars,div}=await load(code),ctx=E.prepare(bars,div),start=bars.length-1220;
     for(const id of ['smartDca','va','bias'])for(const N of [12,'auto']){
-      const r=E.run(ctx,cfgOf(E.PRESETS.find(x=>x.id===id),{dcaPeriods:N}),start),released=r.base*r.N;
+      const r=E.run(ctx,cfgOf(E.LEGACY_PRESETS.find(x=>x.id===id),{dcaPeriods:N}),start),released=r.base*r.N;
       const spent=r.trades.filter(t=>t.kind==='dca').reduce((s,t)=>s+t.amount,0),back=r.trades.filter(t=>t.type==='sell').reduce((s,t)=>s+t.amount,0);
       assert.ok(spent<=released+back+r.dividends+1e-6,`${code} ${id} N=${N} spends within its pots`);
       assert.ok(r.state.reserve>=-1e-9,`${code} ${id} reserve never negative`);
@@ -101,19 +101,19 @@ const load=async code=>{const d=await hist(code);return{d,bars:d.rows.map(([date
 /* 11. Buy-and-hold pays the same fee as everyone else: C × fee ÷ (1 + fee) on day one. */
 {
   const bars=['2025-01-02','2025-01-03'].map(date=>({date,open:100,high:100,low:100,close:100,volume:1}));
-  const r=E.run(E.prepare(bars,[]),cfgOf(E.PRESETS.find(x=>x.id==='dca'),{capital:100000,dcaPeriods:1}),0);
+  const r=E.run(E.prepare(bars,[]),cfgOf(E.LEGACY_PRESETS.find(x=>x.id==='dca'),{capital:100000,dcaPeriods:1}),0);
   near(r.bh.fees,100000*0.001425/1.001425,1e-6,'buy-and-hold fee');near(r.dca.fees,r.bh.fees,1e-6,'same fee for 定期定額');
 }
 /* 12. Deployed-capital return: a strategy in cash most of the time still reports what its trades earned. */
 {
-  const ctx=E.prepare(synth,[]),r=E.run(ctx,cfgOf(E.PRESETS.find(x=>x.id==='drop20'),{capital:400000,parking:0}),0);
+  const ctx=E.prepare(synth,[]),r=E.run(ctx,cfgOf(E.LEGACY_PRESETS.find(x=>x.id==='drop20'),{capital:400000,parking:0}),0);
   const buy=r.trades[0],sell=r.trades[1],days=(Date.parse(sell.date)-Date.parse(buy.date))/86400000;
   near(r.roic,Math.pow(sell.amount/buy.amount,365/days)-1,1e-6,'ROIC is the round trip annualised over its holding days');
   assert.ok(r.roic>r.xirr,'higher than the whole-pot XIRR');
 }
 /* 13. Base position: with 3 equal parts the first part is bought on day one and never sold; the swing parts are C ÷ 3 each. */
 {
-  const ctx=E.prepare(synth,[]),p=E.PRESETS.find(x=>x.id==='drop20'),r=E.run(ctx,cfgOf(p,{capital:300000,parking:0,params:{...p.params,adds:2,core:true}}),0);
+  const ctx=E.prepare(synth,[]),p=E.LEGACY_PRESETS.find(x=>x.id==='drop20'),r=E.run(ctx,cfgOf(p,{capital:300000,parking:0,params:{...p.params,adds:2,core:true}}),0);
   const buys=r.trades.filter(t=>t.type==='buy'),sells=r.trades.filter(t=>t.type==='sell');
   assert.equal(buys[0].date,synth[0].date,'base bought on the first day');near(buys[0].amount,100000,0.01,'base is C ÷ 3');
   for(const t of buys.slice(1))near(t.amount,100000,0.01,'each swing part is C ÷ 3');
