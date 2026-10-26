@@ -272,6 +272,8 @@ function logEvent(e){
   return{ok:true};
 }
 function doPost(e){
+  const action=e&&e.parameter&&e.parameter.action;
+  if(action==='aiChat'||action==='aiFeedback')return quantPost_(e);
   let body=null;try{body=JSON.parse(e&&e.postData&&e.postData.contents||'')}catch(err){}
   const list=Array.isArray(body)?body.slice(0,20):[body];list.forEach(x=>logEvent(x));
   return ContentService.createTextOutput('ok').setMimeType(ContentService.MimeType.TEXT);
