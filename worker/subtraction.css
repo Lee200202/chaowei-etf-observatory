@@ -6,6 +6,8 @@ body.subtraction-site #siteHeader .ph9-nav-tool{color:var(--ink);background:tran
 body.subtraction-site.dark .up,body.subtraction-site.dark .price-up,body.subtraction-site.dark #compactTicker #barPrice.price-up{color:#ff8895!important}
 body.subtraction-site.dark .down,body.subtraction-site.dark .price-down,body.subtraction-site.dark #compactTicker #barPrice.price-down{color:#68d7b1!important}
 .subtraction-site header nav{gap:6px}
+body.subtraction-site #top .site-menu-inner>a,body.subtraction-site #top .site-menu-inner>button{font-family:inherit;font-size:24px;font-weight:800;line-height:1.3;color:var(--ink)}
+body.subtraction-site #displayMenu .motion-control{width:100%;margin-top:12px;justify-content:center;color:var(--ink);background:var(--paper)}
 .subtraction-site .compact-ticker{display:flex;flex-wrap:wrap;gap:4px 16px;align-items:center;margin:12px 0 20px;padding:11px 18px;border:1px solid var(--line);border-radius:24px;background:var(--paper)}
 .subtraction-site .compact-ticker .toolbar{position:static;display:flex;align-items:center;flex:1 1 750px;gap:12px;margin:0;padding:0;border:0;background:none;box-shadow:none;min-height:0}
 .subtraction-site .compact-ticker h3{font-size:18px;line-height:1.3;margin:0}
@@ -50,6 +52,7 @@ body.subtraction-site #explore #compactTicker .toolbar-stats b{font-size:19px;li
 @media(max-width:900px){.subtraction-site .bt-big{grid-template-columns:repeat(2,minmax(0,1fr))}.subtraction-site .bt-big>div:nth-child(2){border-right:0}.subtraction-site .compact-ticker .toolbar{flex-wrap:wrap}.subtraction-site .compact-ticker .toolbar-stats{gap:14px}.subtraction-site .research-side{max-height:none}.subtraction-site header nav{gap:4px}}
 @media(max-width:599px){.subtraction-site #factorRail{grid-template-columns:1fr!important}.subtraction-site .compact-ticker{padding:14px;border-radius:20px}.subtraction-site .compact-ticker .toolbar-stats{order:3;flex:1 1 100%;justify-content:space-between;gap:8px}.subtraction-site .compact-ticker .toolbar-stats>span:last-of-type{display:none}.subtraction-site .ticker-search{margin-left:auto}.subtraction-site .bt-big>div{padding:16px 10px}.subtraction-site .bt-big b{font-size:24px}.subtraction-site .ph9-nav-tool{width:32px;height:32px;min-width:32px;padding:6px}.subtraction-site .backtest-chart-tabs{gap:4px}.subtraction-site .backtest-chart-tabs button{padding:9px 11px;font-size:13px}}
 @media(prefers-reduced-motion:reduce){.subtraction-site *{scroll-behavior:auto!important}}
+@media(max-width:599px){body.subtraction-site #top .site-menu-inner>a,body.subtraction-site #top .site-menu-inner>button{font-size:20px}}
 @media(max-width:599px){body.subtraction-site #explore #compactTicker .toolbar-stats{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.8fr) minmax(0,.8fr);gap:8px;width:100%}body.subtraction-site #explore #compactTicker .toolbar-stats>span:nth-child(3){display:grid}body.subtraction-site #explore #compactTicker .toolbar-stats b{font-size:16px}body.subtraction-site #explore #compactTicker .toolbar-stats small{font-size:13px}}
 
 body.subtraction-site.dark .risk-tag{color:#b1e9d6;background:#183f3c}

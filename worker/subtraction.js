@@ -5,14 +5,17 @@
  // Three home sections. Stop the removed preview's animation without replacing real market data.
  $('homePage').querySelector('.feature-gallery')?.remove();$('homePage').querySelector('.member-story')?.remove();
  const hero=$('homePage').querySelector('.hero-actions');hero.querySelector('a').textContent='開始觀測 ETF';hero.querySelector('a.secondary').textContent='進入策略白板';
- const nav=$('siteHeader').querySelector('nav'),menu=$('openSiteMenu'),lesson=$('homeTour'),motion=$('homeMotion');
- lesson.className='pill ph9-nav-tool';lesson.title='10 步使用教學';lesson.setAttribute('aria-label',lesson.title);lesson.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M9 9a3 3 0 1 1 4 3c-1 .5-1 1-1 2M12 17v1"/></svg>';nav.insertBefore(lesson,menu);
- // Preserve the original motion handler; put the play/pause state in accessible text, not a long header label.
- const motionIcon=node('button','pill ph9-nav-tool');motionIcon.type='button';motionIcon.id='headerMotion';motionIcon.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M8 5v14M16 5v14"/></svg>';motionIcon.onclick=()=>motion.click();nav.insertBefore(motionIcon,menu);motion.hidden=true;
- function motionLabel(){const off=document.body.classList.contains('motion-paused');motionIcon.setAttribute('aria-label',off?'播放頁面動畫':'暫停頁面動畫');motionIcon.title=off?'播放頁面動畫':'暫停頁面動畫';motionIcon.setAttribute('aria-pressed',String(off));motionIcon.querySelector('path').setAttribute('d',off?'M8 5l11 7-11 7z':'M8 5v14M16 5v14')};new MutationObserver(motionLabel).observe(document.body,{attributes:true,attributeFilter:['class']});motionLabel();
- // Compact ticker: title/quote, a search action, and the user's existing candidate buttons.
- const ticker=node('section','compact-ticker');ticker.id='compactTicker';ticker.setAttribute('aria-label','目前 ETF 與候選');const toolbar=document.querySelector('.toolbar');$('researchDesk').before(ticker);ticker.append(toolbar);
- const search=node('button','pill mini ticker-search','搜尋 ETF');search.type='button';search.onclick=openSearch;toolbar.append(search);ticker.append($('quickInline'));
+ const lesson=$('homeTour'),motion=$('homeMotion');lesson.remove();
+ // Motion and the existing tutorial live in the account appearance panel, away from the three header tools.
+ const motionIcon=node('button','pill motion-control');motionIcon.type='button';motionIcon.id='pageMotion';motionIcon.onclick=()=>motion.click();$('displayMenu').append(motionIcon);motion.hidden=true;
+ function motionLabel(){const off=document.body.classList.contains('motion-paused'),label=off?'播放頁面動畫':'暫停頁面動畫';motionIcon.setAttribute('aria-label',label);motionIcon.title=label;motionIcon.textContent=label;motionIcon.setAttribute('aria-pressed',String(off))};new MutationObserver(motionLabel).observe(document.body,{attributes:true,attributeFilter:['class']});motionLabel();
+ // The observation header contains only the selected ETF. Candidate choices stay inside Search.
+ const ticker=node('section','compact-ticker');ticker.id='compactTicker';ticker.setAttribute('aria-label','目前觀測 ETF');const toolbar=document.querySelector('.toolbar');$('researchDesk').before(ticker);ticker.append(toolbar);
+ const search=node('button','pill mini ticker-search','搜尋 ETF');search.type='button';search.onclick=openSearch;toolbar.append(search);$('quickInline').hidden=true;
+ // Search is global: a dialog inside a hidden route cannot open from Home, Market or Guide.
+ $('top').append($('searchOverlay'));
+ const menuAccount=document.querySelector('[data-menu-account]');menuAccount.textContent='我的帳號與外觀';
+ const originalHot=renderHot;renderHot=function(){originalHot();const buttons=[...$('hotList').querySelectorAll('[data-hot]')];$('hotSearches').hidden=buttons.length>0&&buttons.every(b=>settings.watchlist.includes(b.dataset.hot))};renderHot();
  $('openSearch').hidden=true;const sectionHeading=$('explore').querySelector(':scope > .section-heading');if(sectionHeading)sectionHeading.hidden=true;
  document.querySelector('.study-mode-bar').hidden=true;document.querySelector('.first-visit').hidden=true;
  if($('observationSettings'))$('observationSettings').open=false;

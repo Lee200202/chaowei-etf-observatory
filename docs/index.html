@@ -585,6 +585,8 @@ body.subtraction-site #siteHeader .ph9-nav-tool{color:var(--ink);background:tran
 body.subtraction-site.dark .up,body.subtraction-site.dark .price-up,body.subtraction-site.dark #compactTicker #barPrice.price-up{color:#ff8895!important}
 body.subtraction-site.dark .down,body.subtraction-site.dark .price-down,body.subtraction-site.dark #compactTicker #barPrice.price-down{color:#68d7b1!important}
 .subtraction-site header nav{gap:6px}
+body.subtraction-site #top .site-menu-inner>a,body.subtraction-site #top .site-menu-inner>button{font-family:inherit;font-size:calc((24px) * var(--text-scale,1));font-weight:800;line-height:1.3;color:var(--ink)}
+body.subtraction-site #displayMenu .motion-control{width:100%;margin-top:12px;justify-content:center;color:var(--ink);background:var(--paper)}
 .subtraction-site .compact-ticker{display:flex;flex-wrap:wrap;gap:4px 16px;align-items:center;margin:12px 0 20px;padding:11px 18px;border:1px solid var(--line);border-radius:24px;background:var(--paper)}
 .subtraction-site .compact-ticker .toolbar{position:static;display:flex;align-items:center;flex:1 1 750px;gap:12px;margin:0;padding:0;border:0;background:none;box-shadow:none;min-height:0}
 .subtraction-site .compact-ticker h3{font-size:calc((18px) * var(--text-scale,1));line-height:1.3;margin:0}
@@ -629,6 +631,7 @@ body.subtraction-site #explore #compactTicker .toolbar-stats b{font-size:calc((1
 @media(max-width:900px){.subtraction-site .bt-big{grid-template-columns:repeat(2,minmax(0,1fr))}.subtraction-site .bt-big>div:nth-child(2){border-right:0}.subtraction-site .compact-ticker .toolbar{flex-wrap:wrap}.subtraction-site .compact-ticker .toolbar-stats{gap:14px}.subtraction-site .research-side{max-height:none}.subtraction-site header nav{gap:4px}}
 @media(max-width:599px){.subtraction-site #factorRail{grid-template-columns:1fr!important}.subtraction-site .compact-ticker{padding:14px;border-radius:20px}.subtraction-site .compact-ticker .toolbar-stats{order:3;flex:1 1 100%;justify-content:space-between;gap:8px}.subtraction-site .compact-ticker .toolbar-stats>span:last-of-type{display:none}.subtraction-site .ticker-search{margin-left:auto}.subtraction-site .bt-big>div{padding:16px 10px}.subtraction-site .bt-big b{font-size:calc((24px) * var(--text-scale,1))}.subtraction-site .ph9-nav-tool{width:32px;height:32px;min-width:32px;padding:6px}.subtraction-site .backtest-chart-tabs{gap:4px}.subtraction-site .backtest-chart-tabs button{padding:9px 11px;font-size:calc((13px) * var(--text-scale,1))}}
 @media(prefers-reduced-motion:reduce){.subtraction-site *{scroll-behavior:auto!important}}
+@media(max-width:599px){body.subtraction-site #top .site-menu-inner>a,body.subtraction-site #top .site-menu-inner>button{font-size:calc((20px) * var(--text-scale,1))}}
 @media(max-width:599px){body.subtraction-site #explore #compactTicker .toolbar-stats{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.8fr) minmax(0,.8fr);gap:8px;width:100%}body.subtraction-site #explore #compactTicker .toolbar-stats>span:nth-child(3){display:grid}body.subtraction-site #explore #compactTicker .toolbar-stats b{font-size:calc((16px) * var(--text-scale,1))}body.subtraction-site #explore #compactTicker .toolbar-stats small{font-size:calc((13px) * var(--text-scale,1))}}
 
 body.subtraction-site.dark .risk-tag{color:#b1e9d6;background:#183f3c}
@@ -4484,14 +4487,17 @@ const StrategyBoard=(()=>{
  // Three home sections. Stop the removed preview's animation without replacing real market data.
  $('homePage').querySelector('.feature-gallery')?.remove();$('homePage').querySelector('.member-story')?.remove();
  const hero=$('homePage').querySelector('.hero-actions');hero.querySelector('a').textContent='開始觀測 ETF';hero.querySelector('a.secondary').textContent='進入策略白板';
- const nav=$('siteHeader').querySelector('nav'),menu=$('openSiteMenu'),lesson=$('homeTour'),motion=$('homeMotion');
- lesson.className='pill ph9-nav-tool';lesson.title='10 步使用教學';lesson.setAttribute('aria-label',lesson.title);lesson.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M9 9a3 3 0 1 1 4 3c-1 .5-1 1-1 2M12 17v1"/></svg>';nav.insertBefore(lesson,menu);
- // Preserve the original motion handler; put the play/pause state in accessible text, not a long header label.
- const motionIcon=node('button','pill ph9-nav-tool');motionIcon.type='button';motionIcon.id='headerMotion';motionIcon.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M8 5v14M16 5v14"/></svg>';motionIcon.onclick=()=>motion.click();nav.insertBefore(motionIcon,menu);motion.hidden=true;
- function motionLabel(){const off=document.body.classList.contains('motion-paused');motionIcon.setAttribute('aria-label',off?'播放頁面動畫':'暫停頁面動畫');motionIcon.title=off?'播放頁面動畫':'暫停頁面動畫';motionIcon.setAttribute('aria-pressed',String(off));motionIcon.querySelector('path').setAttribute('d',off?'M8 5l11 7-11 7z':'M8 5v14M16 5v14')};new MutationObserver(motionLabel).observe(document.body,{attributes:true,attributeFilter:['class']});motionLabel();
- // Compact ticker: title/quote, a search action, and the user's existing candidate buttons.
- const ticker=node('section','compact-ticker');ticker.id='compactTicker';ticker.setAttribute('aria-label','目前 ETF 與候選');const toolbar=document.querySelector('.toolbar');$('researchDesk').before(ticker);ticker.append(toolbar);
- const search=node('button','pill mini ticker-search','搜尋 ETF');search.type='button';search.onclick=openSearch;toolbar.append(search);ticker.append($('quickInline'));
+ const lesson=$('homeTour'),motion=$('homeMotion');lesson.remove();
+ // Motion and the existing tutorial live in the account appearance panel, away from the three header tools.
+ const motionIcon=node('button','pill motion-control');motionIcon.type='button';motionIcon.id='pageMotion';motionIcon.onclick=()=>motion.click();$('displayMenu').append(motionIcon);motion.hidden=true;
+ function motionLabel(){const off=document.body.classList.contains('motion-paused'),label=off?'播放頁面動畫':'暫停頁面動畫';motionIcon.setAttribute('aria-label',label);motionIcon.title=label;motionIcon.textContent=label;motionIcon.setAttribute('aria-pressed',String(off))};new MutationObserver(motionLabel).observe(document.body,{attributes:true,attributeFilter:['class']});motionLabel();
+ // The observation header contains only the selected ETF. Candidate choices stay inside Search.
+ const ticker=node('section','compact-ticker');ticker.id='compactTicker';ticker.setAttribute('aria-label','目前觀測 ETF');const toolbar=document.querySelector('.toolbar');$('researchDesk').before(ticker);ticker.append(toolbar);
+ const search=node('button','pill mini ticker-search','搜尋 ETF');search.type='button';search.onclick=openSearch;toolbar.append(search);$('quickInline').hidden=true;
+ // Search is global: a dialog inside a hidden route cannot open from Home, Market or Guide.
+ $('top').append($('searchOverlay'));
+ const menuAccount=document.querySelector('[data-menu-account]');menuAccount.textContent='我的帳號與外觀';
+ const originalHot=renderHot;renderHot=function(){originalHot();const buttons=[...$('hotList').querySelectorAll('[data-hot]')];$('hotSearches').hidden=buttons.length>0&&buttons.every(b=>settings.watchlist.includes(b.dataset.hot))};renderHot();
  $('openSearch').hidden=true;const sectionHeading=$('explore').querySelector(':scope > .section-heading');if(sectionHeading)sectionHeading.hidden=true;
  document.querySelector('.study-mode-bar').hidden=true;document.querySelector('.first-visit').hidden=true;
  if($('observationSettings'))$('observationSettings').open=false;
