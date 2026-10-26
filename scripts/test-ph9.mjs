@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
 const source=readFileSync('worker/strategy-engine.js','utf8'),E=new Function(source+';return ChaoweiEngine')();
 const near=(a,b,tol=1e-7)=>assert.ok(Math.abs(a-b)<tol,`${a} != ${b}`);
-assert.equal(E.PRESETS.length,8);assert.equal(E.FAMILIES.length,3);assert.equal(Object.keys(E.RETIRED).length,14);
-assert.deepEqual(E.FAMILIES.map(([id])=>E.PRESETS.filter(p=>p.family===id).length),[2,3,3]);
+assert.equal(E.PRESETS.length,11);assert.equal(E.FAMILIES.length,3);assert.equal(Object.keys(E.RETIRED).length,14);
+assert.deepEqual(E.FAMILIES.map(([id])=>E.PRESETS.filter(p=>p.family===id).length),[2,5,4]);
 for(const id of Object.keys(E.RETIRED))assert.ok(!E.PRESETS.some(p=>p.id===id));
 const base={ref:{window:'20',anchorMode:'wick',anchorCount:5,method:'equal'},capital:1200000,dcaPeriods:12,capitalMode:'pool',fee:0,discount:100,tax:0,parking:0,drip:false,fill:'nextOpen',slipBps:0};
 const rows=Array.from({length:100},(_,i)=>({date:new Date(Date.UTC(2024,0,1+i)).toISOString().slice(0,10),open:100,high:101,low:99,close:i<45?100:i<60?89:i<70?78:67,volume:100})),ctx=E.prepare(rows,[]),preset=E.PRESETS.find(p=>p.id==='coreSwing');
@@ -32,4 +32,4 @@ const saved=migrate({...old,v:5,params:{...old.params,drop:17}});assert.equal(sa
 // Real histories: all eight, both funding modes and fills obey accounting and common pool denominators.
 const results=[];for(const code of ['0050','0056','00878']){const h=JSON.parse(readFileSync(`pages-data/history/${code}.json`)),bars=h.rows.map(([date,open,high,low,close,volume])=>({date,open,high,low,close,volume})),c=E.prepare(bars,[]),start=Math.max(0,bars.length-1220);for(const p of E.PRESETS){const out=E.run(c,{...base,...p,parking:1.5,fee:.1425,tax:.1,slipBps:5},start);near(out.equity,out.cash+out.shares*bars.at(-1).close,.00001);near(out.cagr,(out.equity/base.capital)**(1/out.years)-1);near(out.dca.cagr,(out.dca.equity/base.capital)**(1/out.years)-1);results.push({code,preset:p.id,cagr:out.cagr,dca:out.dca.cagr,bh:out.bh.cagr,exposure:out.utilization,buys:out.buys,rounds:out.rounds.total})}}
 mkdirSync('qa/2026-10-25-ph9',{recursive:true});writeFileSync('qa/2026-10-25-ph9/math-checks.json',JSON.stringify({poolCagr:fee.cagr,coreTranches:r.trades.map(t=>t.amount),rounds,results},null,2));
-console.log('PASS ph9: 8 public strategies/3 categories, honest migration, 40/20/20/20 cash split, fees in CAGR, no salary advance, dividend-inclusive closed rounds, no lookahead, 24 real ETF scenarios.');
+console.log('PASS ph9: 11 public strategies/3 categories, honest migration, 40/20/20/20 cash split, fees in CAGR, no salary advance, dividend-inclusive closed rounds, no lookahead, 33 real ETF scenarios.');

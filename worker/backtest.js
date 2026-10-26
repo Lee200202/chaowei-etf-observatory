@@ -11,7 +11,7 @@ function btMigrate(b){
 
   if(b&&(b.v===3||b.v===4||b.v===5)){const out={...BT_DEFAULT,...b,v:5,ref:{...BT_DEFAULT.ref,...b.ref},params:{...E.PARAMS[b.strategy]||{},...b.params}};
     if(b.v===3){if(b.dcaPeriods===12)out.dcaPeriods='auto';out.sync=String(out.ref.window)===String(settings.window)&&out.ref.method===settings.method&&out.ref.anchorMode===settings.anchorMode}
-    const p=E.PRESETS.find(x=>x.id===out.preset);if(p)out.family=p.family;else if(E.PRESETS.some(x=>x.strategy===out.strategy))out.family=E.PRESETS.find(x=>x.strategy===out.strategy).family;else if(!E.PRESETS.some(x=>x.strategy===out.strategy))return{...BT_DEFAULT,ref:out.ref,migrationNotice:'原方案不在目前八組策略中，請重新選擇。'};return out}
+    const p=E.PRESETS.find(x=>x.id===out.preset);if(p)out.family=p.family;else if(E.PRESETS.some(x=>x.strategy===out.strategy))out.family=E.PRESETS.find(x=>x.strategy===out.strategy).family;else if(!E.PRESETS.some(x=>x.strategy===out.strategy))return{...BT_DEFAULT,ref:out.ref,migrationNotice:'原方案不在目前策略目錄中，請重新選擇。'};return out}
   const out={...BT_DEFAULT,ref:{...BT_DEFAULT.ref,window:settings.window||'240',anchorMode:settings.anchorMode||'wick',anchorCount:settings.anchorCount||5,method:settings.method||'equal'}};
   if(b&&typeof b==='object'&&(b.v===2||b.mode)){
     const keys=['entry','drop','levels','buyGrade','step','adds','exit','rise','sellGrade','fibExt','stop','maxDays'],params={...E.PARAMS.classic};
@@ -28,6 +28,9 @@ const clampNum=(v,lo,hi,d)=>{const n=Number(v);return Number.isFinite(n)?Math.ma
 /* Parameter fields per strategy: [key,label,type,extra,visible(params)]. */
 const GRADE_OPTS=[['5','5 分（區間最低處）'],['4','4 分以上'],['3','3 分以上']];
 const BT_SCHEMA={
+  trend_pullback_ma60:[['core','保留核心','num',{min:10,max:90,step:5,unit:'%'}],['parts','加碼池分批','num',{min:2,max:4,step:1,unit:'批'}],['bias','前日 MA20 負乖離至少','num',{min:0.5,max:20,step:0.5,unit:'%'}],['cooldown','加碼間隔','num',{min:1,max:60,step:1,unit:'交易日'}]],
+  kd_oversold_golden_dca:[['core','保留核心','num',{min:10,max:90,step:5,unit:'%'}],['parts','加碼池分批','num',{min:2,max:4,step:1,unit:'批'}],['low','金叉時 K 低於','num',{min:5,max:50,step:1}],['high','死叉時 K 高於','num',{min:60,max:95,step:1}],['trim','調節衛星獲利股數','num',{min:5,max:50,step:5,unit:'%'}],['cooldown','交易間隔','num',{min:1,max:60,step:1,unit:'交易日'}]],
+  margin_fear_contrarian:[['core','保留核心','num',{min:10,max:90,step:5,unit:'%'}],['parts','加碼池分批','num',{min:2,max:4,step:1,unit:'批'}],['bias','MA60 負乖離至少','num',{min:1,max:30,step:0.5,unit:'%'}],['marginDrop','融資近五筆減少至少','num',{min:0.1,max:20,step:0.1,unit:'%'}],['minScore','價格水位至少','num',{min:0,max:5,step:0.1,unit:'分'}],['cooldown','加碼間隔','num',{min:1,max:60,step:1,unit:'交易日'}]],
   classic:[['entry','買進條件','select',[['drop','自區間高點下跌'],['fib','回檔到黃金分割位階'],['grade','水位分數達到']]],
     ['drop','下跌幅度','num',{min:1,max:90,step:1,unit:'%'},p=>p.entry==='drop'],['levels','買進位階','levels',null,p=>p.entry==='fib'],
     ['buyGrade','水位分數','select',GRADE_OPTS,p=>p.entry==='grade'],['step','每再跌','num',{min:1,max:50,step:1,unit:'%'},p=>p.entry!=='fib'],
@@ -52,6 +55,9 @@ const BT_SCHEMA={
   ma_offset_flow:[['ma','分界均線','num',{min:2,max:960,step:1,unit:'日'}],['offset','往右平移','num',{min:0,max:60,step:1,unit:'根'}],['flow','籌碼方向期數','num',{min:2,max:60,step:1,unit:'根'}]]
 };
 const BT_EXPLAIN={buy_hold:'資金到位後買進並持有；與定投使用相同費用、配息與成交模型。',regime_switch:'MA20 高於 MA60 採多頭配置，反向採防守配置；首次均線成熟前維持現金。',
+  trend_pullback_ma60:'核心隨已到位資金建立；MA200 多頭中，前日碰季線或 MA20 負乖離達門檻，首根紅 K 收斂且不破前低才加碼。前段均線不足不加碼，核心保留。',
+  kd_oversold_golden_dca:'KD(9,3,3) 低檔金叉時動用剩餘加碼池，每輪分批；高檔死叉且衛星扣成本後有獲利才小幅調節。核心與配息再投入股數保留；不是固定 2.5 倍扣款。',
+  margin_fear_contrarian:'同時符合 MA60 負乖離、近五筆已公布市場融資餘額減幅及價格水位才加碼。融資至少延後一交易日使用，缺值或跨長缺口不觸發；核心保留。三項為 AND。',
   classic:'在區間低處分批買進，依設定賣出；沒有部位時現金停泊',dca:'每月固定金額買進，作為比較基準',
   smart_dca_water:'每月扣款，依水位分數放大或縮小金額；扣不完的錢留作下次加碼',value_averaging:'讓持股市值照目標曲線成長，跌深多買、漲多少買或賣出',
   bias_tiered_dca:'依股價與 MA60 的乖離決定每月扣款倍數',tech_bb_rsi_dca:'每月小額底倉，超賣（%B、RSI 偏低）時加碼，過熱時小幅減碼',
@@ -62,7 +68,9 @@ const BT_EXPLAIN={buy_hold:'資金到位後買進並持有；與定投使用相�
 };
 
 /* ---------- context: daily bars + split-adjusted dividends + macro score ---------- */
-async function btEnsureDividends(){if(btDivs)return btDivs;try{const r=await fetch('/api/dividends'),d=await r.json();btDivs=r.ok?d.events||{}:{}}catch{btDivs={}}return btDivs}
+let btMarginRows=[],btMarginPromise=null,btMarginSnapshot=null,btMarginAt=0;
+function btEnsureMargin(){if(btMarginPromise&&Date.now()-btMarginAt<300000)return btMarginPromise;btMarginAt=Date.now();return btMarginPromise=(async()=>{try{const r=await fetch('/api/margin'),d=await r.json();if(!r.ok||!Array.isArray(d.rows))throw Error('margin unavailable');btMarginSnapshot=d;btMarginRows=d.rows.filter(x=>Number.isFinite(x[3])).map(x=>({date:x[0],value:x[3]}))}catch{btMarginRows=[]}btCtx=null;return btMarginRows})()}
+async function btEnsureDividends(){await btEnsureMargin();if(btDivs)return btDivs;try{const r=await fetch('/api/dividends'),d=await r.json();btDivs=r.ok?d.events||{}:{}}catch{btDivs={}}return btDivs}
 function btMacro(){
   // Average of the oil score (cheaper = higher) and the USD/TWD score (user's direction), on each bar's date.
   // Use the same FinMind Brent spot series as the card; never mix ETF/futures prices with spot prices.
@@ -76,7 +84,7 @@ function btMacro(){
 function btContext(){
   if(btCtx&&btCtx.bars===bars)return btCtx;
   const adj=historyMeta?.adjustments||[],div=(btDivs?.[selected]||[]).map(([date,v])=>{let f=1;for(const a of adj)if(date<a.date)f*=a.factor;return[date,v/f]});
-  btCtx=E.prepare(bars,div,btMacro());btCtx.bars=bars;return btCtx;
+  btCtx=E.prepare(bars,div,btMacro(),{marginDrop5:E.marginHistory(bars,btMarginRows)});btCtx.bars=bars;return btCtx;
 }
 // Custom dates use the first bar on or after the start and the last bar on or before the end.
 function btEnd(){const b=settings.bt;if(b.period!=='custom'||!b.to)return bars.length-1;let j=-1;for(let i=0;i<bars.length;i++)if(bars[i].date<=b.to)j=i;return Math.max(0,j)}
@@ -138,6 +146,7 @@ function btRenderSplit(){
   const plan=E.fundingInfo(btCfg());if(plan.tranches&&plan.supported&&b.strategy!=='classic')mine=b.strategy==='core_satellite'?'核心維持定投；衛星預算 '+m(C*(100-p.core)/100)+' 分 '+plan.tranches+' 批':'觸發加碼時，目標單筆 C ÷ '+plan.tranches+' = '+m(C/plan.tranches)+'；最多使用當時現金，賣出後可再運用';
   if(p.core&&p.basePct>0)mine='核心底倉 '+p.basePct+'% = '+m(C*p.basePct/100)+'；剩餘 '+(100-p.basePct)+'% 分 '+(Number(b.entryTranches)||1+p.adds)+' 批，每批目標 '+m(C*(1-p.basePct/100)/(Number(b.entryTranches)||1+p.adds))+'。僅使用已到位現金，底倉不隨波段賣出。';
   if(b.strategy==='core_satellite'&&p.upfrontCore)mine='已到位資金 '+p.core+'% 作核心，剩餘 '+(100-p.core)+'% 為衛星預算。';
+  if(['trend_pullback_ma60','kd_oversold_golden_dca','margin_fear_contrarian'].includes(b.strategy))mine='已到位資金 '+p.core+'% 建立保留核心；剩餘 '+(100-p.core)+'% 分 '+p.parts+' 批，符合加碼條件時以當輪可用現金除剩餘批數投入。';
   $('btSplit').innerHTML=(monthly?'每月入金 C ÷ '+N+' = <b>'+m(base)+'</b>，定期定額當月全數買進':'定期定額：每月 C ÷ '+N+' = <b>'+m(base)+'</b>')+'<br>'+mine+'<br>買進持有：第一天投入 C = '+m(C);
 }
 function btReadForm(){
@@ -153,6 +162,7 @@ function btReadForm(){
     b.params[k]=el.tagName==='SELECT'&&/^-?\d+(\.\d+)?$/.test(v)?Number(v):(typeof v==='number'&&!Number.isFinite(v)?b.params[k]:v)});
   const levels=[...$('btParams').querySelectorAll('[data-level]:checked')].map(x=>Number(x.dataset.level)).sort((x,y)=>x-y);if($('btParams').querySelector('[data-level]'))b.params.levels=levels.length?levels:[0.382];
   $('btParams').querySelectorAll('[data-arr]').forEach(el=>{const v=Number(el.value);if(Number.isFinite(v))b.params[el.dataset.arr][Number(el.dataset.i)]=Math.max(0,Math.min(10,v))});
+  if(['trend_pullback_ma60','kd_oversold_golden_dca','margin_fear_contrarian'].includes(b.strategy))for(const [key,,kind,bound] of BT_SCHEMA[b.strategy])if(kind==='num'){const raw=Number(b.params[key]),v=Math.max(bound.min,Math.min(bound.max,Number.isFinite(raw)?raw:E.PARAMS[b.strategy][key]));b.params[key]=['parts','cooldown'].includes(key)?Math.round(v):v}
   b.preset=E.PRESETS.some(p=>p.id===b.preset&&p.strategy===b.strategy&&JSON.stringify({...E.PARAMS[p.strategy],...p.params})===JSON.stringify(b.params))?b.preset:'custom';
   save();
 }
@@ -182,7 +192,7 @@ function btSentence(cfg){
     const x={gain:'高於成本 '+p.rise+'% 全賣',high:p.rise?'突破前高 '+p.rise+'% 全賣':'回到前高全賣',grade:'水位回到 '+p.sellGrade+' 分全賣',fibext:'到 '+(p.fibExt*100).toFixed(1)+'% 擴展位全賣',trailing:'回到前高後改用移動停利（回落 '+p.trail+'%'+(p.atrMult?'或吊燈 '+p.atrMult+'×ATR':'')+'）',pyramid:'+'+p.rise+'% 或回到前高先賣 30%、138.2% 再賣 30%，底倉跌破 MA120 才出'}[p.exit];
     s=`「${name}」：${cash}，${e}；${x}${p.stop?'，停損 '+p.stop+'%':''}`;
   }
-  if(['classic','smart_dca_water','core_satellite','macro_regime'].includes(cfg.strategy)||cfg.params.minScore)s+=`（水位以${win}區間計算）`;
+  if(['classic','smart_dca_water','core_satellite','macro_regime','margin_fear_contrarian'].includes(cfg.strategy)||cfg.params.minScore)s+=`（水位以${win}區間計算）`;
   return s+'。';
 }
 
@@ -291,6 +301,7 @@ function btAction(r){
         (r.shares?(sell?'符合出場條件，持股應<b>全部賣出</b>。':'持有中，等收盤高於分界線且籌碼方向轉負才出場。'):(buy?`符合進場條件，可投入約 ${amt(r.cash)}。`:'目前空手，等收盤低於分界線且籌碼方向轉正。'))}
   }
   else if(s==='tech_bb_rsi_dca')main=`依「${btName()}」：每月底倉 ${amt(B*p.baseRatio)}；%B 低於 ${p.pbLow} 且 RSI 低於 ${p.rsiLow} 時加碼 ${amt(E.fundingInfo(cfg).tranches?cfg.capital/E.fundingInfo(cfg).tranches:B*p.dipMult)}，以當時現金為上限。`;
+  else if(['trend_pullback_ma60','kd_oversold_golden_dca','margin_fear_contrarian'].includes(s)){const used=st.batches||0,left=Math.max(0,p.parts-used);main=`核心保留；本輪已用 ${used}／${p.parts} 批，區間末現金 ${amt(r.cash)}。`+(left?`下一次條件成立且間隔滿 ${p.cooldown} 交易日時，加碼目標約 ${amt(r.cash/left)}，仍以實際可用現金為上限。`:'本輪加碼池已用完；不再新增本金。')+(s==='kd_oversold_golden_dca'?`高檔死叉只調節 ${p.trim}% 已獲利衛星股數。`:'')+(s==='margin_fear_contrarian'&&!Number.isFinite(ctx.marginDrop5[i])?'末日融資資料不足，不能確認加碼條件。':'')}
   else if(s==='classic'){
     const k=p.entry==='fib'?p.levels.length:1+p.adds;
     if(!st.buys){const at=p.entry==='drop'?hi*(1-p.drop/100):p.entry==='fib'?hi-p.levels[0]*(hi-lo):g>=p.buyGrade?c:priceFor(p.buyGrade);
@@ -385,7 +396,7 @@ $('btCsv').addEventListener('click',()=>{
 $('btOptimize').addEventListener('click',async()=>{
   if(!isMember){$('accountTop').click();return}if(!bars.length)return;
   await btEnsureDividends();const ctx=btContext(),start=btStart(settings.bt.period),end=btEnd(),base=btCfg(),code=selected,candidates=[];
-  for(const p of E.PRESETS){const usesWater=['classic','smart_dca_water','core_satellite','macro_regime'].includes(p.strategy);for(const w of usesWater?[...new Set(['60','120','240',base.ref.window])]:[base.ref.window])candidates.push({p,w,usesWater,cfg:{...base,strategy:p.strategy,params:JSON.parse(JSON.stringify({...E.PARAMS[p.strategy],...p.params})),ref:{...base.ref,window:w}}})}
+  for(const p of E.PRESETS){const usesWater=['classic','smart_dca_water','core_satellite','macro_regime','margin_fear_contrarian'].includes(p.strategy);for(const w of usesWater?[...new Set(['60','120','240',base.ref.window])]:[base.ref.window])candidates.push({p,w,usesWater,cfg:{...base,strategy:p.strategy,params:JSON.parse(JSON.stringify({...E.PARAMS[p.strategy],...p.params})),ref:{...base.ref,window:w}}})}
   $('btOptSheet').classList.remove('hidden');document.body.classList.add('searching');$('btOptBody').innerHTML='<p class="small">正在背景試算，其他介面仍可操作。</p>';$('btOptimize').disabled=true;
   const key=JSON.stringify([code,ctx.bars,start,end,base,Array.from(ctx.div),Array.from(ctx.macro||[])]);
   try{
@@ -415,7 +426,7 @@ function applyMarkers(){
     if(['dca','drip','bench'].includes(t.kind))continue;
     let lo=0,hi=dates.length-1,at=-1;while(lo<=hi){const mid=(lo+hi)>>1;if(dates[mid]<=t.date){at=mid;lo=mid+1}else hi=mid-1}
     if(at<0)continue;
-    markers.push(t.type==='buy'?{time:dates[at],position:'belowBar',color:'#0e7490',shape:'arrowUp',text:'買'}:{time:dates[at],position:'aboveBar',color:'#c2410c',shape:'arrowDown',text:t.kind==='trim'?'減':'賣'});
+    markers.push(t.type==='buy'?{time:dates[at],position:'belowBar',color:RISE,shape:'arrowUp',text:'B'}:{time:dates[at],position:'aboveBar',color:FALL,shape:'arrowDown',text:'S'});
   }
   markers.push(...research);
   markers.sort((a,b)=>a.time.localeCompare(b.time));

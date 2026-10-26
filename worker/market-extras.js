@@ -17,7 +17,7 @@ function computeMktMargin(){
   $('marginSpark').innerHTML=factorSpark(marginDays);
 }
 async function loadMktMargin(){
-  try{const r=await fetch('/api/margin'),d=await r.json();if(!r.ok||!Array.isArray(d.rows))throw Error(d.error||'讀取失敗');
+  try{await btEnsureMargin();const d=btMarginSnapshot;if(!Array.isArray(d?.rows))throw Error('讀取失敗');
     // Margin amount is reported in thousand TWD; 1 億 = 100,000 thousand.
     const rows=d.rows.filter(x=>Number.isFinite(x[3])).map(x=>({date:x[0],value:x[3]/1e5,lots:x[1],short:x[2]}));
     // History is filled newest first; use only the unbroken recent stretch (no gap over 14 calendar days).
