@@ -1183,6 +1183,8 @@ $('closeAccount').addEventListener('click',closeAccount);
 $('accountOverlay').addEventListener('click',e=>{if(e.target===$('accountOverlay'))closeAccount()});
 window.chaoweiApplyProfile=profile=>{if(!profile||typeof profile!=='object')return;
   if(profile.settings&&typeof profile.settings==='object')Object.assign(settings,profile.settings);
+  // Migrate before any renderer runs, including the first Google profile restoration.
+  if(typeof btMigrate==='function')settings.bt=btMigrate(settings.bt);
   settings.watchlist=Array.isArray(settings.watchlist)?[...new Set(settings.watchlist.filter(x=>typeof x==='string'&&/^[0-9A-Z]{4,6}$/.test(x)))].slice(0,50):POPULAR.slice();
   prefs();renderList();computePosition();renderPosition();computeMarket();computeBrent();computeFx();updateWeights();drawChart(true);save();
 };
@@ -2719,7 +2721,7 @@ const BT_DEFAULT={v:5,family:'value',preset:'smartDca',strategy:'smart_dca_water
   fee:0.1425,discount:100,tax:0.1,fill:'nextOpen',slipBps:5,parking:1.5,drip:true,wholeShares:false,markers:true};
 // v2 stored the classic builder's fields at the top level; keep the user's swing settings.
 // v3 defaulted to 12 installments, which spent C in the first year of a five-year test; 12 becomes 'auto'.
-function btMigrate(b){
+function btMigrateStored(b){
   if(b&&b.v!==5){const target=(b.v===2||b.mode||b.preset==='custom'&&b.strategy==='classic'?'coreSwing':null)||E.RETIRED[b.preset]||(['coreSwing','coreSat','regime'].includes(b.preset)?b.preset:null),p=E.PRESETS.find(x=>x.id===target);if(p)return{...BT_DEFAULT,...b,v:5,...p,preset:p.id,params:JSON.parse(JSON.stringify(p.params)),migrationNotice:'策略目錄已精簡。舊方案「'+(E.LEGACY_PRESETS.find(x=>x.id===b.preset)?.name||'舊自訂方案')+'」已改為「'+p.name+'」；規則已重設，請確認條件並重新回測。',ref:{...BT_DEFAULT.ref,...b.ref}}}
 
   if(b&&(b.v===3||b.v===4||b.v===5)){const out={...BT_DEFAULT,...b,v:5,ref:{...BT_DEFAULT.ref,...b.ref},params:{...E.PARAMS[b.strategy]||{},...b.params}};
@@ -2734,8 +2736,8 @@ function btMigrate(b){
   }
   return out;
 }
+function btMigrate(b){const out=btMigrateStored(b),f=out.funding&&typeof out.funding==='object'?out.funding:null;out.funding={version:1,type:'total',arrival:'yearStart',annualAmount:240000,recycleGains:true,years:{},...f};out.funding.type=f?.type==='annual'?'annual':'total';out.funding.years=f?.years&&typeof f.years==='object'?{...f.years}:{};out.funding.version=1;if(!f&&out.dcaPeriods===12)out.fundingNotice='目前保留舊設定：總預算只分首 12 個月，不會每年再入金。可改選「整段回測期間」或「逐年新增預算」。';return out}
 settings.bt=btMigrate(settings.bt);
-if(!settings.bt.funding){settings.bt.funding={version:1,type:'total',arrival:'yearStart',annualAmount:240000,recycleGains:true,years:{}};if(settings.bt.dcaPeriods===12)settings.bt.fundingNotice='目前保留舊設定：總預算只分首 12 個月，不會每年再入金。可改選「整段回測期間」或「逐年新增預算」。'}
 function btYears(){if(!bars.length)return[];return [...new Set(bars.slice(btStart(settings.bt.period),btEnd()+1).map(x=>x.date.slice(0,4)))]}
 function btFundingForm(){const b=settings.bt,f=b.funding,annual=f.type==='annual';$('btBudgetType').value=annual?'annual':'total';$('btAnnualFields').hidden=!annual;for(const id of ['btTotalCapital','btTotalArrival','btDeployment','btCapChips'])$(id).hidden=annual;$('btAnnualArrival').value=f.arrival||'yearStart';$('btRecycleGains').checked=f.recycleGains!==false;$('btAnnualAmount').value=f.annualAmount??240000;$('btFundingNotice').textContent=!annual&&b.dcaPeriods===12?b.fundingNotice||'':'';const list=$('btYearBudgets');list.replaceChildren();for(const y of btYears()){const l=document.createElement('label');l.textContent=y+' 年';const input=document.createElement('input');input.type='number';input.min='0';input.max='1000000000';input.step='10000';input.dataset.budgetYear=y;input.setAttribute('aria-label',y+' 年新增預算');input.value=f.years?.[y]??f.annualAmount??240000;l.append(input);list.append(l)}}
 function btFundingText(r){if(!r?.funding)return'';const f=r.funding,positive=f.periods.filter(x=>x.inflow>0),first=positive[0]?.date,last=positive.at(-1)?.date;return(f.type==='annual'?'逐年新增預算':'整段總預算')+' · '+(f.arrival==='monthly'?'按月到帳':f.arrival==='yearStart'?'年度額度於該年可用':'期初全額到位')+' · 實際入金 '+money(r.contributed)+' · '+positive.length+' 次（'+first+' 至 '+last+'） · 定投按 '+r.N+' 個月排程。'}

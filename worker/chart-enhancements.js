@@ -94,6 +94,8 @@ $('closeAccount').addEventListener('click',closeAccount);
 $('accountOverlay').addEventListener('click',e=>{if(e.target===$('accountOverlay'))closeAccount()});
 window.chaoweiApplyProfile=profile=>{if(!profile||typeof profile!=='object')return;
   if(profile.settings&&typeof profile.settings==='object')Object.assign(settings,profile.settings);
+  // Migrate before any renderer runs, including the first Google profile restoration.
+  if(typeof btMigrate==='function')settings.bt=btMigrate(settings.bt);
   settings.watchlist=Array.isArray(settings.watchlist)?[...new Set(settings.watchlist.filter(x=>typeof x==='string'&&/^[0-9A-Z]{4,6}$/.test(x)))].slice(0,50):POPULAR.slice();
   prefs();renderList();computePosition();renderPosition();computeMarket();computeBrent();computeFx();updateWeights();drawChart(true);save();
 };
