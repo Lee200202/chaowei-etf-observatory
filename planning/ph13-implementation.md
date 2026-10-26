@@ -39,3 +39,7 @@
 `test:ph13`涵蓋錯字、上下文、百分比精度、同期間12組真實0056回測與一致定投、再平衡筆數、MA240未來擾動及白板映射。`test:ph11`補快取命中不呼叫模型；既有全部測試繼續執行。實際瀏覽器另驗排行點選、雙圖60日保持、均線／水位、回饋、選單快捷、三尺寸五頁及暫停動效。會員替身、本機數學、真實Google登入、供應商服務與實體手機範圍分列。
 
 官方依據：[模型](https://ai.google.dev/gemini-api/docs/models/gemini-3.5-flash-lite)、[Thinking](https://ai.google.dev/gemini-api/docs/thinking)、[Saro](https://sarofinance.framer.website/)、[BETH](https://bethjewellery.com/collections)、[Zenbu](https://zenbuapps.com/site)。
+
+## 背景解讀補強
+
+真正完整績效解讀仍曾超過22秒，因此後端以會員雜湊與隨機requestId保存執行中／完成結果五分鐘。狀態宣告background能力；新版前端只有確定後端支援才採12秒柔性等待，之後解除送出鎖定、每5秒收取同一份結果，最久90秒，不再呼叫模型或扣模型額度。結果要再過原數字核對，仍綁自己的策略，清除對話會停止收取。取回端點驗同一Google會員，不能跨會員取結果；不儲存token、原始問題或帳號資料在工作狀態。沒有能力宣告的舊後端沿用原等待，避免發布過渡期誤呼新路由。
