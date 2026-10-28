@@ -47,7 +47,7 @@ function refreshDirectionViews(){
   }
   for(const select of directionSelects)select.value=settings.factorModes[select.dataset.direction];
   if(fxPosition)$('fxMeta').textContent=fmt(fxPosition.last.value,3)+' 新台幣／美元 · '+fxPosition.last.date+' · '+(settings.factorModes.fx==='twd_strong_buy'?'數字低＝台幣較強，分高':'數字高＝台幣較弱，分高');
-  bankTile.querySelector('small').textContent=(settings.factorModes.bank==='buy_follow'?'買超加分':'賣超加分')+' · 平日約 20:00 單次擷取';
+  bankTile.querySelector('small').textContent=(settings.factorModes.bank==='buy_follow'?'買超加分':'賣超加分')+' · 平日約 23:15 單次擷取';
   const a=DM.action(Number.parseFloat($('combined').textContent));$('combinedAction').textContent=a.text;$('combinedAction').className='direction-action '+a.kind;
 }
 const combinedAction=document.createElement('p');combinedAction.id='combinedAction';$('combined').after(combinedAction);

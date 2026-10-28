@@ -36,7 +36,7 @@ computeBrent=function(){
   const age=bars.length?(Date.parse(bars.at(-1).date)-Date.parse(last.date))/86400000:0;
   if(age>14){brentPosition=null;$('brentScore').textContent='逾期';$('brentMeta').textContent=last.date+' 之後沒有新現貨資料，暫停計分';return}
   brentPosition={...s,last};
-  $('brentScore').textContent=fmt(s.core,1)+' / 5';$('brentMeta').textContent=`${fmt(last.value,2)} 美元／桶 · ${last.date} · 均值 ${fmt(s.mean,2)} · 偏離 ${signNum(s.deviation)}%`;
+  $('brentScore').textContent=fmt(s.core,1)+' / 5';$('brentMeta').textContent=`${fmt(last.value,2)} 美元／桶 · ${last.date}（官方最新）· 均值 ${fmt(s.mean,2)} · 偏離 ${signNum(s.deviation)}%`;
   $('oilSpark').innerHTML=factorSpark(oilDays);
 };
 async function loadOil(){
@@ -65,7 +65,7 @@ $('market').querySelector('.factor-rail-nav').after(trendPanel);
 const tileFor={index:'indexScore',volume:'volumeScore',brent:'brentScore',fx:'fxScore',margin:'mktMarginScore'};
 // The oil card says plainly what it measures.
 $('brentScore').closest('.factor').querySelector('h4').textContent='布蘭特原油 · 現貨';
-{const note=document.createElement('p');note.className='factor-note';note.textContent='FinMind · 日資料，有發布延遲';$('brentScore').before(note);$('brentMeta').insertAdjacentHTML('afterend','<div class="factor-spark" id="oilSpark"></div><p class="small oil-future" id="oilFutureMeta">盤中期貨參考：等待 Yahoo 報價</p>')}
+{const note=document.createElement('p');note.className='factor-note';note.textContent='EIA 布蘭特現貨（經 FinMind）· 日資料，EIA 約每週三公布前一週，落後約一週';$('brentScore').before(note);$('brentMeta').insertAdjacentHTML('afterend','<div class="factor-spark" id="oilSpark"></div><p class="small oil-future" id="oilFutureMeta">盤中期貨參考：等待 Yahoo 報價</p>')}
 for(const [key,id] of Object.entries(tileFor)){
   const tile=$(id).closest('.factor');tile.dataset.trend=key;tile.tabIndex=0;tile.setAttribute('role','button');tile.setAttribute('aria-expanded','false');
   tile.setAttribute('aria-label',FACTOR_TRENDS[key].title+'：查看趨勢圖');
