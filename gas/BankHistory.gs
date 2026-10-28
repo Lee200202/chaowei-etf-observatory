@@ -51,13 +51,14 @@ function setupBankHistory(){
 }
 
 // 擁有者在編輯器執行一次：把舊的 20:00 觸發器改成 23:15，並立即補抓 HiStock 已公布的日期。
-// 補抓不佔用今天的單次嘗試，所以今晚 23:15 仍會照常擷取當天資料。
+// 補抓不佔用今天的單次嘗試；若今天的舊 20:00 觸發器已先跑過，也清除今天的嘗試標記，今晚 23:15 仍會擷取當天資料。
 function rescheduleBankHistory(){
   const ss=store_();if(!ss)throw Error('潮位資料庫尚未建立');
   const old=ScriptApp.getProjectTriggers().filter(t=>t.getHandlerFunction()==='appendBankHistory');
   old.forEach(t=>ScriptApp.deleteTrigger(t));bankTrigger_();
   const lock=LockService.getScriptLock();if(!lock.tryLock(5000))throw Error('其他工作正在執行，請稍後再試');
   try{
+    const props=storeProps_();if(props.getProperty('BANK_LAST_ATTEMPT')===taipeiDate_())props.setProperty('BANK_LAST_ATTEMPT','');
     const result=bankMerge_(ss);storeReadme_(ss);
     storeLog_(ss,'rescheduleBankHistory','觸發器改為 23:15（移除 '+old.length+' 個舊觸發器）；補抓 '+JSON.stringify(result));
     return{...result,removedTriggers:old.length,trigger:'每日 23:15 左右'};
