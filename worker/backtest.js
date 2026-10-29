@@ -349,12 +349,21 @@ function btRenderFill(ctx,cfg,start,end,r){
     '<p class="small">延遲到 T+1 開盤並計入滑價，年化'+(Math.abs(dx)<5e-5?'幾乎不變':(dx<0?'少 ':'多 ')+fmt(Math.abs(dx)*100,2)+' 個百分點')+'，期末'+(de<0?'少 ':'多 ')+money(Math.abs(de))+'。真實模型的摩擦成本：手續費與稅 '+money(real.fees)+'＋滑價 '+money(real.slippage)+'，合計佔本金 '+fmt(real.friction*100,2)+'%'+(real.unfilled?'；期末最後一天的 '+real.unfilled+' 筆訊號因無下一個開盤而未成交':'')+'。</p>';
 }
 const btAnnual=(r,monthly=r.monthly)=>monthly?r.xirr:r.cagr;
+function btRenderQuote(){
+  let box=$('btQuoteValuation');if(!box){box=document.createElement('p');box.id='btQuoteValuation';box.className='small';$('btSummary').after(box)}
+  const r=btResult,q=liveQuote,last=bars.at(-1),valid=isMember&&r&&q?.available&&last&&r.end===last.date&&q.date>r.end&&q.previousClose/last.close>0.8&&q.previousClose/last.close<1.2;
+  box.dataset.asof=r?.end||'';box.dataset.historyDate=last?.date||'';box.dataset.quoteDate=q?.date||'';box.dataset.member=String(isMember);
+  box.classList.toggle('hidden',!valid);if(!valid)return;
+  const estimate=r.cash+r.shares*q.price,delta=estimate-r.equity,time=q.time?new Date(q.time).toLocaleTimeString('zh-TW',{timeZone:'Asia/Taipei',hour:'2-digit',minute:'2-digit',hour12:false}):'時間待確認';
+  box.textContent=`${q.date} ${time} ${q.isClose?'收盤報價':'盤中報價'} ${fmt(q.price,2)} 元 · 沿用 ${r.end} 部位估值 ${money(estimate)}，較前次結算 ${delta>0?'+':''}${money(delta)}。僅按最新價格重估；未模擬今日新入金、配息或委託，正式策略績效仍截至 ${r.end}。`;
+}
+window.addEventListener('chaowei-quote-updated',btRenderQuote);
 function renderBacktest(){
   btBarsRef=bars;
   if(!bars.length||bars.length<60){$('btKpis').innerHTML='<p class="small">需要至少 60 個交易日才能回測。</p>';btResult=null;applyMarkers();return}
   if(!btDivs){btEnsureDividends().then(()=>{btCtx=null;renderBacktest()});}
   const seq=++btSeq,ctx=btContext(),cfg=btCfg(),start=btStart(settings.bt.period),end=btEnd();let r;try{r=E.run(ctx,cfg,start,end)}catch(e){$('btSummary').textContent=e.message;$('btFundingSummary').textContent='請調整預算後重新回測。';btResult=null;$('btKpis').replaceChildren();return}btResult=r;btFundingResult(r);
-  $('btSummary').textContent=btSentence(r.cfg);
+  $('btSummary').textContent=btSentence(r.cfg);btRenderQuote();
   // Verdict: name the metric; never call it a win when the return is behind.
   const dx=shownPct(btAnnual(r)-btAnnual(r.dca,r.monthly)),dm=r.dca.mdd-r.mdd,calS=r.calmar,calD=r.dca.mdd>0?r.dca.cagr/r.dca.mdd:null;
   $('btVerdict').innerHTML=r.cfg.strategy==='dca'?'<span class="bt-tag">這就是定期定額本身，可作為其他策略的比較基準。</span>':

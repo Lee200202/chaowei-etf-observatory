@@ -123,6 +123,14 @@ assert.equal(bundle.store,true);assert.equal(bundle.intraday.time,'10:12:05');
 clock+=7*60000;cache.clear();fetchLog=[];
 assert.equal(box.liveFromStore_().intraday,null);
 assert.ok(box.getLiveMarket().intraday);assert.ok(fetchLog.some(u=>u.includes('MI_5MINS')));
+// A newly written stale source must not pass freshness just because its insertion time is recent.
+const savedRecord=intra[1].slice();intra[1][7]=new Date(clock+28800000).toISOString().slice(0,19).replace('T',' ');
+assert.equal(box.liveFromStore_().intraday,null,'source time, not insertion time, must be fresh');
+// After the close, an incomplete 13:10 record must fall back to the official final market report.
+clock=Date.parse('2026-10-20T05:50:00Z');intra[1][1]='13:10:00';intra[1][7]=new Date(clock+28800000).toISOString().slice(0,19).replace('T',' ');
+assert.equal(box.liveFromStore_().intraday,null,'13:10 is not a complete market close');
+intra[1][1]='13:33:00';assert.ok(box.liveFromStore_().intraday,'final 13:33 record is reusable after close');
+intra[1]=savedRecord;
 
 /* ---------- daily append with a split ---------- */
 clock=Date.parse('2026-10-20T10:30:00Z');// 18:30 Taipei
@@ -157,3 +165,4 @@ assert.ok(tab('使用紀錄').rows.length<=1+60+0,'at most 60 events a minute pe
 cache.clear();const pop=box.getPopular();
 assert.equal(JSON.stringify(pop.codes.slice(0,2)),JSON.stringify(['0050','009816']),'popular list weights selections and long views');
 console.log('Spreadsheet store: setup, ten-year import, split restore, intraday capture, live read with fallback, daily append and usage logging passed');
+

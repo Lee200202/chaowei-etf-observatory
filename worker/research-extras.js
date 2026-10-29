@@ -68,8 +68,19 @@ $('chartCard').after(chipCard);
 chipCard.insertAdjacentHTML('afterbegin','<div class="member-lock"><div class="member-lock-box"><span class="member-badge">會員專屬</span><h4>查看 ETF 法人籌碼</h4><p>登入後看外陸資持有單位與三大法人每日買賣超。</p><button class="action" type="button" data-open-account>用 Google 登入解鎖</button></div></div>');
 let chipCode='',chipRows=[],chipGeneration=0;
 const sharesToLots=n=>Number.isFinite(n)?`${fmt(n/1000,1)} 張`:'—';
+function chipObservation(rows,date){const row=rows.find(r=>r[0]===date);return row?{date:row[0],row,values:row.slice(1,5).map(v=>Number.isFinite(v)?v/1000:null)}:null}
+function chipReading(date,preview=false){
+  const node=$('chipContents'),grid=node.querySelector('.chip-grid');if(!grid)return;const obs=chipObservation(chipRows,date),row=obs?.row;
+  const caption=node.querySelector('.chip-inspect-date');if(caption)caption.textContent=date+' · '+(preview?'圖表預覽；權重日期維持 '+$('chipDate').value:'選定資料日');
+  grid.classList.add('rd-flow-chart');grid.dataset.date=date;grid.replaceChildren();const max=Math.max(1,...(obs?.values||[]).filter(Number.isFinite).map(Math.abs));
+  ['外陸資','投信','自營商','合計'].forEach((label,i)=>{const value=obs?.values[i],item=document.createElement('div');item.className='rd-flow-row';item.innerHTML='<span></span><div class="rd-flow-axis"><i></i></div><b></b>';item.firstChild.textContent=label;item.lastChild.textContent=Number.isFinite(value)?(value>0?'+':'')+fmt(value,1)+' 張':'未取得此日資料';item.lastChild.className=value>0?'up':value<0?'down':'';const bar=item.querySelector('i'),w=Number.isFinite(value)?Math.abs(value)/max*48:0;bar.style.width=w+'%';bar.style.left=(value>=0?50:50-w)+'%';bar.className=value>0?'rd-positive':'rd-negative';grid.append(item)});
+  grid.setAttribute('role','img');grid.setAttribute('aria-label',date+' 三大法人每日買賣超，左賣超右買超，單位張');
+  const heading=node.querySelector('.chip-summary');if(heading){heading.querySelector('strong').textContent=sharesToLots(row?.[5]);heading.querySelector('small').textContent=row?.[5]!=null&&row?.[6]>0?'約占已發行單位 '+fmt(row[5]/row[6]*100,2)+'%':'未取得此日持有資料'}
+  const foot=node.querySelector('.chip-cumulative');if(foot){const past=chipRows.filter(r=>r[0]<=date).slice(-20);foot.textContent=obs?'近 '+past.length+' 個已取得交易日：外陸資累計 '+sharesToLots(past.reduce((v,r)=>v+r[1],0))+'。':'此日尚無已取得法人資料，不沿用其他日期的值。'}
+  const margin=node.querySelector('.chip-daily-margin');if(margin)margin.textContent=date+' 融資餘額 '+(Number.isFinite(row?.[7])?fmt(row[7],0)+' 張':'未取得')+' · 融券餘額 '+(Number.isFinite(row?.[8])?fmt(row[8],0)+' 張':'未取得');
+}
 function renderChip(){
-  const node=$('chipContents'),date=$('chipDate').value,row=chipRows.find(x=>x[0]===date)||chipRows.at(-1);
+  const node=$('chipContents'),date=$('chipDate').value||chipRows.at(-1)?.[0],row=chipObservation(chipRows,date)?.row;
   node.replaceChildren();if(!row){node.textContent='這檔 ETF 尚無可用的法人快照。';return}
   const [day,foreignNet,trustNet,dealerNet,totalNet,foreignHeld,issued]=row;
   const heading=document.createElement('div');heading.className='chip-summary';
@@ -77,7 +88,7 @@ function renderChip(){
   heading.innerHTML='<span>外陸資持有 ETF 單位</span><strong></strong><small></small>';
   heading.querySelector('strong').textContent=sharesToLots(foreignHeld);
   heading.querySelector('small').textContent=pct==null?'未公布持有比例':`約占已發行單位 ${fmt(pct,2)}%`;
-  node.append(heading);
+  node.append(heading);const caption=document.createElement('p');caption.className='small chip-inspect-date';caption.setAttribute('aria-live','polite');node.append(caption);
   const grid=document.createElement('div');grid.className='chip-grid';
   for(const [label,value] of [['外陸資買賣超',foreignNet],['投信買賣超',trustNet],['自營商買賣超',dealerNet],['三大法人合計',totalNet]]){
     const item=document.createElement('div');item.className='chip-item';
@@ -87,7 +98,7 @@ function renderChip(){
   }
   node.append(grid);
   const prior=chipRows.filter(x=>x[0]<=day).slice(-20),sum=prior.reduce((n,x)=>n+x[1],0);
-  const foot=document.createElement('p');foot.className='small';foot.textContent=`近 ${prior.length} 個已取得交易日：外陸資累計買賣超 ${(sum>0?'+':'')+sharesToLots(sum)}。投信、政府持有多少單位未由此報表提供。`;
+  const foot=document.createElement('p');foot.className='small chip-cumulative';foot.textContent=`近 ${prior.length} 個已取得交易日：外陸資累計買賣超 ${(sum>0?'+':'')+sharesToLots(sum)}。投信、政府持有多少單位未由此報表提供。`;
   node.append(foot);
   const range=[20,60,120].includes(settings.chipRange)?settings.chipRange:60,history=chipRows.filter(x=>x[0]<=day).slice(-range);
   const seg=document.createElement('div');seg.className='segment chip-range';seg.setAttribute('aria-label','趨勢期間');
@@ -99,20 +110,20 @@ function renderChip(){
   const lots=v=>Number.isFinite(v)?v/1000:null;
   node.append(chipChart({title:'三大法人每日買賣超',unit:'張',width,dates:history.map(r=>r[0]),kind:'stack',
     series:[{name:'外陸資',color:'#d74640',data:history.map(r=>lots(r[1]))},{name:'投信',color:'#18a49b',data:history.map(r=>lots(r[2]))},{name:'自營商',color:'#e3a052',data:history.map(r=>lots(r[3]))}],
-    line:{name:'合計',color:'var(--ink)',data:history.map(r=>lots(r[4]))}}));
+    line:{name:'合計',color:'var(--ink)',data:history.map(r=>lots(r[4]))},format:v=>fmt(v,1)+' 張',onInspect:(d,source)=>chipReading(source==='restore'?day:d,source!=='restore'&&d!==day)}));
   // 融資: balance as an area, the ETF close (split-adjusted) as a dashed line on its own right-hand scale.
   const closeBy=new Map(bars.map(b=>[b.date,b.close])),margin=history.map(r=>Number.isFinite(r[7])?r[7]:null);
   const firstM=margin.find(Number.isFinite),lastM=[...margin].reverse().find(Number.isFinite);
   node.append(chipChart({title:'融資餘額趨勢',unit:'張',width,dates:history.map(r=>r[0]),kind:'area',
     series:[{name:'融資餘額',color:'#0e7490',data:margin}],right:{name:`${selected} 收盤`,color:'#9aa5ab',data:history.map(r=>closeBy.get(r[0])??null)},
     note:Number.isFinite(firstM)&&Number.isFinite(lastM)?`區間變化 ${lastM>=firstM?'+':''}${fmt(lastM-firstM,0)} 張（${firstM?(lastM>=firstM?'+':'')+fmt((lastM/firstM-1)*100,1)+'%':'—'}）`:''}));
-  const m=document.createElement('p');m.className='small';m.textContent=`${day} 融資餘額 ${Number.isFinite(row[7])?fmt(row[7],0)+' 張':'暫無資料'} · 融券餘額 ${Number.isFinite(row[8])?fmt(row[8],0)+' 張':'暫無資料'}`;node.append(m);
-  updateWeights();
+  const m=document.createElement('p');m.className='small chip-daily-margin';m.textContent=`${day} 融資餘額 ${Number.isFinite(row[7])?fmt(row[7],0)+' 張':'暫無資料'} · 融券餘額 ${Number.isFinite(row[8])?fmt(row[8],0)+' 張':'暫無資料'}`;node.append(m);
+  chipReading(day);updateWeights();
 }
 /* Small SVG trend chart drawn at the card's real pixel width, so labels stay legible on phones.
    kind 'stack': series stacked above/below zero plus an optional total line; kind 'area': one filled line
    plus an optional dashed comparison line on its own right-hand scale. Hover or tap shows that day. */
-function chipChart({title,unit,width,dates,kind,series,line,right,note,bands=[],format,periodLabel='個交易日'}){
+function chipChart({title,unit,width,dates,kind,series,line,right,note,bands=[],format,periodLabel='個交易日',onInspect}){
   const NS='http://www.w3.org/2000/svg',wrap=document.createElement('div');wrap.className='chip-trend';
   const head=document.createElement('div');head.className='chip-trend-head';head.innerHTML=`<strong></strong><span></span>`;
   head.querySelector('strong').textContent=title;head.querySelector('span').textContent=`${dates[0]||'—'} 至 ${dates.at(-1)||'—'} · 單位：${unit}${note?' · '+note:''}`;wrap.append(head);
@@ -161,9 +172,9 @@ function chipChart({title,unit,width,dates,kind,series,line,right,note,bands=[],
   legend.innerHTML=[...series.map(s=>`<span style="color:${s.color}"> ${s.name}</span>`),line?`<span>━ ${line.name}</span>`:'',right?`<span style="color:${right.color}">┅ ${right.name}（右軸）</span>`:''].join('');wrap.append(legend);
   const tip=document.createElement('p');tip.className='chip-tip';tip.setAttribute('aria-live','polite');wrap.append(tip);
   const signed=v=>Number.isFinite(v)?(v>0?'+':'')+fmt(v,0):'—';
-  const show=i=>{tip.textContent=`${dates[i]}　`+[...series.map(s=>`${s.name} ${Number.isFinite(s.data[i])?valueText(s.data[i]):'—'}`),line?`${line.name} ${valueText(line.data[i])}`:'',right&&Number.isFinite(right.data[i])?`${right.name} ${fmt(right.data[i],2)}`:''].filter(Boolean).join(' · ');guide.setAttribute('x1',x(i));guide.setAttribute('x2',x(i));guide.setAttribute('opacity',.45)};
-  const pick=e=>{const r=svg.getBoundingClientRect(),px=(e.clientX-r.left)*W/r.width;show(Math.max(0,Math.min(n-1,Math.floor((px-L)/step))))};
-  svg.addEventListener('pointermove',pick);svg.addEventListener('pointerdown',pick);svg.addEventListener('pointerleave',()=>{guide.setAttribute('opacity',0);show(n-1)});
+  let inspected=n-1,pinned=false;svg.setAttribute('tabindex','0');const show=(i,source='initial')=>{inspected=i;tip.textContent=`${dates[i]}　`+[...series.map(s=>`${s.name} ${Number.isFinite(s.data[i])?valueText(s.data[i]):'—'}`),line?`${line.name} ${valueText(line.data[i])}`:'',right&&Number.isFinite(right.data[i])?`${right.name} ${fmt(right.data[i],2)}`:''].filter(Boolean).join(' · ');guide.setAttribute('x1',x(i));guide.setAttribute('x2',x(i));guide.setAttribute('opacity',.45);if(source!=='initial')onInspect?.(dates[i],source)};
+  const pick=e=>{const r=svg.getBoundingClientRect(),px=(e.clientX-r.left)*W/r.width;show(Math.max(0,Math.min(n-1,Math.floor((px-L)/step))),e.type==='pointerdown'?'select':'hover')};
+  svg.addEventListener('pointermove',pick);svg.addEventListener('pointerdown',e=>{pinned=e.pointerType==='touch';pick(e)});svg.addEventListener('pointerleave',()=>{if(!pinned){guide.setAttribute('opacity',0);show(n-1,'restore')}});svg.addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight','Home','End','Escape'].includes(e.key)){e.preventDefault();if(e.key==='Escape'){pinned=false;show(n-1,'restore')}else{pinned=true;show(e.key==='Home'?0:e.key==='End'?n-1:Math.max(0,Math.min(n-1,inspected+(e.key==='ArrowLeft'?-1:1))),'keyboard')}}});
   show(n-1);return wrap;
 }
 // Charts are drawn at the card's pixel width; redraw when it changes.
@@ -179,7 +190,10 @@ async function loadChips(code){
     $('chipDate').disabled=!chipRows.length;renderChip();
   }catch{if(generation===chipGeneration)$('chipContents').textContent='法人快照暫時無法取得。'}
 }
-$('chipDate').addEventListener('change',renderChip);
+$('chipDate').addEventListener('change',()=>renderChip());
 const researchLoadBars=loadBars;
 loadBars=function(...args){if(selected!==chipCode)window.chaoweiWaveMarkers=[];if(isMember&&(selected!==chipCode||!chipRows.length))loadChips(selected);return researchLoadBars(...args)};
 window.chaoweiResearchMemberChanged=signedIn=>{if(signedIn)loadChips(selected);else{chipRows=[];chipCode='';pinMode=false;pinModeButton.setAttribute('aria-pressed','false')}};
+
+// Price crosshair previews the exact daily chip row; historical dates without data stay missing.
+const chipLegend=updateLegend;let chipReadFrame=0,chipReadDate='';updateLegend=function(logical){const out=chipLegend(logical);if(!isMember||!chipRows.length||interval!=='D')return out;const i=Number.isFinite(logical)?Math.round(logical):-1,time=i>=0?lwc?.data?.[i]?.time:null,date=typeof time==='string'?time:$('chipDate').value;if(!date||date===chipReadDate)return out;chipReadDate=date;cancelAnimationFrame(chipReadFrame);chipReadFrame=requestAnimationFrame(()=>chipReading(date,date!==$('chipDate').value));return out};

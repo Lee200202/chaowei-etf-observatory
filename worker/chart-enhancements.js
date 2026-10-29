@@ -123,14 +123,14 @@ renderPosition=function(){
   $('barDate').textContent=last?last.date.slice(5):'—';
   const provisional=liveQuote?.available&&last&&liveQuote.date>last.date;
   $('liveSource').classList.toggle('hidden',!provisional);
-  $('priceLabel').textContent=provisional?'最新成交價':'最近收盤價';
-  $('barPrice').previousElementSibling.textContent=provisional?'盤中成交':'收盤';
+  $('priceLabel').textContent=provisional?(liveQuote.isClose?'今日收盤報價':'最新成交價'):'最近收盤價';
+  $('barPrice').previousElementSibling.textContent=provisional?(liveQuote.isClose?'今日收盤':'盤中成交'):'收盤';
   if(provisional){
     const time=liveQuote.time?new Date(liveQuote.time).toLocaleTimeString('zh-TW',{timeZone:'Asia/Taipei',hour:'2-digit',minute:'2-digit'}):'時間待確認';
     $('price').textContent=fmt(liveQuote.price,2)+' 元';
     $('asof').textContent=`報價日期：${liveQuote.date} ${time} · 正式成交`;
-    $('liveSource').textContent=`富果行情 API · 每 5 分鐘檢查 · 當日 K 為盤中暫值`;
-    $('quoteStatus').textContent='盤中參考';
+    $('liveSource').textContent=`富果行情 API · 每 5 分鐘檢查 · ${liveQuote.isClose?'今日已收盤，待日 K 正本更新':'當日 K 為盤中暫值'}`;
+    $('quoteStatus').textContent=liveQuote.isClose?'今日收盤':'盤中參考';
     $('barPrice').textContent=fmt(liveQuote.price,2);
     $('barDate').textContent=liveQuote.date.slice(5);
   }
@@ -189,7 +189,7 @@ async function loadQuote(){
     liveQuote=quote?.available?quote:null;
   }catch{if(code!==selected)return;liveQuote=null}
   if(!bars.length)return;
-  computePosition();renderPosition();drawChart(true);updateWeights();
+  computePosition();renderPosition();drawChart(true);updateWeights();window.dispatchEvent(new CustomEvent('chaowei-quote-updated',{detail:{code}}));
 }
 setInterval(()=>{if(!document.hidden)loadQuote()},300000);
 
@@ -469,7 +469,7 @@ function renderLiveMeta(){
   $('refreshClock').textContent=hhmm(liveAt);
   if(liveFailure){$('liveMeta').textContent=`台股 ${market.at(-1)?.date||'—'} 收盤 · 線上檢查失敗（${liveFailure}），沿用每日快照`;return}
   const parts=[];
-  if(live?.intraday)parts.push('大盤盤中 '+live.intraday.time.slice(0,5));
+  if(live?.intraday)parts.push('大盤 '+live.intraday.date+' '+live.intraday.time.slice(0,5));
   else if(market.at(-1)?.date)parts.push('台股 '+shortDate(market.at(-1).date));
   if(live?.oil?.unit==='USD/barrel')parts.push('原油現貨 '+shortDate(live.oil.latest));
   if(live?.fx)parts.push('匯率 '+shortDate(live.fx.latest));
@@ -528,6 +528,8 @@ settings.fxDirection=settings.fxDirection==='low'?'low':'high';$('fxDirection').
 $('fxDirection').addEventListener('change',function(){settings.fxDirection=this.value==='high'?'high':'low';computeFx();updateWeights();save()});
 loadLive();
 setInterval(()=>{if(!document.hidden)loadLive()},300000);
+let foregroundRefreshAt=0;
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&Date.now()-foregroundRefreshAt>30000){foregroundRefreshAt=Date.now();loadQuote();loadLive();refresh();}});
 
 /* ---------- Member-only cards: backtest and weight plans unlock with Google sign-in ---------- */
 let isMember=false;
