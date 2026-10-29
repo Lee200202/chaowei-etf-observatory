@@ -561,7 +561,7 @@ function renderChange(){
   // One status label instead of three: the data date and whether it is a close or an intraday price.
   const last=bars.at(-1),provisional=liveQuote?.available&&last&&liveQuote.date>last.date;
   $('asof').classList.add('hidden');
-  $('quoteStatus').textContent=!last?'—':provisional?'盤中 '+(liveQuote.time?new Date(liveQuote.time).toLocaleTimeString('zh-TW',{timeZone:'Asia/Taipei',hour:'2-digit',minute:'2-digit',hour12:false}):''):last.date.slice(5)+' 收盤';
+  $('quoteStatus').textContent=!last?'—':provisional?liveQuote.date.slice(5)+(liveQuote.isClose?' 收盤 ':' 盤中 ')+(liveQuote.time?new Date(liveQuote.time).toLocaleTimeString('zh-TW',{timeZone:'Asia/Taipei',hour:'2-digit',minute:'2-digit',hour12:false}):''):last.date.slice(5)+' 收盤';
 }
 const changeRenderPosition=renderPosition;
 renderPosition=function(){changeRenderPosition();renderChange()};

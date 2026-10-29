@@ -24,4 +24,9 @@ const history=[{date:'2026-10-28',index:47035.58,volume:9001000000}],model={mark
 vm.createContext(model);vm.runInContext(display,model);assert.equal(model.marketDisplaySeries('index').at(-1).value,46368.33);assert.equal(model.marketDisplaySeries('volume').at(-1).value,99.95117);assert.equal(history.length,1);
 model.live.intraday.time='11:00:00';assert.equal(model.marketDisplaySeries('volume').at(-1).partialVolume,true,'partial volume cannot enter full-session historical rank');
 model.live.intraday.date='2026-10-27';assert.equal(model.marketDisplaySeries('index').at(-1).date,'2026-10-28','old live bundle cannot override a newer daily close');
+// The compact badge must not relabel a confirmed closing quote as intraday.
+const enhancement=fs.readFileSync('worker/chart-enhancements.js','utf8'),renderChange=enhancement.slice(enhancement.indexOf('function renderChange(){'),enhancement.indexOf('const changeRenderPosition='));
+const status={textContent:'',classList:{add(){},remove(){}}},badge={bars:[{date:'2026-10-28',close:108.65}],liveQuote:{available:true,date:'2026-10-29',time:'2026-10-29T05:30:00Z',isClose:true},dayChange:()=>null,$:()=>status,Date};
+vm.createContext(badge);vm.runInContext(renderChange,badge);badge.renderChange();assert.match(status.textContent,/10-29 收盤 13:30/);
+badge.liveQuote.isClose=false;badge.renderChange();assert.match(status.textContent,/10-29 盤中 13:30/);
 console.log('PASS live refresh: shared/deduplicated quote TTL, retry after unavailable, current holding mark arithmetic, old-window/member/split guards; no backtest mutations.');
