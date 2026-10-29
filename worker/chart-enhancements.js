@@ -180,12 +180,11 @@ computePosition=function(){
 };
 
 async function loadQuote(){
-  if(!window.CHAOWEI_QUOTE||quoteDisabled)return;
+  if(!window.CHAOWEI_QUOTE)return;
   const code=selected;
   try{
     const quote=await window.CHAOWEI_QUOTE(code);
     if(code!==selected)return;
-    if(quote?.reason==='盤中報價尚未啟用')quoteDisabled=true;
     liveQuote=quote?.available?quote:null;
   }catch{if(code!==selected)return;liveQuote=null}
   if(!bars.length)return;
@@ -344,7 +343,7 @@ drawChart=function(keepView=false){
   if(oscOn('macd'))guide(s.dif,0,'');
   if(old)main.timeScale().setVisibleLogicalRange(old);else setVisible(chartRange);
   requestAnimationFrame(()=>{const r=main.timeScale().getVisibleLogicalRange();if(!r)return;for(const c of visiblePanes())if(c!==main)c.timeScale().setVisibleLogicalRange(r)});
-  $('chartCaption').textContent=`紅漲綠跌 · 量：張${volumeAdjusted()?'（分割前已換算）':''}${provisional?' · 末根為盤中暫值':''} · 滾輪縮放、拖曳平移`;
+  $('chartCaption').textContent=`紅漲綠跌 · 量：張${volumeAdjusted()?'（分割前已換算）':''}${provisional?(liveQuote.isClose?' · 末根為今日收盤報價，待日 K 正本':' · 末根為盤中暫值'):''} · 滾輪縮放、拖曳平移`;
   $('chart').setAttribute('aria-label',all.length?`${selected} ${ivName()} K，${all[0].date} 至 ${all.at(-1).date}`:'尚未取得 K 線資料');
   updateLegend(null);renderTechRead(provisional?all.slice(0,-1):all,provisional?technical(all.slice(0,-1)):tech);
 };
@@ -497,7 +496,8 @@ computeMarket=function(){
   market=[...saved,{date:li.date,index:li.index,volume:li.lots*1000,value:(li.valueMillion||0)*1e6,intraday:true}];
   try{baseComputeMarket()}finally{market=saved}
   if(!marketPosition)return;
-  $('indexMeta').textContent=$('indexMeta').textContent.replace(li.date,'盤中 '+li.time.slice(0,5));
+  const sessionLabel=li.time>='13:30:00'?'收盤':'盤中';
+  $('indexMeta').textContent=$('indexMeta').textContent.replace(li.date,li.date+' '+sessionLabel+' '+li.time.slice(0,5));
   const t=String(li.volumeTime||li.time),mins=Number(t.slice(0,2))*60+Number(t.slice(3,5)),m=Math.floor(mins/5)*5;
   const mark=String(Math.floor(m/60)).padStart(2,'0')+String(m%60).padStart(2,'0');
   const idx=intradayProfile?.marks?.indexOf(mark)??-1;
@@ -506,12 +506,12 @@ computeMarket=function(){
   const today=li.marks?.[mark]??li.lots;
   if(idx<0||prior.length<20||!(today>0)){
     marketPosition.volumeGrade=null;marketPosition.volumeScore=null;$('volumeScore').textContent='—';
-    $('volumeMeta').textContent='盤中 '+t.slice(0,5)+' 累計 '+fmt(li.lots*1000/1e8,2)+' 億股 · 同時段歷史不足，暫不計分';return;
+    $('volumeMeta').textContent=li.date+' '+sessionLabel+' '+t.slice(0,5)+' 累計 '+fmt(li.lots*1000/1e8,2)+' 億股 · 同時段歷史不足，暫不計分';return;
   }
   const rank=prior.filter(v=>v<=today).length/prior.length,grade=Math.max(1,Math.min(5,Math.ceil(rank*5)));
   marketPosition.volumeGrade=grade;marketPosition.volumeScore=rank*5;marketPosition.rank=rank;
   $('volumeScore').textContent=fmt(rank*5,1)+' / 5';
-  $('volumeMeta').textContent='盤中 '+mark.slice(0,2)+':'+mark.slice(2)+' 累計 '+fmt(today*1000/1e8,2)+' 億股 · 與前 '+prior.length+' 日同時段比第 '+Math.round(rank*100)+' 百分位';
+  $('volumeMeta').textContent=li.date+' '+sessionLabel+' '+mark.slice(0,2)+':'+mark.slice(2)+' 累計 '+fmt(today*1000/1e8,2)+' 億股 · 與前 '+prior.length+' 日同時段比第 '+Math.round(rank*100)+' 百分位';
 };
 // Factor notes keep value and date only; the scoring direction and update time are stated once on the card.
 const tidyMeta=id=>{$(id).textContent=$(id).textContent.replace(/ · (低價分高|數值低分高|來源快照|每日快照)/g,'')};

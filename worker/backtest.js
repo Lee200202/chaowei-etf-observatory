@@ -418,13 +418,16 @@ $('btCsv').addEventListener('click',()=>{
 });
 
 /* ---------- optimizer: every preset, three water-level windows, ranked three ways ---------- */
+let btOptimizeEpoch=0;
 $('btOptimize').addEventListener('click',async()=>{
-  if(!isMember){$('accountTop').click();return}if(!bars.length)return;
-  await btEnsureDividends();const ctx=btContext(),start=btStart(settings.bt.period),end=btEnd(),base=btCfg(),code=selected,candidates=[];
+  if(!isMember){$('accountTop').click();return}if($('btOptimize').disabled)return;
+  const epoch=++btOptimizeEpoch;let prepareTimer;
+  $('btOptSheet').classList.remove('hidden');document.body.classList.add('searching');$('btOptBody').textContent='正在核對行情、配息與融資資料…';$('btOptNote').textContent='準備資料中，可隨時關閉取消。';$('btOptimize').disabled=true;
+  try{if(!bars.length)throw Error('歷史日 K 尚未載入，請待價格走勢出現後再試。');
+  await Promise.race([btEnsureDividends(),new Promise((_,reject)=>{prepareTimer=setTimeout(()=>reject(Error('資料核對超過 12 秒，請稍後再試。')),12000)})]);clearTimeout(prepareTimer);if(epoch!==btOptimizeEpoch)return;const ctx=btContext(),start=btStart(settings.bt.period),end=btEnd(),base=btCfg(),code=selected,candidates=[];
   for(const p of E.PRESETS){const usesWater=['classic','smart_dca_water','core_satellite','macro_regime','margin_fear_contrarian'].includes(p.strategy);for(const w of usesWater?[...new Set(['60','120','240',base.ref.window])]:[base.ref.window])candidates.push({p,w,usesWater,cfg:{...base,strategy:p.strategy,params:JSON.parse(JSON.stringify({...E.PARAMS[p.strategy],...p.params})),ref:{...base.ref,window:w}}})}
   $('btOptSheet').classList.remove('hidden');document.body.classList.add('searching');$('btOptBody').innerHTML='<p class="small">正在背景試算，其他介面仍可操作。</p>';$('btOptimize').disabled=true;
   const key=JSON.stringify([code,ctx.bars,start,end,base,Array.from(ctx.div),Array.from(ctx.macro||[])]);
-  try{
     const out=await OptimizerRunner.run(key,ctx,candidates,start,end,(done,total)=>{$('btOptNote').textContent=`背景試算 ${done} / ${total} 組`});
     if(selected!==code||bars!==ctx.bars){$('btOptBody').textContent='資料或標的已更新，請重新試算。';return}
     const {rows,dcaRef}=out,calD=dcaRef.mdd>0?dcaRef.cagr/dcaRef.mdd:0,board=(title,key,dir,fmtv)=>{const seen=new Set(),list=[...rows].filter(x=>x.p.strategy!=='dca').sort((a,b)=>dir*((b.r[key]??-9)-(a.r[key]??-9))).filter(x=>!seen.has(x.p.id)&&seen.add(x.p.id)).slice(0,3);
@@ -432,10 +435,10 @@ $('btOptimize').addEventListener('click',async()=>{
     $('btOptNote').textContent=`${code}，${bars[start].date} 至 ${bars[end].date}，共試算 ${rows.length} 組。定期定額：年化 ${pctText(dcaRef.monthly?dcaRef.xirr:dcaRef.cagr)}、最大回落 ${fmt(dcaRef.mdd*100,1)}%、Calmar ${fmt(calD,2)}。${out.executor==='memory'?'相同條件快取':out.executor==='worker'?'背景運算':'分批運算'} ${fmt(out.elapsedMs,0)} ms。`;
     $('btOptBody').dataset.executor=out.executor;$('btOptBody').dataset.elapsedMs=out.elapsedMs.toFixed(2);
     $('btOptBody').innerHTML='<div class="bt-boards">'+board('年化報酬最高','annual',1,r=>pctText(r.annual))+board('Calmar 最高','calmar',1,r=>fmt(r.calmar,2))+board('最大回落最小','mdd',-1,r=>fmt(r.mdd*100,1)+'%，年化 '+pctText(r.annual))+'</div><p class="small">這是本區間的歷史排行，不代表未來最佳策略。點選結果可帶入；仍需另以較晚區間驗證。</p>';
-  }catch(e){if(e.name!=='AbortError')$('btOptBody').textContent='本次試算未完成，請重試。'}finally{$('btOptimize').disabled=false}
+  }catch(e){if(epoch===btOptimizeEpoch&&e.name!=='AbortError'){$('btOptNote').textContent='本次試算未完成';$('btOptBody').textContent=e.message||'請稍後重試。'}}finally{clearTimeout(prepareTimer);if(epoch===btOptimizeEpoch)$('btOptimize').disabled=false}
 });
 $('btOptBody').addEventListener('click',e=>{const t=e.target.closest('.bt-rank');if(!t)return;btCloseSheet();const cur=btRef(),ref={...cur,window:t.dataset.window};btApplyPreset(t.dataset.preset,ref.window===cur.window?{ref}:{ref,sync:false});$('backtestCard').scrollIntoView({behavior:'smooth',block:'start'})});
-function btCloseSheet(){OptimizerRunner.cancel();$('btOptSheet').classList.add('hidden');document.body.classList.remove('searching')}
+function btCloseSheet(){btOptimizeEpoch++;$('btOptimize').disabled=false;OptimizerRunner.cancel();$('btOptSheet').classList.add('hidden');document.body.classList.remove('searching')}
 $('btOptClose').addEventListener('click',btCloseSheet);$('btOptSheet').addEventListener('click',e=>{if(e.target===$('btOptSheet'))btCloseSheet()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('btOptSheet').classList.contains('hidden'))btCloseSheet()});
 

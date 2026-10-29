@@ -165,4 +165,3 @@ assert.ok(tab('使用紀錄').rows.length<=1+60+0,'at most 60 events a minute pe
 cache.clear();const pop=box.getPopular();
 assert.equal(JSON.stringify(pop.codes.slice(0,2)),JSON.stringify(['0050','009816']),'popular list weights selections and long views');
 console.log('Spreadsheet store: setup, ten-year import, split restore, intraday capture, live read with fallback, daily append and usage logging passed');
-

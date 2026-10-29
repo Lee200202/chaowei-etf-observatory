@@ -103,7 +103,7 @@ function getLiveMarket(){
   let stored=null;
   try{stored=liveFromStore_()}catch(err){out.errors.push('潮位資料庫：'+err.message)}
   if(stored){out.store=true;out.intraday=stored.intraday;out.brent=stored.brent;out.fx=stored.fx}
-  if(!out.intraday&&day>=1&&day<=5&&mins>=9*60+1&&mins<=16*60){
+  if(!out.intraday&&day>=1&&day<=5&&mins>=9*60+1){
     try{out.intraday=twseIntraday_(now.toISOString().slice(0,10))}catch(err){out.errors.push('證交所盤中統計：'+err.message)}
   }
   if(!out.brent)try{out.brent=brfNear_()}catch(err){out.errors.push('FinMind BRF：'+err.message)}

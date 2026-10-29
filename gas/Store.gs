@@ -307,9 +307,11 @@ function liveFromStore_(){
   if(rows.length){
     const last=rows[rows.length-1],recorded=Date.parse(last[7].replace(' ','T')+'+08:00'),marks={};
     rows.forEach(r=>{if(r[5]&&r[6]!=='')marks[r[5].replace(':','')]=liveNum_(r[6])});
-    // A record older than 6 minutes during trading hours misses the five-minute refresh; fetch directly.
+    // Validate the source time as well as the insertion time: a fresh row can contain an old MIS response.
     const mins=taipeiNow_().getUTCHours()*60+taipeiNow_().getUTCMinutes();
-    if(mins>13*60+40||Date.now()-recorded<6*60000)
+    const sourceAt=Date.parse(today+'T'+last[1]+'+08:00'),sourceMins=Number(String(last[1]).slice(0,2))*60+Number(String(last[1]).slice(3,5));
+    const fresh=mins>13*60+40?sourceMins>=13*60+30:Date.now()-recorded<6*60000&&Date.now()-sourceAt<6*60000;
+    if(fresh)
       out.intraday={date:last[0],time:last[1],index:liveNum_(last[2]),volumeTime:last[1],lots:liveNum_(last[3]),valueMillion:liveNum_(last[4]),marks,source:'潮位資料庫（證交所基本市況報導）'};
   }
   [['brent','brf',BRF_SOURCE,'TWD/barrel'],['fx','fx','CBC FTDOpenData_Day','TWD/USD']].forEach(([key,tab,source,unit])=>{
