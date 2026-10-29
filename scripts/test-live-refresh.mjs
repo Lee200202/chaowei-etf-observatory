@@ -5,7 +5,7 @@ import vm from 'node:vm';
 let clock=1000000,calls=0,reply;
 class Clock extends Date{static now(){return clock}}
 const run={withSuccessHandler(fn){reply=fn;return this},withFailureHandler(){return this},getQuote(){calls++}};
-const qbox={window:{google:{script:{run}}},Date:Clock,Map,Promise};vm.createContext(qbox);
+const google={script:{run}},qbox={window:{google},google,Date:Clock,Map,Promise};vm.createContext(qbox);
 vm.runInContext(fs.readFileSync('pages-src/quote-layer.js','utf8')+";installChaoweiQuote('')",qbox);
 const a=qbox.window.CHAOWEI_QUOTE('0050'),b=qbox.window.CHAOWEI_QUOTE('0050');assert.equal(calls,1);
 reply({available:true,code:'0050',date:'2026-10-29',price:107.25});assert.equal((await a).price,107.25);assert.equal((await b).price,107.25);
