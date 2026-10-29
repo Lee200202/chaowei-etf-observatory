@@ -53,8 +53,13 @@
   const risk=$('researchRiskContent');risk.querySelector('.rd-risk-values')?.remove();risk.querySelector('.rd-exposure')?.remove();risk.querySelector('.rd-risk-mini')?.remove();risk.querySelector('a[href="#fundingComparison"]')?.remove();risk.querySelectorAll(':scope > h3,:scope > h4,:scope > .kicker,:scope > p').forEach(el=>{if(el.textContent==='主要回撤')return;el.remove()});
  }
  const old=renderBacktest;renderBacktest=function(...args){const out=old(...args);if(btResult){scorecard(btResult);selectPlot(chartMode)}return out};
- // Daily overview, not a second bank factor. The timestamp stays with source status.
- const refresh=$('refreshClock').closest('.factor');refresh.classList.add('market-refresh-status');$('factorNote').after(refresh);
+ // One context card: guidance, direction presets and source status belong together.
+ // Move the original controls/IDs so live updates and saved directions keep their listeners.
+ const refresh=$('refreshClock').closest('.factor'),marketHeading=$('market').querySelector(':scope > .card-heading'),directions=$('market').querySelector(':scope > .direction-presets');
+ const marketContext=node('section','market-context-panel'),contextHeading=node('div','market-context-heading');marketContext.id='marketContextPanel';marketContext.setAttribute('aria-labelledby','marketContextTitle');
+ const contextTitle=marketHeading.querySelector('h3');contextTitle.id='marketContextTitle';contextHeading.append(contextTitle,$('factorNote'));marketHeading.before(marketContext);marketContext.append(contextHeading,directions,$('market').querySelector(':scope > .market-config'),refresh);marketHeading.remove();
+ refresh.classList.remove('factor');refresh.classList.add('market-refresh-status');refresh.querySelector('.factor-icon')?.remove();
+ directions.querySelector('p').textContent='高分偏向增加配置，低分偏向降低。依你設定的方向判讀，不代表勝率或固定持股比例。';
  const bankDetails=drawer('官股每日買賣超長條圖','bankTrendDetails');$('bankScore').closest('.factor').append(bankDetails);bankDetails.append($('bankMarketTrend'));bankDetails.addEventListener('toggle',()=>{if(bankDetails.open)renderBankTrend()});
  $('factorRail').classList.add('is-grid');$('factorRail').setAttribute('aria-label','六大市場刻度');document.querySelector('.market-view-tools').hidden=true;document.querySelector('.factor-rail-nav').hidden=true;
  // Restore the chosen graph after font/theme and route changes, keeping the date span.

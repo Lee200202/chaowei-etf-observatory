@@ -622,11 +622,27 @@ body.subtraction-site #explore #compactTicker .toolbar-stats b{font-size:calc((1
 .subtraction-site #financialDetails .visual-stat-grid{grid-template-columns:1fr}
 .subtraction-site #factorRail{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:20px;overflow:visible;scroll-snap-type:none}
 .subtraction-site #factorRail>.factor{width:auto;min-width:0;height:auto;min-height:440px;scroll-snap-align:none}
-.subtraction-site .market-refresh-status{padding:0;margin:0;border:0;background:none;min-height:0;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;text-align:right}
-.subtraction-site .market-refresh-status h4{font-size:calc((13px) * var(--text-scale,1));margin:0}.subtraction-site .market-refresh-status strong{font-size:calc((14px) * var(--text-scale,1))}.subtraction-site .market-refresh-status p{font-size:calc((13px) * var(--text-scale,1));margin:0}
+.subtraction-site #top .market-context-panel{display:flex;flex-direction:column;gap:16px;padding:22px 24px;margin:0 0 20px;border:1px solid var(--line);border-radius:24px;background:var(--paper);color:var(--ink);min-width:0}
+.subtraction-site #top .market-context-heading{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 20px}
+.subtraction-site #top .market-context-heading h3{font-size:calc((20px) * var(--text-scale,1));line-height:1.45;margin:0}
+.subtraction-site #top .market-context-heading #factorNote{font-size:calc((13px) * var(--text-scale,1));line-height:1.65;color:var(--muted)}
+.subtraction-site #top .market-context-panel .direction-presets{margin:0;min-width:0}
+.subtraction-site #top .market-context-panel .direction-presets p{margin:0 0 12px;line-height:1.7}
+.subtraction-site #top .market-context-panel .segment{max-width:100%;gap:4px}
+.subtraction-site #top .market-context-panel .segment button{white-space:normal;min-height:44px}
+.subtraction-site #top .market-context-panel .market-config{margin:0;padding:0;border:0;border-top:1px solid var(--line);border-radius:0;box-shadow:none;background:none}
+.subtraction-site #top .market-context-panel .market-config>summary{padding:12px 0 0;font-size:calc((14px) * var(--text-scale,1));min-height:44px}
+.subtraction-site #top .market-context-panel .market-config .controls{padding:12px 0 0;margin:0;gap:12px 20px;align-items:start}
+.subtraction-site #top .market-context-panel .market-config .controls label{min-width:0;flex:1 1 180px}
+.subtraction-site #top .market-context-panel .market-config select,.subtraction-site #top .market-context-panel .market-config input{max-width:100%;min-width:0}
+.subtraction-site #top .market-context-panel #marketMethodHelp{margin:12px 0 0;line-height:1.7}
+.subtraction-site #top .market-refresh-status{padding:14px 0 0;margin:0;border:0;border-top:1px solid var(--line);background:none;border-radius:0;min-height:0;display:flex;gap:6px 12px;align-items:baseline;flex-wrap:wrap;text-align:left;min-width:0}
+.subtraction-site #top .market-refresh-status h4{font-size:calc((13px) * var(--text-scale,1));margin:0;color:var(--muted);font-weight:400}.subtraction-site #top .market-refresh-status strong{font-size:calc((14px) * var(--text-scale,1));font-variant-numeric:tabular-nums}.subtraction-site #top .market-refresh-status p{flex:1 1 340px;font-size:calc((13px) * var(--text-scale,1));line-height:1.65;color:var(--muted);margin:0;overflow-wrap:anywhere}
+@media(max-width:599px){.subtraction-site #top .market-context-panel{padding:18px;gap:14px;border-radius:20px}.subtraction-site #top .market-refresh-status p{flex-basis:100%}.subtraction-site #top .market-context-heading{display:block}.subtraction-site #top .market-context-heading #factorNote{display:block;margin-top:6px}}
 .subtraction-site #bankMarketTrend{margin:12px 0 0;padding:0;border:0;box-shadow:none}
 .subtraction-site #bankMarketTrend h4{font-size:calc((16px) * var(--text-scale,1))}.subtraction-site #bankMarketTrend .factor-trend-head{flex-wrap:wrap;gap:12px}
 .subtraction-site #bankTrendDetails{margin-top:16px}.subtraction-site #factorRail~.rail-progress{display:none}
+.subtraction-site #market .factor-progress{display:none!important}
 @media(min-width:1200px){.subtraction-site .compact-ticker{flex-wrap:nowrap;min-height:68px}.subtraction-site .compact-ticker .toolbar{flex:1 1 auto}.subtraction-site #quickInline{flex:0 1 275px;max-width:275px}.subtraction-site .compact-ticker .toolbar-stats{gap:12px}.subtraction-site .compact-ticker .toolbar-stats>span:last-of-type{display:none}}
 @media(max-width:900px){.subtraction-site .bt-big{grid-template-columns:repeat(2,minmax(0,1fr))}.subtraction-site .bt-big>div:nth-child(2){border-right:0}.subtraction-site .compact-ticker .toolbar{flex-wrap:wrap}.subtraction-site .compact-ticker .toolbar-stats{gap:14px}.subtraction-site .research-side{max-height:none}.subtraction-site header nav{gap:4px}}
 @media(max-width:599px){.subtraction-site #factorRail{grid-template-columns:1fr!important}.subtraction-site .compact-ticker{padding:14px;border-radius:20px}.subtraction-site .compact-ticker .toolbar-stats{order:3;flex:1 1 100%;justify-content:space-between;gap:8px}.subtraction-site .compact-ticker .toolbar-stats>span:last-of-type{display:none}.subtraction-site .ticker-search{margin-left:auto}.subtraction-site .bt-big>div{padding:16px 10px}.subtraction-site .bt-big b{font-size:calc((24px) * var(--text-scale,1))}.subtraction-site .ph9-nav-tool{width:32px;height:32px;min-width:32px;padding:6px}.subtraction-site .backtest-chart-tabs{gap:4px}.subtraction-site .backtest-chart-tabs button{padding:9px 11px;font-size:calc((13px) * var(--text-scale,1))}}
@@ -3836,7 +3852,7 @@ polarityReady=true;applyDirections();
   controls.innerHTML='<div class="segment" aria-label="市場卡片版面"><button type="button" data-market-view="grid">全覽</button><button type="button" data-market-view="rail">輪播</button></div><span class="small" id="marketCount"></span><div class="market-moves"><button type="button" class="pill" data-market-move="-1" aria-label="上一張市場刻度">上張</button><button type="button" class="pill" data-market-move="1" aria-label="下一張市場刻度">下張</button></div>';
   rail.before(controls);
   function count(){const cards=[...rail.children],visible=cards.filter(c=>c.offsetLeft+c.offsetWidth>rail.scrollLeft+cards[0].offsetLeft+2&&c.offsetLeft<rail.scrollLeft+cards[0].offsetLeft+rail.clientWidth-2),first=cards.indexOf(visible[0])+1,last=cards.indexOf(visible.at(-1))+1;$('marketCount').textContent=rail.classList.contains('is-grid')?`${cards.length} 項全覽`:`${first||1}–${last||1} / ${cards.length} 項`}
-  function layout(){const mode=['grid','rail'].includes(settings.marketView)?settings.marketView:innerWidth>=700?'grid':'rail';rail.classList.toggle('is-grid',mode==='grid');nav.classList.toggle('hidden',mode==='grid');rail.setAttribute('aria-label',mode==='grid'?'市場刻度全覽':'市場刻度，可左右滑動');controls.querySelectorAll('[data-market-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.marketView===mode)));controls.querySelector('.market-moves').classList.toggle('hidden',mode==='grid');rail.nextElementSibling?.classList.toggle('grid-progress-hidden',mode==='grid');count()}
+  function layout(){const mode=document.body.classList.contains('subtraction-site')?'grid':['grid','rail'].includes(settings.marketView)?settings.marketView:innerWidth>=700?'grid':'rail';rail.classList.toggle('is-grid',mode==='grid');nav.classList.toggle('hidden',mode==='grid');rail.setAttribute('aria-label',mode==='grid'?'市場刻度全覽':'市場刻度，可左右滑動');controls.querySelectorAll('[data-market-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.marketView===mode)));controls.querySelector('.market-moves').classList.toggle('hidden',mode==='grid');rail.nextElementSibling?.classList.toggle('grid-progress-hidden',mode==='grid');count()}
   controls.addEventListener('click',e=>{const view=e.target.closest('[data-market-view]'),move=e.target.closest('[data-market-move]');if(view){settings.marketView=view.dataset.marketView;layout();save()}if(move){rail.dispatchEvent(new Event('pointerdown'));rail.scrollBy({left:Number(move.dataset.marketMove)*(rail.children[0].offsetWidth+16),behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'})}});
   rail.addEventListener('scroll',count,{passive:true});window.addEventListener('resize',layout);
   const prev=window.chaoweiApplyProfile;window.chaoweiApplyProfile=p=>{prev(p);layout()};layout();
@@ -4786,8 +4802,13 @@ function createChaoweiBoardStage(host,options={}){
   const risk=$('researchRiskContent');risk.querySelector('.rd-risk-values')?.remove();risk.querySelector('.rd-exposure')?.remove();risk.querySelector('.rd-risk-mini')?.remove();risk.querySelector('a[href="#fundingComparison"]')?.remove();risk.querySelectorAll(':scope > h3,:scope > h4,:scope > .kicker,:scope > p').forEach(el=>{if(el.textContent==='主要回撤')return;el.remove()});
  }
  const old=renderBacktest;renderBacktest=function(...args){const out=old(...args);if(btResult){scorecard(btResult);selectPlot(chartMode)}return out};
- // Daily overview, not a second bank factor. The timestamp stays with source status.
- const refresh=$('refreshClock').closest('.factor');refresh.classList.add('market-refresh-status');$('factorNote').after(refresh);
+ // One context card: guidance, direction presets and source status belong together.
+ // Move the original controls/IDs so live updates and saved directions keep their listeners.
+ const refresh=$('refreshClock').closest('.factor'),marketHeading=$('market').querySelector(':scope > .card-heading'),directions=$('market').querySelector(':scope > .direction-presets');
+ const marketContext=node('section','market-context-panel'),contextHeading=node('div','market-context-heading');marketContext.id='marketContextPanel';marketContext.setAttribute('aria-labelledby','marketContextTitle');
+ const contextTitle=marketHeading.querySelector('h3');contextTitle.id='marketContextTitle';contextHeading.append(contextTitle,$('factorNote'));marketHeading.before(marketContext);marketContext.append(contextHeading,directions,$('market').querySelector(':scope > .market-config'),refresh);marketHeading.remove();
+ refresh.classList.remove('factor');refresh.classList.add('market-refresh-status');refresh.querySelector('.factor-icon')?.remove();
+ directions.querySelector('p').textContent='高分偏向增加配置，低分偏向降低。依你設定的方向判讀，不代表勝率或固定持股比例。';
  const bankDetails=drawer('官股每日買賣超長條圖','bankTrendDetails');$('bankScore').closest('.factor').append(bankDetails);bankDetails.append($('bankMarketTrend'));bankDetails.addEventListener('toggle',()=>{if(bankDetails.open)renderBankTrend()});
  $('factorRail').classList.add('is-grid');$('factorRail').setAttribute('aria-label','六大市場刻度');document.querySelector('.market-view-tools').hidden=true;document.querySelector('.factor-rail-nav').hidden=true;
  // Restore the chosen graph after font/theme and route changes, keeping the date span.
