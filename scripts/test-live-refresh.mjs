@@ -18,4 +18,10 @@ vm.createContext(box);vm.runInContext(fn,box);box.btRenderQuote();assert.match(e
 box.btResult={...r,end:'2024-12-31'};box.btRenderQuote();assert.equal(element.classList.hidden,true,'custom historical windows do not get a today estimate');
 box.btResult=r;box.isMember=false;box.btRenderQuote();assert.equal(element.classList.hidden,true);
 box.isMember=true;box.liveQuote.previousClose=25;box.btRenderQuote();assert.equal(element.classList.hidden,true,'suspected split basis mismatch cannot be marked');
+// Large market-card headline and detail share the same newest observation; daily history stays immutable.
+const red=fs.readFileSync('worker/redesign.js','utf8'),display=red.slice(red.indexOf('function marketDisplaySeries(key){'),red.indexOf(' const factorDefs='));
+const history=[{date:'2026-10-28',index:47035.58,volume:9001000000}],model={market:history,live:{intraday:{date:'2026-10-29',time:'13:33:00',index:46368.33,lots:9995117}},Number};
+vm.createContext(model);vm.runInContext(display,model);assert.equal(model.marketDisplaySeries('index').at(-1).value,46368.33);assert.equal(model.marketDisplaySeries('volume').at(-1).value,99.95117);assert.equal(history.length,1);
+model.live.intraday.time='11:00:00';assert.equal(model.marketDisplaySeries('volume').at(-1).partialVolume,true,'partial volume cannot enter full-session historical rank');
+model.live.intraday.date='2026-10-27';assert.equal(model.marketDisplaySeries('index').at(-1).date,'2026-10-28','old live bundle cannot override a newer daily close');
 console.log('PASS live refresh: shared/deduplicated quote TTL, retry after unavailable, current holding mark arithmetic, old-window/member/split guards; no backtest mutations.');
