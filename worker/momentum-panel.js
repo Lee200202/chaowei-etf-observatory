@@ -37,8 +37,9 @@ function momentumRender(){
   const recent=pair.slice(-61),baseEtf=recent[0].close,baseMarket=idx.get(recent[0].date);
   const etfSeries=recent.map(b=>b.close/baseEtf*100),marketSeries=recent.map(b=>idx.get(b.date)/baseMarket*100);
   const minimum=Math.min(...etfSeries,...marketSeries),maximum=Math.max(...etfSeries,...marketSeries),span=maximum-minimum||1;
-  const points=series=>series.map((value,i)=>`${(i*480/60).toFixed(1)},${(109-(value-minimum)/span*96).toFixed(1)}`).join(' ');
-  const trend=document.createElement('div');trend.className='momentum-trend';trend.innerHTML=`<div class="momentum-legend"><span></span><span> 加權指數</span><small>61 個共同交易日 · 起點＝100</small></div><svg viewBox="0 0 480 120" preserveAspectRatio="none" role="img"><line x1="0" y1="60" x2="480" y2="60" stroke="currentColor" opacity=".12"/><polyline points="${points(marketSeries)}" fill="none" stroke="#8b98a8" stroke-width="2" vector-effect="non-scaling-stroke"/><polyline points="${points(etfSeries)}" fill="none" stroke="#c9413b" stroke-width="2.5" vector-effect="non-scaling-stroke"/></svg>`;
+  const y=value=>109-(value-minimum)/span*96;
+  const points=series=>series.map((value,i)=>(5+i*470/60).toFixed(1)+','+y(value).toFixed(1)).join(' ');
+  const trend=document.createElement('div');trend.className='momentum-trend';trend.innerHTML=`<div class="momentum-legend"><span></span><span> 加權指數</span><small>61 個共同交易日 · 起點＝100</small></div><svg data-tide-plot viewBox="0 0 480 120" preserveAspectRatio="none" role="img"><line x1="0" y1="60" x2="480" y2="60" stroke="currentColor" opacity=".12"/><g data-tide-base="109"><polyline points="${points(marketSeries)}" fill="none" stroke="#8b98a8" stroke-width="2" vector-effect="non-scaling-stroke"/><polyline points="${points(etfSeries)}" fill="none" stroke="#c9413b" stroke-width="2.5" vector-effect="non-scaling-stroke"/>${tideTail(475,y(etfSeries.at(-1)),'#c9413b')}</g></svg>`;
   trend.querySelector('span').textContent=' '+selected;trend.querySelector('svg').setAttribute('aria-label',`${selected} 與加權指數近 60 日相對走勢`);
   momentumBody.append(trend);
   const vol=document.createElement('p');vol.className='small';vol.textContent=volRatio==null?'20 日量能比：分割前後張數口徑不同，暫不比較。':`20 日量能比 ${fmt(volRatio,2)} 倍（近 20 日成交股數 ÷ 前 20 日）。`;

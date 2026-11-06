@@ -48,6 +48,8 @@ function applyChartStyle(){
   s.ohlc.applyOptions({upColor:up,downColor:down,visible:t==='ohlc'});s.closeLine.applyOptions({visible:t==='line'});
   s.ohlc.setData(t==='ohlc'?lwc.data.map(b=>({time:b.date,open:b.open,high:b.high,low:b.low,close:b.close})):[]);
   s.closeLine.setData(t==='line'?lwc.data.map(b=>({time:b.date,value:b.close})):[]);
+  const last=lwc.data.at(-1);
+  TideMotion.closeDot($('chart'),lwc.main,s.closeLine,t==='line'&&last?{time:last.date,value:last.close}:null,'#19a7aa');
 }
 const styleDrawChart=drawChart;
 drawChart=function(keepView){styleDrawChart(keepView);applyChartStyle()};

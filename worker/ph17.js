@@ -39,9 +39,16 @@
   $('chartCard').before(trend);
   picker(trend.querySelector('.etf-lookback-tools'));
   const graph=trend.querySelector('.etf-lookback-plot');
+  const closePlot=document.createElement('div'),gauge=document.createElement('div');
+  graph.append(closePlot,gauge);
+  let lastBars,lastN;
   function draw(){
-    const rows=bars.filter(bar=>!bar.intraday).map(bar=>[bar.date,bar.close]);
-    graph.innerHTML=renderLookbackTrend(rows,marketN(),value=>fmt(value,2)+' 元')+lookbackGauge(position?.r);
+    const n=marketN();
+    if(bars!==lastBars||n!==lastN){
+      lastBars=bars;lastN=n;
+      closePlot.innerHTML=renderLookbackTrend(bars.filter(bar=>!bar.intraday).map(bar=>[bar.date,bar.close]),n,value=>fmt(value,2)+' 元');
+    }
+    gauge.innerHTML=lookbackGauge(position?.r);
   }
   const render=renderPosition;
   renderPosition=function(...args){const result=render(...args);draw();return result};

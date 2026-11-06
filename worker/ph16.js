@@ -23,19 +23,24 @@
   makeDirection('vix',vixTile,$('vixScore'));
   const vixDate = vixTile.querySelector('.vix-frequency');
   const vixSession=vixTile.querySelector('.vix-session');
+  const sessionDetail=document.createElement('p');sessionDetail.className='small vix-session-detail';
+  modal.querySelector('.market-dialog-source').after(sessionDetail);
   function renderVixSession() {
     const q=live?.vixQuote, daily=vixDays.at(-1);
     const at=Date.parse(q?.time), now=Date.now();
     const usable=q?.symbol==='^VIX'&&q.open>0&&q.price>0&&Number.isFinite(at)&&now-at<72*3600000&&at<=now+60000;
     vixSession.hidden=!usable;
+    sessionDetail.hidden=!usable||factorTrendKey!=='vix';
     if(!usable)return;
     const localTime=new Intl.DateTimeFormat('en-GB',{timeZone:'America/New_York',hour:'2-digit',minute:'2-digit'});
     const provisional=!!daily&&q.date>daily.date&&now<Date.parse(q.endTime)&&now-at<45*60000;
     const change=q.price-q.open;
     const score=DM.score('vix',DM.vixScore(q.price),settings.factorModes.vix);
-    vixSession.textContent=q.date+' 美東 · 時段起始 '+fmt(q.open,2)+'（'+localTime.format(Date.parse(q.openTime))+'） · '+(provisional?'盤中':'該時段末筆')+
+    sessionDetail.textContent=q.date+' 美東 · 時段起始 '+fmt(q.open,2)+'（'+localTime.format(Date.parse(q.openTime))+'） · '+(provisional?'盤中':'該時段末筆')+
       ' '+fmt(q.price,2)+'（'+localTime.format(at)+'，較起始 '+signNum(change,2)+' 點） · Yahoo 延遲'+
       (provisional?' · 盤中試算 '+fmt(score,1)+'／5':'');
+    vixSession.textContent='起始 '+fmt(q.open,2)+' → '+(provisional?'盤中 ':'末筆 ')+fmt(q.price,2)+(provisional?' · 試算 '+fmt(score,1)+'／5':'')+' · 延遲';
+    vixSession.title=sessionDetail.textContent;
   }
   const previousLive=applyLive;
   applyLive=function(...args){const result=previousLive(...args);renderVixSession();return result};
@@ -113,6 +118,7 @@
     link.target = '_blank';
     link.rel = 'noopener noreferrer';
     source.replaceChildren(document.createTextNode(description+' '),link);
+    renderVixSession();
     if(key==='vix')for(const [name,url] of [['OANDA 指數說明','https://www.oanda.com/bvi-ft/lab-education/dictionary/vix/'],['CMoney 波動解讀','https://www.cmoney.tw/notes/note-detail.aspx?nid=60671']]){
       const extra=link.cloneNode();extra.textContent=name;extra.href=url;source.append(' · ',extra);
     }
@@ -246,7 +252,7 @@
 (() => {
   const details = document.createElement('details');
   details.className = 'custom-observation metric-detail';
-  details.innerHTML = '<summary>自訂觀察區間</summary><div class="custom-observation-fields"><label>交易日數<input id="customObservationDays" type="number" min="20" max="2400" step="1"></label><label>快速調整<input id="customObservationSlider" type="range" min="20" max="2400" step="1"></label><label>起日<input id="customObservationFrom" type="date"></label><label>迄日<input id="customObservationTo" type="date"></label></div><p class="small">日數會同步至回測的觀察窗。填入起訖日會同步選定圖表和回測期間，最新水位仍以最新交易日為基準。</p><p class="small" role="status"></p>';
+  details.innerHTML = '<summary>＋ 自訂筆數</summary><div class="custom-observation-fields"><label>交易日數<input id="customObservationDays" type="number" min="20" max="2400" step="1"></label><label>快速調整<input id="customObservationSlider" type="range" min="20" max="2400" step="1"></label><label>起日<input id="customObservationFrom" type="date"></label><label>迄日<input id="customObservationTo" type="date"></label></div><p class="small">筆數同步至回測觀察窗；起訖日同步至圖表和回測期間。</p><p class="small" role="status"></p>';
   $('scenarios').after(details);
   const days=$('customObservationDays'), slider=$('customObservationSlider'), from=$('customObservationFrom'), to=$('customObservationTo'), status=details.querySelector('[role=status]');
   const windowSelect=$('window');

@@ -12,12 +12,13 @@ function renderLookbackTrend(rows,count,format,context=''){
   const color=last>first?'#f43f5e':last<first?'#10b981':'#8293ad',id='lookbackFill'+(++lookbackPlotId);
   const range=data[0][0]+' 至 '+data.at(-1)[0];
   const point=(i,color,label)=>'<circle cx="'+x(i)+'" cy="'+y(values[i])+'" r="4" fill="'+color+'"><title>'+label+' '+data[i][0]+' '+format(values[i])+'</title></circle>';
-  return '<svg class="lookback-plot" viewBox="0 0 300 90" preserveAspectRatio="none" role="img" data-points="'+data.length+'" aria-label="近 '+data.length+' 筆走勢，'+range+'，最高 '+format(high)+'，最低 '+format(low)+'，均值 '+format(mean)+'">'+
+  return '<svg data-tide-plot class="lookback-plot" viewBox="0 0 300 90" preserveAspectRatio="none" role="img" data-points="'+data.length+'" aria-label="近 '+data.length+' 筆走勢，'+range+'，最高 '+format(high)+'，最低 '+format(low)+'，均值 '+format(mean)+'">'+
     '<defs><linearGradient id="'+id+'" x2="0" y2="1"><stop stop-color="'+color+'" stop-opacity=".32"/><stop offset="100%" stop-color="'+color+'" stop-opacity="0"/></linearGradient></defs>'+
-    '<polygon points="6,85 '+points+' 294,85" fill="url(#'+id+')"/>'+
     '<line x1="6" x2="294" y1="'+y(mean)+'" y2="'+y(mean)+'" stroke="var(--muted)" stroke-dasharray="4 4" vector-effect="non-scaling-stroke"><title>區間均值 '+format(mean)+'</title></line>'+
+    '<g data-tide-base="85"><polygon points="6,85 '+points+' 294,85" fill="url(#'+id+')"/>'+
     '<polyline points="'+points+'" fill="none" stroke="'+color+'" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>'+
-    point(lo,'#10b981','最低')+(lo!==hi?point(hi,'#f43f5e','最高'):'')+'</svg>'+
+    point(lo,'#10b981','最低')+(lo!==hi?point(hi,'#f43f5e','最高'):'')+
+    tideTail(x(values.length-1),y(last),color)+'</g></svg>'+
     '<small class="lookback-caption">'+(context?context+' · ':'')+'近 '+data.length+' 筆'+(data.length<count?'（可用資料）':'')+' · 虛線為均值</small>';
 }
 function lookbackGauge(rank,vix=false){
@@ -27,4 +28,9 @@ function lookbackGauge(rank,vix=false){
   const index=Math.min(4,Math.max(0,vix?Math.ceil(ratio*5-1e-10)-1:Math.floor(ratio*5)));
   const text=zones[index];
   return '<div class="lookback-gauge"><span>'+text+'</span><div class="lookback-rail" role="img" aria-label="五段色溫，'+text+(vix?'':'，歷史位置 '+Math.round(ratio*100)+'%')+'"><i></i><i></i><i></i><i></i><i></i><b style="left:'+ratio*100+'%"></b></div></div>';
+}
+
+function tideTail(x,y,color){
+  return '<circle class="tide-tail-halo" cx="'+x+'" cy="'+y+'" r="5" fill="'+color+'"/>'+
+    '<circle cx="'+x+'" cy="'+y+'" r="2.8" fill="'+color+'"/>';
 }

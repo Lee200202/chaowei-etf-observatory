@@ -780,7 +780,6 @@ body.subtraction-site #top #btPresets button.pill.on{background:var(--ink);borde
 .market-compact .rd-spark,.market-compact .factor-spark,.market-compact .extra-spark,.market-compact .factor-detail-toggle,.market-compact .factor-direction,.market-compact .rd-factor-change{display:none!important}
 body.subtraction-site #top #market.market-compact #factorRail>.factor{min-height:0;cursor:pointer}
 .market-compact .rd-percentile{margin-top:10px}
-.market-compact .vix-factor{grid-column:1/-1}
 .market-compact .vix-factor p{margin:6px 0}
 .tech-glossary{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));gap:12px;padding:12px 0}
 .tech-glossary article,.tide-demo{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:12px 16px}
@@ -823,38 +822,13 @@ body.subtraction-site #top #factorRail .rd-factor-context .factor-value{display:
 #factorRail .factor-meta,#factorRail .factor-note,#factorRail #indexMeta,#factorRail #volumeMeta,#factorRail #brentMeta,#factorRail #fxMeta,#factorRail #mktMarginMeta,#factorRail #bankMeta{display:none}
 #factorRail .vix-frequency,#factorRail .vix-session{color:var(--muted);font-size:calc((13px) * var(--text-scale,1))}
 #factorRail .vix-session:not([hidden]){display:block;max-width:none;overflow:visible}
-body.subtraction-site #top #factorRail>.vix-factor .rd-factor-context{grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:14px;align-items:center}
-#factorRail .vix-factor .lookback-plot{height:112px}
 #marketFullscreenModal .lookback-gauge{max-width:350px}
-@media(min-width:1000px){
- body.subtraction-site #top #matrixCards>.matrix-card:nth-child(n){grid-column:span var(--wave-span,4);margin-top:var(--wave-offset,0);border-radius:24px 40px 24px 24px}
- #matrixCards>.matrix-card:nth-child(6n+1),#matrixCards>.matrix-card:nth-child(6n+5){--wave-span:5}
- #matrixCards>.matrix-card:nth-child(6n+2),#matrixCards>.matrix-card:nth-child(6n+6){--wave-span:4;--wave-offset:14px}
- #matrixCards>.matrix-card:nth-child(6n+3),#matrixCards>.matrix-card:nth-child(6n+4){--wave-span:3;--wave-offset:23px}
- #matrixCards>.matrix-card:nth-child(3n+1):last-child{--wave-span:12}
- #matrixCards>.matrix-card:nth-child(6n+1):nth-last-child(2){--wave-span:7}
- #matrixCards>.matrix-card:nth-child(6n+2):last-child{--wave-span:5}
- #matrixCards>.matrix-card:nth-child(6n+4):nth-last-child(2){--wave-span:5}
- #matrixCards>.matrix-card:nth-child(6n+5):last-child{--wave-span:7}
- body.subtraction-site #top #factorRail>.factor:nth-child(n){grid-column:span var(--factor-span,7);margin-top:var(--factor-offset,0)}
- #factorRail>.factor:nth-child(2){--factor-span:5;--factor-offset:23px}
- #factorRail>.factor:nth-child(3){--factor-span:4}
- #factorRail>.factor:nth-child(4){--factor-span:8;--factor-offset:15px}
- #factorRail>.factor:nth-child(5){--factor-span:5;--factor-offset:15px}
- #factorRail>.vix-factor:nth-child(7){--factor-span:12}
- body.subtraction-site #top #factorRail>.vix-factor:nth-child(7){display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);column-gap:22px;align-items:start}
- body.subtraction-site #top #factorRail>.vix-factor .rd-factor-context{display:contents}
- #factorRail .vix-factor>.factor-more,#factorRail .vix-factor>.vix-session{grid-column:1}
- #factorRail .vix-factor .lookback-factor-chart{grid-column:2;grid-row:1/span 7;align-self:stretch;display:grid;align-content:center}
- #factorRail .vix-factor .lookback-plot{height:170px}
-}
 @media(max-width:999px){
- body.subtraction-site #top #factorRail>.vix-factor:nth-child(7){grid-column:1/-1}
  .etf-typeahead{grid-template-columns:max-content minmax(0,1fr)}
  .etf-quick-switch{grid-column:1/-1}
 }
 @media(max-width:599px){
- body.subtraction-site #top #factorRail>.vix-factor .rd-factor-context,.etf-lookback,.etf-typeahead{grid-template-columns:1fr}
+ .etf-lookback,.etf-typeahead{grid-template-columns:1fr}
  .etf-lookback{padding:12px}
  .etf-quick-switch button{min-height:44px}
 }
@@ -866,6 +840,86 @@ body.subtraction-site #top #factorRail>.vix-factor .rd-factor-context{grid-templ
 .strategy-slider output{font-weight:700;color:var(--teal);white-space:nowrap}
 .strategy-slider input{grid-column:1/-1;width:100%;accent-color:var(--teal);min-height:32px;padding:0}
 @media(max-width:599px){#btParams .strategy-legend{grid-template-columns:1fr}}
+
+/* Wide cards share a 12-column rhythm. Compact view keeps the same reading order. */
+body.subtraction-site #top #matrixCards>.matrix-card,
+body.subtraction-site #top #factorRail>.factor,
+body.subtraction-site #top #researchPane0 .score-grid>.card{
+  min-width:0;
+  transform:translateX(var(--tide-drift,0px)) !important;
+}
+body.subtraction-site #top main{overflow-x:clip}
+body.subtraction-site #top #matrixCards .matrix-meter{height:auto;overflow:visible;background:none;margin:10px 0 4px}
+#matrixCards .matrix-meter .lookback-gauge{margin:0 0 5px}
+body.subtraction-site #top #matrixCards .matrix-card h3{min-height:0;margin:8px 0}
+body.subtraction-site #top #matrixCards .matrix-price small{display:inline;margin:0 0 0 7px}
+body.subtraction-site #top #matrixCards .matrix-card>p.small{margin:4px 0 0}
+body.subtraction-site #top #factorRail .factor h4{margin:0 0 4px}
+body.subtraction-site #top #factorRail .factor .factor-value{margin:0}
+#factorRail .factor-headline .lookback-gauge,.matrix-meter .lookback-gauge{
+  grid-template-columns:max-content minmax(0,1fr);align-items:center;gap:8px;
+}
+#factorRail .lookback-factor-chart .lookback-caption{margin-top:2px}
+#matrixCards .matrix-card>p.small,.factor .vix-session,.tide-short{
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+}
+#factorRail .factor-more,#factorRail .direction-action,#factorRail .five-track,#factorRail #bankMeta+div+small,#factorRail .vix-frequency{display:none}
+#factorRail .vix-session:not([hidden]){display:-webkit-box;-webkit-line-clamp:2;max-width:100%;overflow:hidden}
+#factorRail .rd-source-date{display:block}
+#factorRail .lookback-gauge{margin:6px 0}
+#factorRail .lookback-factor-chart{padding:7px 9px}
+body.subtraction-site #top #factorRail .factor strong[id$=Score]{margin:8px 0 0}
+#factorRail .factor:focus-visible{outline:3px solid var(--teal);outline-offset:3px}
+.tide-card-guide{display:inline-flex;align-items:center;text-decoration:none;white-space:nowrap}
+#matrixView>.section-heading,#marketPage>.section-heading{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px}
+#marketPage>.section-heading>.tide-guide-actions{display:flex;flex-wrap:wrap;gap:8px}
+.observation-choices{display:flex;align-items:start;gap:8px;flex-wrap:wrap}
+.observation-choices>.custom-observation{margin:0;flex:0 0 auto}
+.observation-choices>.custom-observation[open]{flex-basis:100%}
+.observation-choices>.custom-observation:not([open])>summary{border:1px solid var(--line);border-radius:24px;padding:8px 13px;min-height:44px;display:flex;align-items:center}
+.observation-choices>.custom-observation:not([open])>summary::after{display:none}
+@media(min-width:1000px){
+ body.subtraction-site #top #matrixCards,body.subtraction-site #top #market #factorRail.is-grid{
+   grid-template-columns:repeat(12,minmax(0,1fr)) !important;align-items:start;
+ }
+ body.subtraction-site #top #matrixCards>.matrix-card:nth-child(n),
+ body.subtraction-site #top #factorRail>.factor:nth-child(n){
+   grid-column:span var(--tide-span,4);min-height:var(--tide-height,260px);margin-top:var(--tide-offset,0px);
+   border-radius:var(--tide-radius,24px);padding:var(--tide-pad,19px);
+ }
+ :is(#matrixCards,#factorRail)>:nth-child(7n+1){--tide-span:7;--tide-height:340px;--tide-pad:27px;--tide-radius:28px 53px 26px 27px;--tide-chart-height:116px}
+ :is(#matrixCards,#factorRail)>:nth-child(7n+2){--tide-span:5;--tide-height:240px;--tide-offset:34px;--tide-chart-height:64px}
+ :is(#matrixCards,#factorRail)>:nth-child(7n+3){--tide-span:4;--tide-height:240px;--tide-offset:-17px;--tide-chart-height:68px}
+ :is(#matrixCards,#factorRail)>:nth-child(7n+4){--tide-span:8;--tide-height:300px;--tide-pad:24px;--tide-radius:24px 24px 52px 24px;--tide-chart-height:105px}
+ :is(#matrixCards,#factorRail)>:nth-child(7n+5){--tide-span:5;--tide-height:280px;--tide-chart-height:93px}
+ :is(#matrixCards,#factorRail)>:nth-child(7n+6){--tide-span:3;--tide-height:235px;--tide-offset:22px;--tide-chart-height:65px}
+ :is(#matrixCards,#factorRail)>:nth-child(7n+7){--tide-span:4;--tide-height:264px;--tide-offset:9px;--tide-chart-height:81px}
+ #matrixCards>:is(:nth-child(7n+1),:nth-child(7n+3),:nth-child(7n+5)):last-child{--tide-span:12}
+ #matrixCards>:nth-child(7n+6):last-child{--tide-span:7}
+ body.subtraction-site #top :is(#matrixCards,#factorRail)>:nth-child(7n+1) :is(.matrix-price,.factor-value){font-size:calc((1.95rem) * var(--text-scale,1))}
+ body.subtraction-site #top :is(#matrixCards,#factorRail)>:nth-child(7n+4) :is(.matrix-price,.factor-value){font-size:calc((1.7rem) * var(--text-scale,1))}
+ body.subtraction-site #top :is(#matrixCards,#factorRail)>:nth-child(7n+6) :is(.matrix-price,.factor-value){font-size:calc((1.25rem) * var(--text-scale,1))}
+ body.subtraction-site #top :is(#matrixCards,#factorRail) svg.lookback-plot{height:var(--tide-chart-height,86px)}
+ body.subtraction-site #top #researchPane0 .score-grid{grid-template-columns:minmax(0,7fr) minmax(0,5fr);align-items:start}
+ body.subtraction-site #top #researchPane0 .score-grid>.water-card{min-height:230px;border-top-right-radius:48px}
+ body.subtraction-site #top #researchPane0 .score-grid>.price-card{min-height:180px;margin-top:22px}
+}
+@media(min-width:600px) and (max-width:999px){
+ body.subtraction-site #top #matrixCards>.matrix-card:last-child:nth-child(odd),
+ body.subtraction-site #top #factorRail>.factor:last-child:nth-child(odd){grid-column:1/-1}
+}
+[data-tide-plot] .tide-tail-halo{opacity:0;transform-box:fill-box;transform-origin:center;pointer-events:none}
+[data-tide-plot].tide-in-view .tide-tail-halo{animation:tide-tail-glow 2.5s ease-out 1s infinite}
+@keyframes tide-tail-glow{0%{opacity:.45;transform:scale(.9)}75%,100%{opacity:0;transform:scale(1.85)}}
+body.motion-paused [data-tide-plot] .tide-tail-halo{animation:none}
+@media(prefers-reduced-motion:reduce){[data-tide-plot] .tide-tail-halo{animation:none}}
+
+.tide-canvas-host{position:relative}
+.tide-canvas-dot{position:absolute;pointer-events:none;border-radius:50%;width:6px;height:6px;background:currentColor;z-index:2;transform:translate(-50%,-50%)}
+.tide-canvas-dot::after{content:"";position:absolute;inset:-3px;border:1px solid;border-radius:inherit;opacity:0}
+.tide-canvas-host.tide-in-view .tide-canvas-dot::after{animation:tide-tail-glow 2.5s ease-out 1s infinite}
+body.motion-paused .tide-canvas-dot::after{animation:none!important}
+@media(prefers-reduced-motion:reduce){.tide-canvas-dot::after{animation:none!important}}
 </style>
 </head>
 <body>
@@ -938,6 +992,6 @@ body.subtraction-site #top #factorRail>.vix-factor .rd-factor-context{grid-templ
     <footer><div>潮位 ETF 觀測所 · ETF 與大盤資料來自<a href="https://www.twse.com.tw/zh/ETFortune/products" target="_blank" rel="noopener noreferrer">臺灣證券交易所</a>；油價計分使用 Yahoo Finance BZ=F 布蘭特近月期貨每日收盤（美元／桶，延遲行情），即時報價只作參考、不計分。另保存 <a href="https://www.taifex.com.tw/cht/2/bRF" target="_blank" rel="noopener noreferrer">臺灣期貨交易所布蘭特原油期貨（BRF）</a>近月結算歷史（新台幣／桶），資料來源 <a href="https://finmindtrade.com/" target="_blank" rel="noopener noreferrer">FinMind</a>；匯率來自<a href="https://data.gov.tw/dataset/7232" target="_blank" rel="noopener noreferrer">中央銀行開放資料</a>。<br>本站是位置觀測工具，非投資建議。本站記錄匿名使用統計（搜尋字詞、查看的 ETF、停留時間），不含姓名或 email，可在「帳號與外觀」關閉。</div><div>歷史日 K 為每日盤後快照（約十年）· 圖表使用 <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer">TradingView</a> Lightweight Charts™ · 2026</div></footer>
   </div>
   <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
-  <script src="https://lee200202.github.io/chaowei-etf-observatory/gas-runtime-646de7e5449e4c37.js"></script>
+  <script src="https://lee200202.github.io/chaowei-etf-observatory/gas-runtime-d70fb0a81a01816a.js"></script>
 </body>
 </html>

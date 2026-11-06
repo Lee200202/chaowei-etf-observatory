@@ -34,6 +34,6 @@
   const oldRender=renderBacktest;renderBacktest=function(...args){oldRender(...args);if(!btResult)return;visualStats(btResult);actionDetails();kpiDetails();$('btKpis').querySelector('.bt-small')?.classList.add('hidden');$('btNow').querySelectorAll('b').forEach(e=>e.classList.add('action-key'))};
   // Form setup is independently expandable; keep the existing controls and membership gate intact.
   const config=detail('調整資金與策略條件','backtestConfig');$('btFamilies').before(config);for(const id of ['btFamilies','btPresets','btSummary'])config.append($(id));document.querySelectorAll('#backtestCard .bt-steps,#backtestCard #btAdvanced').forEach(e=>config.append(e));
-  $('btVerdict').classList.add('compact-verdict');document.querySelectorAll('.factor-detail-toggle').forEach(b=>{b.textContent='設定與細節'});
+  $('btVerdict').classList.add('compact-verdict');
   if(btResult){visualStats(btResult);actionDetails();kpiDetails();$('btKpis').querySelector('.bt-small')?.classList.add('hidden')}
 })();

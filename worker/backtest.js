@@ -125,12 +125,12 @@ function renderStrategyLegend(strategy){
   const buyX=strategy==='dual_momentum'?146:91,buyY=strategy==='dual_momentum'?36:67;
   const guide=document.createElement('figure');
   guide.className='strategy-legend';
-  guide.innerHTML='<svg viewBox="0 0 350 105" role="img" aria-label="'+buy+(sell?'與'+sell:'')+'示意">'+
+  guide.innerHTML='<svg data-tide-plot viewBox="0 0 350 105" role="img" aria-label="'+buy+(sell?'與'+sell:'')+'示意">'+
     '<path d="M8 66 Q140 52 336 49" stroke="var(--muted)" stroke-width="2" stroke-dasharray="4 5" fill="none"/>'+
-    '<path d="M8 55 L56 49 91 67 146 36 203 25 236 33 273 55 331 72" stroke="var(--teal)" stroke-width="3" fill="none"/>'+
+    '<g data-tide-base="90"><path d="M8 55 L56 49 91 67 146 36 203 25 236 33 273 55 331 72" stroke="var(--teal)" stroke-width="3" fill="none"/>'+
     '<circle cx="'+buyX+'" cy="'+buyY+'" r="7" fill="#f43f5e"/><text x="'+(buyX+9)+'" y="'+(buyY+16)+'" fill="currentColor">B</text>'+
     (sell?'<circle cx="273" cy="55" r="7" fill="#10b981"/><text x="284" y="54" fill="currentColor">S</text>':'')+
-    '</svg><figcaption><strong>'+title+' · 規則示意</strong><p>'+description+'</p><span class="up">B '+buy+'</span>'+(sell?' · <span class="down">S '+sell+'</span>':'')+
+    '</g></svg><figcaption><strong>'+title+' · 規則示意</strong><p>'+description+'</p><span class="up">B '+buy+'</span>'+(sell?' · <span class="down">S '+sell+'</span>':'')+
     '<div class="strategy-links">'+(strategy==='dual_momentum'?'<a href="https://tw.tradingview.com/support/solutions/43000589187/" target="_blank" rel="noopener">TradingView 動量</a><a href="https://quantpass.org/mtm/" target="_blank" rel="noopener">量化通 MTM</a><a href="https://tquant.tejwin.com/%E7%AF%84%E4%BE%8B%E6%95%99%E5%AD%B8/" target="_blank" rel="noopener">TQuant Lab 範例</a>':'<a href="https://www.cmoney.tw/notes/note-detail.aspx?nid=20148" target="_blank" rel="noopener">CMoney 均線乖離</a>')+'</div></figcaption>';
   $('btParams').append(guide);
 }
@@ -283,6 +283,8 @@ function btDrawCharts(r){
   c.sd.setData(r.series.map(x=>({time:x.time,value:x.dd*100})));c.dd.setData(r.dca.series.map(x=>({time:x.time,value:x.dd*100})));
   c.e.setData(r.series.map(x=>({time:x.time,value:x.exposure*100})));
   c.resetView();c.top.timeScale().fitContent();c.under.timeScale().fitContent();
+  const riseKey=JSON.stringify([selected,r.start,r.end,r.cfg]);
+  TideMotion.canvas($('btEquity'),riseKey);TideMotion.canvas($('btUnder'),riseKey);
 }
 function btNextReference(ctx,cfg,i){
   const history=ctx.bars.slice(0,i+1),next={n:history.length+1,bars:[...history,{...history.at(-1)}],refCache:new Map()},r=E.reference(next,cfg.ref.window,cfg.ref.anchorMode,cfg.ref.anchorCount);

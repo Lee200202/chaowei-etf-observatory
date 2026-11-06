@@ -136,6 +136,7 @@ function chipChart({title,unit,width,dates,kind,series,line,right,note,bands=[],
   const span=hi-lo||1,y=v=>T+(hi-v)/span*(H-T-B),x=i=>L+step*(i+0.5);
   const svg=document.createElementNS(NS,'svg');svg.setAttribute('viewBox',`0 0 ${W} ${H}`);svg.setAttribute('width',W);svg.setAttribute('height',H);svg.setAttribute('role','img');svg.setAttribute('aria-label',`${title}，${dates.length} ${periodLabel}`);
   const el=(tag,attrs,parent=svg)=>{const e=document.createElementNS(NS,tag);for(const [k,v] of Object.entries(attrs))e.setAttribute(k,String(v));parent.append(e);return e};
+  const plot=el('g',{'data-tide-base':H-B});
   const short=v=>Math.abs(v)>=10000?fmt(v/10000,1)+'萬':fmt(v,Math.abs(v)>=100?0:Math.abs(v)>=10?1:2);
   // Gridlines with labels: top, middle, bottom (and zero for stacked bars).
   const ticks=kind==='stack'?[hi,0,lo].filter((v,i,a)=>a.indexOf(v)===i):[hi,(hi+lo)/2,lo];
@@ -144,18 +145,20 @@ function chipChart({title,unit,width,dates,kind,series,line,right,note,bands=[],
   if(kind==='stack'){
     const bw=Math.max(2,Math.min(18,step*0.68));
     dates.forEach((_,i)=>{let p=0,q=0;for(const s of series){const v=s.data[i];if(!Number.isFinite(v)||!v)continue;const from=v>0?p:q,to=from+v;el('rect',{x:x(i)-bw/2,y:y(Math.max(from,to)),width:bw,height:Math.max(1,Math.abs(y(from)-y(to))),fill:s.color,rx:Math.min(2,bw/3)});if(v>0)p=to;else q=to}});
-    if(line){const pts=line.data.map((v,i)=>Number.isFinite(v)?`${x(i)},${y(v)}`:null).filter(Boolean);if(pts.length>1)el('polyline',{points:pts.join(' '),fill:'none',stroke:line.color,'stroke-width':1.6,'stroke-linejoin':'round',opacity:.75});
-      if(n<=60)line.data.forEach((v,i)=>{if(Number.isFinite(v))el('circle',{cx:x(i),cy:y(v),r:2.2,fill:line.color})})}
+    if(line){const pts=line.data.map((v,i)=>Number.isFinite(v)?`${x(i)},${y(v)}`:null).filter(Boolean);if(pts.length>1)el('polyline',{points:pts.join(' '),fill:'none',stroke:line.color,'stroke-width':1.6,'stroke-linejoin':'round',opacity:.75},plot);
+      if(n<=60)line.data.forEach((v,i)=>{if(Number.isFinite(v))el('circle',{cx:x(i),cy:y(v),r:2.2,fill:line.color},plot)})}
   }else{
     const s=series[0],pts=s.data.map((v,i)=>Number.isFinite(v)?[x(i),y(v)]:null).filter(Boolean);
-    if(pts.length>1){el('path',{d:`M${pts[0][0]},${H-B} `+pts.map(p=>`L${p[0]},${p[1]}`).join(' ')+` L${pts.at(-1)[0]},${H-B} Z`,fill:s.color,opacity:.14});el('polyline',{points:pts.map(p=>p.join(',')).join(' '),fill:'none',stroke:s.color,'stroke-width':2.4,'stroke-linejoin':'round'})}
-    for(const extra of series.slice(1)){const points=extra.data.map((v,i)=>Number.isFinite(v)?`${x(i)},${y(v)}`:null).filter(Boolean);if(points.length>1)el('polyline',{points:points.join(' '),fill:'none',stroke:extra.color,'stroke-width':2.2,'stroke-linejoin':'round'})}
+    if(pts.length>1){el('path',{d:`M${pts[0][0]},${H-B} `+pts.map(p=>`L${p[0]},${p[1]}`).join(' ')+` L${pts.at(-1)[0]},${H-B} Z`,fill:s.color,opacity:.14},plot);el('polyline',{points:pts.map(p=>p.join(',')).join(' '),fill:'none',stroke:s.color,'stroke-width':2.4,'stroke-linejoin':'round'},plot)}
+    if(pts.length>1){const [cx,cy]=pts.at(-1);el('circle',{class:'tide-tail-halo',cx,cy,r:5,fill:s.color},plot);el('circle',{cx,cy,r:2.8,fill:s.color},plot)}
+    for(const extra of series.slice(1)){const points=extra.data.map((v,i)=>Number.isFinite(v)?`${x(i)},${y(v)}`:null).filter(Boolean);if(points.length>1)el('polyline',{points:points.join(' '),fill:'none',stroke:extra.color,'stroke-width':2.2,'stroke-linejoin':'round'},plot)}
     // Reference lines (for example the observation window's high and low).
     for(const b of bands){el('line',{x1:L,x2:W-R,y1:y(b.value),y2:y(b.value),stroke:s.color,'stroke-dasharray':'6 4',opacity:.7});const below=bands.length>1&&b.value===Math.min(...bands.map(x=>x.value)),t=el('text',{x:L+6,y:y(b.value)+(below?13:-5),class:'chip-axis chip-band'});t.textContent=b.label+' '+valueText(b.value)}
     if(right){const rv=right.data.filter(Number.isFinite);if(rv.length>1){const rl=Math.min(...rv),rh=Math.max(...rv),rs=rh-rl||1,ry=v=>T+(rh-v)/rs*(H-T-B);
-      const rp=right.data.map((v,i)=>Number.isFinite(v)?`${x(i)},${ry(v)}`:null).filter(Boolean);el('polyline',{points:rp.join(' '),fill:'none',stroke:right.color,'stroke-width':1.6,'stroke-dasharray':'5 4'});
+      const rp=right.data.map((v,i)=>Number.isFinite(v)?`${x(i)},${ry(v)}`:null).filter(Boolean);el('polyline',{points:rp.join(' '),fill:'none',stroke:right.color,'stroke-width':1.6,'stroke-dasharray':'5 4'},plot);
       for(const v of [rh,rl]){const t=el('text',{x:W-R+6,y:ry(v)+4,class:'chip-axis'});t.textContent=fmt(v,v>=100?0:1)}}}
   }
+  if(plot.childNodes.length){svg.dataset.tidePlot='';svg.append(plot)}else plot.remove();
   // Month labels at the first data point of each month (every 2nd, 3rd… month when space is short); the year is
   // added on January and on the first label. A short tick marks every month.
   const starts=[];dates.forEach((d,i)=>{if(i===0||d.slice(0,7)!==dates[i-1].slice(0,7))starts.push(i)});

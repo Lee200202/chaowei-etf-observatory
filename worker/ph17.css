@@ -24,38 +24,13 @@ body.subtraction-site #top #factorRail .rd-factor-context .factor-value{display:
 #factorRail .factor-meta,#factorRail .factor-note,#factorRail #indexMeta,#factorRail #volumeMeta,#factorRail #brentMeta,#factorRail #fxMeta,#factorRail #mktMarginMeta,#factorRail #bankMeta{display:none}
 #factorRail .vix-frequency,#factorRail .vix-session{color:var(--muted);font-size:13px}
 #factorRail .vix-session:not([hidden]){display:block;max-width:none;overflow:visible}
-body.subtraction-site #top #factorRail>.vix-factor .rd-factor-context{grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:14px;align-items:center}
-#factorRail .vix-factor .lookback-plot{height:112px}
 #marketFullscreenModal .lookback-gauge{max-width:350px}
-@media(min-width:1000px){
- body.subtraction-site #top #matrixCards>.matrix-card:nth-child(n){grid-column:span var(--wave-span,4);margin-top:var(--wave-offset,0);border-radius:24px 40px 24px 24px}
- #matrixCards>.matrix-card:nth-child(6n+1),#matrixCards>.matrix-card:nth-child(6n+5){--wave-span:5}
- #matrixCards>.matrix-card:nth-child(6n+2),#matrixCards>.matrix-card:nth-child(6n+6){--wave-span:4;--wave-offset:14px}
- #matrixCards>.matrix-card:nth-child(6n+3),#matrixCards>.matrix-card:nth-child(6n+4){--wave-span:3;--wave-offset:23px}
- #matrixCards>.matrix-card:nth-child(3n+1):last-child{--wave-span:12}
- #matrixCards>.matrix-card:nth-child(6n+1):nth-last-child(2){--wave-span:7}
- #matrixCards>.matrix-card:nth-child(6n+2):last-child{--wave-span:5}
- #matrixCards>.matrix-card:nth-child(6n+4):nth-last-child(2){--wave-span:5}
- #matrixCards>.matrix-card:nth-child(6n+5):last-child{--wave-span:7}
- body.subtraction-site #top #factorRail>.factor:nth-child(n){grid-column:span var(--factor-span,7);margin-top:var(--factor-offset,0)}
- #factorRail>.factor:nth-child(2){--factor-span:5;--factor-offset:23px}
- #factorRail>.factor:nth-child(3){--factor-span:4}
- #factorRail>.factor:nth-child(4){--factor-span:8;--factor-offset:15px}
- #factorRail>.factor:nth-child(5){--factor-span:5;--factor-offset:15px}
- #factorRail>.vix-factor:nth-child(7){--factor-span:12}
- body.subtraction-site #top #factorRail>.vix-factor:nth-child(7){display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);column-gap:22px;align-items:start}
- body.subtraction-site #top #factorRail>.vix-factor .rd-factor-context{display:contents}
- #factorRail .vix-factor>.factor-more,#factorRail .vix-factor>.vix-session{grid-column:1}
- #factorRail .vix-factor .lookback-factor-chart{grid-column:2;grid-row:1/span 7;align-self:stretch;display:grid;align-content:center}
- #factorRail .vix-factor .lookback-plot{height:170px}
-}
 @media(max-width:999px){
- body.subtraction-site #top #factorRail>.vix-factor:nth-child(7){grid-column:1/-1}
  .etf-typeahead{grid-template-columns:max-content minmax(0,1fr)}
  .etf-quick-switch{grid-column:1/-1}
 }
 @media(max-width:599px){
- body.subtraction-site #top #factorRail>.vix-factor .rd-factor-context,.etf-lookback,.etf-typeahead{grid-template-columns:1fr}
+ .etf-lookback,.etf-typeahead{grid-template-columns:1fr}
  .etf-lookback{padding:12px}
  .etf-quick-switch button{min-height:44px}
 }

@@ -86,6 +86,7 @@
     card.classList.add('rd-market-card');
     let graph=card.querySelector('.rd-factor-context');
     if(!graph){graph=make('div','rd-factor-context');card.querySelector('h4').after(graph)}
+    const previousPlot=graph.querySelector(".lookback-factor-chart");
     const all=get().filter(row=>Number.isFinite(row.value)),last=all.at(-1);
     const score=parseFloat(scoreNode.textContent);
     if(Number.isFinite(score))available++;
@@ -96,10 +97,15 @@
       const prior=all.filter(x=>x.date<last.date).slice(-marketN());
       const rank=key==='vix'?1-DM.vixScore(last.value)/5:last.partialVolume?(marketPosition?.volumeGrade==null?null:marketPosition.rank):
         prior.length>=20?prior.filter(row=>row.value<=last.value).length/prior.length:null;
-      const dir=Math.sign(last.value);
-      graph.innerHTML='<div class="factor-headline"><strong class="factor-value'+(flow?(dir>0?' up':dir<0?' down':''):'')+'">'+format(last.value)+'</strong><span class="rd-source-date">'+last.date+
+      const previous=daily.findLast(row=>row[0]<last.date)?.[1];
+      const dir=flow?Math.sign(last.value):Number.isFinite(previous)?Math.sign(last.value-previous):0;
+      const plotKey=[marketN(),daily.length,daily.at(-1)?.join(':'),key==='volume'&&last.partialVolume].join('|');
+      graph.innerHTML='<div class="factor-headline"><strong class="factor-value'+(dir>0?' up':dir<0?' down':'')+'">'+format(last.value)+'</strong><span class="rd-source-date">'+last.date+
         (last.time?' '+last.time.slice(0,5):'')+(last.quote?' · Yahoo 延遲報價':'')+(last.partialVolume?' · 盤中累計':'')+'</span>'+
-        lookbackGauge(rank,key==='vix')+'</div><div class="lookback-factor-chart">'+renderLookbackTrend(daily,marketN(),format,key==='volume'&&last.partialVolume?'完整交易日':'')+'</div>';
+        lookbackGauge(rank,key==='vix')+'</div>';
+      const plot=previousPlot?.dataset.key===plotKey?previousPlot:make('div','lookback-factor-chart');
+      if(plot!==previousPlot){plot.dataset.key=plotKey;plot.innerHTML=renderLookbackTrend(daily,marketN(),format,key==='volume'&&last.partialVolume?'完整交易日':'')}
+      graph.append(plot);
     }
     const col=make('div','rd-factor-bar'+(score>=4?' rise':score<=2?' fall':''));
     col.innerHTML='<b></b><span><i></i></span><small></small>';

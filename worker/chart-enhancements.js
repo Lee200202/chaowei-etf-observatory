@@ -308,7 +308,13 @@ function setVisible(range){
   const r={from:Math.max(-0.5,from-0.5),to:n-1+3},apply=()=>{for(const c of visiblePanes())c.timeScale().setVisibleLogicalRange(r)};
   apply();requestAnimationFrame(()=>requestAnimationFrame(apply));
 }
-function setRange(range){chartRange=String(range);$('rangeSeg').querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.range===chartRange));if(lwc)setVisible(chartRange);else drawChart()}
+function setRange(range){chartRange=String(range);$('rangeSeg').querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.range===chartRange));if(lwc){setVisible(chartRange);risePriceCharts()}else drawChart()}
+function risePriceCharts(){
+  if(!lwc?.data.length)return;
+  const key=[selected,interval,chartRange,chartRange==='custom'?settings.chartFrom:'',chartRange==='custom'?settings.chartTo:'',settings.chartType].join('|');
+  TideMotion.canvas($('chart'),key);
+  for(const id of ['macd','rsi','kd'])if(oscOn(id))TideMotion.canvas($('pane'+OSC_ID[id]),key);
+}
 function applyOverlayButtons(){document.querySelectorAll('[data-overlay]').forEach(b=>b.setAttribute('aria-pressed',String(!!settings.overlays[b.dataset.overlay])));$('oscSeg').querySelectorAll('button').forEach(b=>{const on=b.dataset.osc==='none'?!settings.oscs.length:oscOn(b.dataset.osc);b.classList.toggle('active',on);b.setAttribute('aria-pressed',String(on))})}
 drawChart=function(keepView=false){
   const last=bars.at(-1),provisional=liveQuote?.available&&last&&liveQuote.date>last.date;
@@ -345,6 +351,7 @@ drawChart=function(keepView=false){
   requestAnimationFrame(()=>{const r=main.timeScale().getVisibleLogicalRange();if(!r)return;for(const c of visiblePanes())if(c!==main)c.timeScale().setVisibleLogicalRange(r)});
   $('chartCaption').textContent=`紅漲綠跌 · 量：張${volumeAdjusted()?'（分割前已換算）':''}${provisional?(liveQuote.isClose?' · 末根為今日收盤報價，待日 K 正本':' · 末根為盤中暫值'):''} · 滾輪縮放、拖曳平移`;
   $('chart').setAttribute('aria-label',all.length?`${selected} ${ivName()} K，${all[0].date} 至 ${all.at(-1).date}`:'尚未取得 K 線資料');
+  risePriceCharts();
   updateLegend(null);renderTechRead(provisional?all.slice(0,-1):all,provisional?technical(all.slice(0,-1)):tech);
 };
 function updateLegend(logical){
@@ -406,7 +413,7 @@ function drawSvgFallback(all){
   const node=$('chart');$('techRead').innerHTML='';
   if(!all.length){node.textContent='尚未取得 K 線資料';return}
   const vis=all.slice(-250),W=900,H=310,lo=Math.min(...vis.map(x=>x.low)),hi=Math.max(...vis.map(x=>x.high)),x=i=>10+i*(W-20)/Math.max(1,vis.length-1),y=v=>15+(hi-v)/(hi-lo||1)*(H-40);
-  node.innerHTML=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><polyline points="${vis.map((b,i)=>`${x(i)},${y(b.close)}`).join(' ')}" fill="none" stroke="#19a7aa" stroke-width="2"/></svg>`;
+  node.innerHTML=`<svg data-tide-plot viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><g data-tide-base="${H-16}"><polyline points="${vis.map((b,i)=>`${x(i)},${y(b.close)}`).join(' ')}" fill="none" stroke="#19a7aa" stroke-width="2"/></g></svg>`;
   $('chartCaption').textContent=`圖表元件未載入，暫以最近 ${vis.length} 根收盤線顯示（${vis[0].date} 至 ${vis.at(-1).date}）。`;
 }
 
