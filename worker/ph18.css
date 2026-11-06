@@ -94,8 +94,10 @@ body.subtraction-site #top .osc-pane .osc-chart{height:230px}
 }
 #guidePage #storyRail .story-tile{min-width:0;min-height:0;padding:clamp(16px,3vw,28px)}
 #guidePage #storyRail .story-tile h3{font-size:clamp(1.25rem,2.1vw,1.75rem)}
-#guidePage #storyRail :is(.tile-wave,.tile-bars,.tile-ring){width:100%;max-width:230px;height:112px;margin:12px auto}
-#guidePage #storyRail .tile-ring{width:112px}
+#guidePage #storyRail :is(.tile-wave,.tile-bars,.tile-ring){position:relative;inset:auto;width:100%;max-width:200px;height:84px;margin:12px auto}
+#guidePage #storyRail .tile-wave{display:block!important}
+#guidePage #storyRail .tile-bars{display:flex!important;gap:6px}
+#guidePage #storyRail .tile-ring{display:block!important;width:70px;height:70px;margin:19px auto;border-width:14px;box-shadow:0 0 0 7px #79c6be,0 0 0 14px #9bd8d3}
 #technicalGuide,.guide-author{margin:26px 0;padding:clamp(16px,3vw,28px);border:1px solid var(--line);border-radius:24px}
 #technicalGuide h3,.guide-author h3{margin:0 0 12px}
 .tech-formulas{margin-top:24px}
