@@ -19,13 +19,22 @@ function oilSpot_(){
   const out={days,latest:days[days.length-1].date,source:'Yahoo Finance BZ=F',unit:'USD/barrel',frequency:'daily'};cache.put('oil-yahoo-daily-v1',JSON.stringify(out),240);return out;
 }
 function oilFuture_(){
-  const cache=CacheService.getScriptCache(),hit=cache.get('oil-future-v1');if(hit)return JSON.parse(hit);
-  const r=UrlFetchApp.fetch('https://query1.finance.yahoo.com/v8/finance/chart/BZ%3DF?interval=5m&range=1d',{muteHttpExceptions:true});
-  if(r.getResponseCode()!==200)throw Error('Yahoo Brent HTTP '+r.getResponseCode());
-  const d=JSON.parse(r.getContentText('UTF-8')),m=d.chart&&d.chart.result&&d.chart.result[0]&&d.chart.result[0].meta;
-  if(!m||m.symbol!=='BZ=F'||m.currency!=='USD'||!(m.regularMarketPrice>0)||!(m.regularMarketTime>0))throw Error('Yahoo Brent 報價格式異常');
-  const out={symbol:'BZ=F',price:m.regularMarketPrice,time:new Date(m.regularMarketTime*1000).toISOString(),unit:'USD/barrel',source:'Yahoo Finance Brent futures',delayed:true,previousClose:m.previousClose||m.chartPreviousClose||null};
-  cache.put('oil-future-v1',JSON.stringify(out),240);return out;
+  return yahooMarketQuote_('BZ=F','USD','USD/barrel');
+}
+function yahooMarketQuote_(symbol,currency,unit){
+  const cache=CacheService.getScriptCache(),key='yahoo-market-v2-'+symbol,hit=cache.get(key);
+  if(hit)return JSON.parse(hit);
+  const url='https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(symbol)+'?interval=5m&range=1d';
+  const response=UrlFetchApp.fetch(url,{muteHttpExceptions:true});
+  if(response.getResponseCode()!==200)throw Error('HTTP '+response.getResponseCode());
+  const meta=JSON.parse(response.getContentText('UTF-8')).chart?.result?.[0]?.meta;
+  if(!meta||meta.symbol!==symbol||meta.currency!==currency||!(meta.regularMarketPrice>0)||!(meta.regularMarketTime>0)){
+    throw Error('報價格式異常');
+  }
+  const result={symbol,price:meta.regularMarketPrice,time:new Date(meta.regularMarketTime*1000).toISOString(),unit,
+    source:'Yahoo Finance '+symbol,delayed:true,previousClose:meta.previousClose||meta.chartPreviousClose||null};
+  cache.put(key,JSON.stringify(result),240);
+  return result;
 }
 function getBankHistory(){
   const cache=CacheService.getScriptCache(),hit=cache.get('histock-bank-public-v1');if(hit)return JSON.parse(hit);

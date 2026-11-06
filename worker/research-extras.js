@@ -123,13 +123,13 @@ function renderChip(){
 /* Small SVG trend chart drawn at the card's real pixel width, so labels stay legible on phones.
    kind 'stack': series stacked above/below zero plus an optional total line; kind 'area': one filled line
    plus an optional dashed comparison line on its own right-hand scale. Hover or tap shows that day. */
-function chipChart({title,unit,width,dates,kind,series,line,right,note,bands=[],format,periodLabel='個交易日',onInspect}){
+function chipChart({title,unit,width,dates,kind,series,line,right,note,bands=[],format,periodLabel='個交易日',onInspect,height}){
   const NS='http://www.w3.org/2000/svg',wrap=document.createElement('div');wrap.className='chip-trend';
   const head=document.createElement('div');head.className='chip-trend-head';head.innerHTML=`<strong></strong><span></span>`;
   head.querySelector('strong').textContent=title;head.querySelector('span').textContent=`${dates[0]||'—'} 至 ${dates.at(-1)||'—'} · 單位：${unit}${note?' · '+note:''}`;wrap.append(head);
   const all=series.flatMap(s=>s.data).filter(Number.isFinite),valueText=format||(v=>fmt(v,0)+' 張');
   if(!all.length){const p=document.createElement('p');p.className='small';p.textContent='此期間尚無可用資料';wrap.append(p);return wrap}
-  const W=width-34,H=width<480?170:200,L=width<480?46:58,R=right?(width<480?40:50):10,T=12,B=24,n=dates.length,step=(W-L-R)/Math.max(1,n);
+  const W=width-34,H=height||(width<480?170:200),L=width<480?46:58,R=right?(width<480?40:50):10,T=12,B=24,n=dates.length,step=(W-L-R)/Math.max(1,n);
   let lo,hi;
   if(kind==='stack'){lo=0;hi=0;dates.forEach((_,i)=>{let p=0,q=0;for(const s of series){const v=s.data[i];if(v>0)p+=v;else if(v<0)q+=v}hi=Math.max(hi,p,line?.data[i]??0);lo=Math.min(lo,q,line?.data[i]??0)})}
   else{const ref=[...all,...bands.map(b=>b.value)];lo=Math.min(...ref);hi=Math.max(...ref);const pad=(hi-lo)*0.12||Math.abs(hi)*0.05||1;lo-=pad;hi+=pad}

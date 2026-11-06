@@ -70,6 +70,10 @@ jobs:
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         continue-on-error: true
         run: node scripts/update-oil-spot.mjs
+      - name: Refresh Cboe VIX daily closes
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        continue-on-error: true
+        run: node scripts/update-vix.mjs
       - run: npm run history:validate
       - run: npm run build:pages
       - run: npm run build:gas

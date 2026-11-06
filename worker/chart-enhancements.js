@@ -393,7 +393,14 @@ function renderTechRead(all,t){
   if(oscOn('macd'))active.add('MACD');
   if(oscOn('rsi'))active.add(indName.rsi());
   if(oscOn('kd'))active.add(indName.kd());
-  box.innerHTML=`<div class="tech-head"><h4>技術面讀數</h4><span class="small">${all[n].date} · ${u} K</span></div><div class="tech-grid">${rows.filter(([k])=>active.has(k)).map(([k,v,d])=>`<div class="tech-item"><small>${k}</small><b>${v}</b><details><summary>判讀</summary><p>${d}</p></details></div>`).join('')}</div>`;
+  const lessons={
+    '趨勢':'https://www.tradingview.com/support/solutions/43000502589-moving-averages/',
+    '布林通道':'https://www.tradingview.com/support/solutions/43000501971-bollinger-bands-b-b/',
+    'MACD':'https://www.pocket.tw/school/articles/4289/',
+    [indName.rsi()]:'https://www.pocket.tw/school/articles/4289/',
+    [indName.kd()]:'https://www.tradingview.com/support/solutions/43000502332-stochastic-stoch/'
+  };
+  box.innerHTML=`<div class="tech-head"><h4>技術面讀數</h4><span class="small">${all[n].date} · ${u} K</span></div><div class="tech-grid">${rows.filter(([k])=>active.has(k)).map(([k,v,d])=>`<div class="tech-item"><small>${k}</small><b>${v}</b><details><summary>判讀</summary><p>${d.split('；')[0]}</p>${lessons[k]?`<a href="${lessons[k]}" target="_blank" rel="noopener noreferrer">原理教學</a>`:''}</details></div>`).join('')}</div>`;
 }
 function drawSvgFallback(all){
   const node=$('chart');$('techRead').innerHTML='';
@@ -470,8 +477,10 @@ function renderLiveMeta(){
   const parts=[];
   if(live?.intraday)parts.push('大盤 '+live.intraday.date+' '+live.intraday.time.slice(0,5));
   else if(market.at(-1)?.date)parts.push('台股 '+shortDate(market.at(-1).date));
-  if(live?.oil?.unit==='USD/barrel')parts.push('原油 BZ=F '+shortDate(live.oil.latest));
-  if(live?.fx)parts.push('匯率 '+shortDate(live.fx.latest));
+  if(live?.oilFuture?.time)parts.push('原油 BZ=F '+new Date(live.oilFuture.time).toLocaleString('zh-TW',{timeZone:'Asia/Taipei',hour12:false})+' 延遲');
+  else if(live?.oil?.unit==='USD/barrel')parts.push('原油 BZ=F 收盤 '+shortDate(live.oil.latest));
+  if(live?.fxQuote?.time)parts.push('匯率 '+new Date(live.fxQuote.time).toLocaleString('zh-TW',{timeZone:'Asia/Taipei',hour12:false})+' 延遲');
+  else if(live?.fx)parts.push('央行匯率 '+shortDate(live.fx.latest));
   if(live?.errors?.length)parts.push('部分來源暫不可用：'+live.errors.join('；'));
   $('liveMeta').textContent=parts.join(' · ')||'休市沿用最近收盤；等待下次檢查';
 }

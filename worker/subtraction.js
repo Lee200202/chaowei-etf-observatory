@@ -61,7 +61,7 @@
  refresh.classList.remove('factor');refresh.classList.add('market-refresh-status');refresh.querySelector('.factor-icon')?.remove();
  directions.querySelector('p').textContent='高分偏向增加配置，低分偏向降低。依你設定的方向判讀，不代表勝率或固定持股比例。';
  const bankDetails=drawer('官股每日買賣超長條圖','bankTrendDetails');$('bankScore').closest('.factor').append(bankDetails);bankDetails.append($('bankMarketTrend'));bankDetails.addEventListener('toggle',()=>{if(bankDetails.open)renderBankTrend()});
- $('factorRail').classList.add('is-grid');$('factorRail').setAttribute('aria-label','六大市場刻度');document.querySelector('.market-view-tools').hidden=true;document.querySelector('.factor-rail-nav').hidden=true;
+ $('factorRail').classList.add('is-grid');$('factorRail').setAttribute('aria-label','市場刻度全覽');document.querySelector('.market-view-tools').hidden=true;document.querySelector('.factor-rail-nav').hidden=true;
  // Restore the chosen graph after font/theme and route changes, keeping the date span.
  window.addEventListener('chaowei-page-changed',()=>selectPlot(chartMode));window.addEventListener('chaowei-typography-changed',()=>selectPlot(chartMode));
  const memberBefore=window.chaoweiSetMember;window.chaoweiSetMember=value=>{memberBefore(value);if(btResult)scorecard(btResult)};

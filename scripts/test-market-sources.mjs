@@ -10,6 +10,18 @@ const oil=box.oilSpot_();assert.deepEqual(JSON.parse(JSON.stringify(oil.days)),[
 // The CI parser reads the same bars to the same days.
 const{parseYahooDaily}=await import('./yahoo-brent.mjs');assert.deepEqual(parseYahooDaily(DAILY),JSON.parse(JSON.stringify(oil.days)));assert.throws(()=>parseYahooDaily({chart:{result:[{meta:{symbol:'CL=F',currency:'USD'}}]}}),/格式異常/);
 const q=box.oilFuture_();assert.equal(q.price,111.66);assert.equal(q.symbol,'BZ=F');assert.equal(q.delayed,true);assert.equal(q.time,new Date(1792789159000).toISOString());
+assert.throws(()=>box.yahooMarketQuote_('TWD=X','TWD','TWD/USD'),/格式異常/);
+box.UrlFetchApp.fetch=(url)=>{
+  assert.match(url,/TWD%3DX\?interval=5m/);
+  return {getResponseCode:()=>200,getContentText:()=>JSON.stringify({chart:{result:[{meta:{
+    symbol:'TWD=X',currency:'TWD',regularMarketPrice:32.962,regularMarketTime:1793932243
+  }}]}})};
+};
+const fx=box.yahooMarketQuote_('TWD=X','TWD','TWD/USD');
+assert.equal(fx.price,32.962);
+assert.equal(fx.unit,'TWD/USD');
+assert.equal(fx.time,'2026-11-06T02:30:43.000Z');
+assert.equal(fx.delayed,true);
 const table=total=>'<option value="20260911" selected>'+[12,13,14,15].map((n,i)=>`<tr><td>${n}</td><td>bucket</td><td>${i+1}</td><td>${(i+1)*100000}</td><td>1</td></tr>`).join('')+`<tr><td>${total}</td><td>合 計</td><td>20</td><td>10000000</td><td>100</td></tr>`;
 for(const total of[16,17]){const r=box.tdccParse_(table(total),'0050','20260911');assert.equal(r[0],'2026-09-11');assert.equal(r[2],10);assert.equal(r[3],4);assert.equal(r[4],10);assert.equal(r[5],4)}
 assert.throws(()=>box.tdccParse_(table(17),'0050','20260918'),/日期不符/);
