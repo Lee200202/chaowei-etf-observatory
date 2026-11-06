@@ -600,6 +600,7 @@ body.editorial-site .to-top{display:none!important}
 .rc-peak{display:block;margin-top:4px;font-size:calc((13px) * var(--text-scale,1));color:var(--muted);font-variant-numeric:tabular-nums}.rc-peak strong{font-weight:700}
 .rc-row strong{white-space:nowrap}
 @media(max-width:760px){.range-compare-sliders label{grid-template-columns:auto minmax(0,1fr)}.range-compare-sliders output{text-align:right}.range-compare-sliders input{grid-column:1/-1;order:3}}
+.rc-val{font-size:calc((13px) * var(--text-scale,1));font-weight:700;fill:var(--ink);font-variant-numeric:tabular-nums}.rc-chg{font-size:calc((13px) * var(--text-scale,1));font-weight:800;font-variant-numeric:tabular-nums}
 
 /* One visual hierarchy; shared typography scaling is applied by the build. */
 .subtraction-site [hidden]{display:none!important}
@@ -3756,7 +3757,7 @@ const RangeCompare=(()=>{
     fig.innerHTML=`<figcaption><b>${s.tag}　${s.title}</b><span>${s.unit}</span></figcaption><div class="rc-plot"><div class="rc-svg"></div><div class="rc-hit" data-rc-plot="${s.key}" aria-hidden="true"></div></div><p class="rc-ends"></p>`;
     charts.append(fig);plots[s.key]={fig,host:fig.querySelector('.rc-svg'),hit:fig.querySelector('.rc-hit'),ends:fig.querySelector('.rc-ends')};
   }
-  const H=230,PAD={l:10,r:64,t:16,b:26};
+  const H=250,PAD={l:10,r:80,t:34,b:26};
   let rows=[],view=[],sel=null,dragFrom=null,frame=0,lastWidth=0;
   const rangeKey=()=>RANGES.some(r=>r[0]===settings.compareRange)?settings.compareRange:'6m';
   const md=d=>Number(d.slice(5,7))+'/'+d.slice(8,10);
@@ -3780,13 +3781,27 @@ const RangeCompare=(()=>{
     const pin=(i,label,cls)=>`<circle cx="${X(i)}" cy="${Y(view[i][s.key])}" r="3" class="${cls}"/><text x="${Math.min(X(i),PAD.l+pw)}" y="${Y(view[i][s.key])+(cls==='rc-hi'?-7:13)}" text-anchor="${X(i)>PAD.l+pw*.8?'end':X(i)<PAD.l+pw*.2?'start':'middle'}" class="rc-pin">${label}</text>`;
     return`<svg viewBox="0 0 ${w} ${H}" width="${w}" height="${H}" role="img" aria-label="${s.title}：${c.from} ${num(c.start,s)} ${s.unit}，${c.to} ${num(c.end,s)} ${s.unit}">`+
       `<rect x="${xa}" y="${PAD.t}" width="${Math.max(1,xb-xa)}" height="${ph}" fill="${tone}" opacity=".09"/>${ticks}`+
-      `<text x="${w-PAD.r+6}" y="${Y(vals[hiI])+4}" class="rc-axis">${fmt(vals[hiI],0)}</text><text x="${w-PAD.r+6}" y="${Y(vals[loI])+4}" class="rc-axis">${fmt(vals[loI],0)}</text>`+
+      [hiI,loI].filter(i=>!(xb>PAD.l+pw-50&&Math.abs(Y(vals[i])-yb)<16)).map(i=>`<text x="${w-PAD.r+6}" y="${Y(vals[i])+4}" class="rc-axis">${fmt(vals[i],0)}</text>`).join('')+
       `<polyline points="${pts(0,n-1)}" fill="none" stroke="${s.line}" stroke-width="1.6" opacity=".45"/>`+
       `<polyline points="${pts(sel.a,sel.b)}" fill="none" stroke="${tone}" stroke-width="2.6" stroke-linejoin="round"/>`+
       `<line x1="${xa}" x2="${xb}" y1="${ya}" y2="${ya}" stroke="${tone}" stroke-dasharray="4 4" opacity=".75"/><line x1="${xb}" x2="${xb}" y1="${ya}" y2="${yb}" stroke="${tone}" stroke-width="2"/>`+
-      pin(hiI,'高 '+md(view[hiI].date),'rc-hi')+pin(loI,'低 '+md(view[loI].date),'rc-lo')+
+      (hiI===sel.a||hiI===sel.b?'':pin(hiI,'高 '+md(view[hiI].date),'rc-hi'))+(loI===sel.a||loI===sel.b?'':pin(loI,'低 '+md(view[loI].date),'rc-lo'))+
       `<line x1="${xa}" x2="${xa}" y1="${PAD.t}" y2="${PAD.t+ph}" class="rc-edge"/><line x1="${xb}" x2="${xb}" y1="${PAD.t}" y2="${PAD.t+ph}" class="rc-edge"/>`+
-      `<circle cx="${xa}" cy="${ya}" r="5.5" fill="var(--paper)" stroke="${s.line}" stroke-width="2.4"/><circle cx="${xb}" cy="${yb}" r="5.5" fill="${tone}" stroke="var(--paper)" stroke-width="2"/></svg>`;
+      `<circle cx="${xa}" cy="${ya}" r="5.5" fill="var(--paper)" stroke="${s.line}" stroke-width="2.4"/><circle cx="${xb}" cy="${yb}" r="5.5" fill="${tone}" stroke="var(--paper)" stroke-width="2"/>${values(s,c,{w,pw,ph,xa,xb,ya,yb,tone,hiI,loI})}</svg>`;
+  }
+  // Values on the chart: start above its point, end beside its point (in the right gutter when at the right edge),
+  // and the change beside the vertical drop line (on a narrow chart, in the strip above the plot). Text carries a paper halo so it stays readable over the lines.
+  function values(s,c,{w,pw,ph,xa,xb,ya,yb,tone,hiI,loI}){
+    const right=PAD.l+pw,halo='stroke="var(--paper)" stroke-width="4" paint-order="stroke" stroke-linejoin="round"';
+    const lab=(x,y,anchor,text,cls,fill)=>`<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="${anchor}" class="${cls}"${fill?` fill="${fill}"`:''} ${halo}>${text}</text>`;
+    const startTag=(hiI===sel.a?'高 ':loI===sel.a?'低 ':'')+md(c.from)+' '+num(c.start,s),endTag=(hiI===sel.b?'高 ':loI===sel.b?'低 ':'')+md(c.to)+' '+num(c.end,s);
+    const X0=i=>PAD.l+(view.length>1?i*pw/(view.length-1):0),crowded=hiI!==sel.a&&hiI!==sel.b&&Math.abs(X0(hiI)-xa)<110,sy=!crowded&&ya-12>12?ya-12:Math.min(PAD.t+ph-4,ya+20),sAnchor=xa<PAD.l+70?'start':xa>right-70?'end':'middle';
+    const gutter=xb>right-50,ey=Math.min(PAD.t+ph-4,Math.max(PAD.t+10,yb+(c.diff<0?16:-10)));
+    const pct=c.pct==null?'':`（${c.pct>0?'+':c.pct<0?'−':''}${fmt(Math.abs(c.pct)*100,2)}%）`,chg=(c.diff>0?'+':c.diff<0?'−':'')+num(Math.abs(c.diff),s)+pct;
+    const room=xb-xa>130&&Math.abs(yb-ya)>30,cy=room?(ya+yb)/2+4:14;
+    return lab(sAnchor==='start'?Math.max(PAD.l,xa-4):sAnchor==='end'?xa+4:xa,sy,sAnchor,startTag,'rc-val')+
+      (gutter?lab(w-PAD.r+6,yb+4,'start',num(c.end,s),'rc-val',tone)+lab(xb-8,ey,'end',md(c.to),'rc-val'):lab(xb+9,yb+4,'start',endTag,'rc-val',tone))+
+      lab(room?xb-8:w-4,cy,'end',chg,'rc-chg',tone);
   }
   // "49,968 − 41,513 = 8,455（跌 16.92%）" for a fall; a rise reads end − start.
   function sentence(s,c){
