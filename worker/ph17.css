@@ -18,11 +18,12 @@
 .etf-typeahead{grid-template-columns:max-content minmax(150px,1fr) auto;align-items:center}
 .etf-quick-switch{display:flex;flex-wrap:wrap;gap:6px}.etf-quick-switch button{min-height:38px}.etf-quick-switch [aria-pressed=true]{background:var(--ink);color:var(--paper)}
 .etf-quick-switch .is-active-type:not([aria-pressed=true]){border-color:#9b79c0;color:var(--ink)}
-body.subtraction-site #top #factorRail .rd-factor-context{display:grid;gap:8px;margin:0}
+body.subtraction-site #top #factorRail .rd-factor-context{display:grid;gap:8px;margin:0;align-self:stretch}
 body.subtraction-site #top #factorRail .rd-factor-context .factor-value{display:block}
 #factorRail .lookback-factor-chart{padding:9px 10px;border-radius:12px;background:var(--mist)}
 #factorRail .factor-meta,#factorRail .factor-note,#factorRail #indexMeta,#factorRail #volumeMeta,#factorRail #brentMeta,#factorRail #fxMeta,#factorRail #mktMarginMeta,#factorRail #bankMeta{display:none}
 #factorRail .vix-frequency,#factorRail .vix-session{color:var(--muted);font-size:13px}
+#factorRail .vix-session:not([hidden]){display:block;max-width:none;overflow:visible}
 body.subtraction-site #top #factorRail>.vix-factor .rd-factor-context{grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:14px;align-items:center}
 #factorRail .vix-factor .lookback-plot{height:112px}
 #marketFullscreenModal .lookback-gauge{max-width:350px}
@@ -42,6 +43,11 @@ body.subtraction-site #top #factorRail>.vix-factor .rd-factor-context{grid-templ
  #factorRail>.factor:nth-child(4){--factor-span:8;--factor-offset:15px}
  #factorRail>.factor:nth-child(5){--factor-span:5;--factor-offset:15px}
  #factorRail>.vix-factor:nth-child(7){--factor-span:12}
+ body.subtraction-site #top #factorRail>.vix-factor:nth-child(7){display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);column-gap:22px;align-items:start}
+ body.subtraction-site #top #factorRail>.vix-factor .rd-factor-context{display:contents}
+ #factorRail .vix-factor>.factor-more,#factorRail .vix-factor>.vix-session{grid-column:1}
+ #factorRail .vix-factor .lookback-factor-chart{grid-column:2;grid-row:1/span 7;align-self:stretch;display:grid;align-content:center}
+ #factorRail .vix-factor .lookback-plot{height:170px}
 }
 @media(max-width:999px){
  body.subtraction-site #top #factorRail>.vix-factor:nth-child(7){grid-column:1/-1}
