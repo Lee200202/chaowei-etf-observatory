@@ -39,3 +39,5 @@ HiStock圖的 `loadChart(...)` 內 `SumMoney` 是億元淨額，`Price` 是加�
 原油改用 Yahoo Finance BZ=F（ICE 布蘭特近月連續合約）每日收盤，美元／桶：CI `scripts/update-oil-spot.mjs`（解析在 `scripts/yahoo-brent.mjs`，日期取紐約時間午夜那根日線，未完成的當日 bar 不收）首次以 10 年取代，之後每天重讀 3 個月覆蓋修正值；GAS `oilSpot_` 讀 1 個月日線供頁面補齊，`oilFuture_` 仍給即時價（只參考、不計分）。舊 FinMind／EIA 現貨歷史封存於 `pages-data/oil-spot-finmind.json`，不與期貨混用。Yahoo 偶有缺日（例 2026-10-31），照實保留空缺。
 
 市場刻度卡片最下方新增「大盤與融資，同一段區間」（`worker/range-compare-core.js`＋`worker/market-compare.js`）：加權指數收盤與上市融資金額只比對共同交易日；滑鼠移過時兩圖同步顯示直線與當日數值；連點兩下定住起點（手機自行偵測連點），往右移動即時預覽，點一下（或拖曳後放開）確定終點，起點左側的點擊不作用，Esc 還原；起點、終點與變化值直接標在圖上；預設「指數高點至最新」，另有「高點至低點」與起訖滑桿。每列附「區間內最高點至終點」（截圖 B 的算法）。不可放在 `factorRail` 緊鄰之後——`market-layout.js` 會在全覽模式隱藏那個位置（原輪播進度條）。測試 `scripts/test-range-compare.mjs`。
+
+市場刻度「參考筆數」（`settings.marketWindow`，20–2400，預設 120）六項共用：加權指數、匯率用前 N 筆高低區間定位，成交股數（含盤中同時刻）用前 N 筆百分位，原油、融資、官股用前 N 筆依所選計分方式；卡片「參考 N 筆中的位置」百分位也用同一 N。不足 N 用實際筆數，少於 20 停算。ETF 頁的觀察天數只影響 ETF 本身。測試 `scripts/test-market-window.mjs`。

@@ -501,7 +501,7 @@ computeMarket=function(){
   const t=String(li.volumeTime||li.time),mins=Number(t.slice(0,2))*60+Number(t.slice(3,5)),m=Math.floor(mins/5)*5;
   const mark=String(Math.floor(m/60)).padStart(2,'0')+String(m%60).padStart(2,'0');
   const idx=intradayProfile?.marks?.indexOf(mark)??-1;
-  const n=settings.window==='all'?Infinity:Number(settings.window);
+  const n=marketN();
   const prior=(intradayProfile?.days||[]).filter(([d])=>d<li.date).slice(-n).map(([,l])=>l[idx]).filter(Number.isFinite);
   const today=li.marks?.[mark]??li.lots;
   if(idx<0||prior.length<20||!(today>0)){

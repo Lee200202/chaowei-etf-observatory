@@ -89,7 +89,7 @@ function renderFactorTrend(){
   const months=FACTOR_RANGES.find(r=>r[0]===range)[2];let rows=all;
   if(months){const d=new Date(all.at(-1)[0]+'T00:00:00Z');d.setUTCMonth(d.getUTCMonth()-months);const from=d.toISOString().slice(0,10);rows=all.filter(x=>x[0]>=from)}
   // Observation-window high/low used by the score (bars before the last one, same as the tile).
-  const n=settings.window==='all'?all.length-1:Number(settings.window),win=all.slice(Math.max(0,all.length-1-n),-1).map(x=>x[1]);
+  const n=marketN(),win=all.slice(Math.max(0,all.length-1-n),-1).map(x=>x[1]);
   const s=key==='brent'?brentPosition:key==='margin'?mktMarginPosition:null;
   const bands=s?(settings.marketMethod==='normal'?[{value:s.center,label:key==='margin'?'零軸':'均值'},...[-3,-2,-1,1,2,3].map(n=>({value:s.center+n*s.scale,label:(n>0?'+':'')+n+'σ'}))]:[{value:s.center,label:key==='margin'?'零軸':'均值'},...[-1,-.6,-.2,.2,.6,1].map(n=>({value:s.center+n*s.half,label:'五等分'}))]):win.length>=20?[{value:Math.max(...win),label:'觀察窗高點'},{value:Math.min(...win),label:'觀察窗低點'}]:[];
   const first=rows[0][1],last=rows.at(-1)[1];

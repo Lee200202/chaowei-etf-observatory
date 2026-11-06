@@ -12,7 +12,7 @@ function directionScore(key){
   if(!settings.factorModes||typeof settings.factorModes!=='object')settings.factorModes=DM.normalize();
   if(key==='volume'){
     if(!marketPosition||marketPosition.volumeGrade==null)return null;
-    const last=marketPosition.last,n=settings.window==='all'?market.length:Number(settings.window),prior=market.filter(x=>x.date<last.date).slice(-n),range=scalarRange(prior.map(x=>x.index));
+    const last=marketPosition.last,n=marketN(),prior=market.filter(x=>x.date<last.date).slice(-n),range=scalarRange(prior.map(x=>x.index));
     const p=range?(last.index-range.low)/(range.high-range.low):null;
     return DM.score(key,null,settings.factorModes.volume,{rank:marketPosition.volumeScore/5,pricePosition:p});
   }
