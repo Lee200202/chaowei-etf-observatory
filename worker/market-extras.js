@@ -58,7 +58,7 @@ const FACTOR_TRENDS={
   fx:{title:'美元／新台幣（央行收盤）',unit:'新台幣',color:'#7c6bb0',data:()=>fx.map(x=>[x.date,x.value]),fmt:v=>fmt(v,3)},
   margin:{title:'大盤融資每日增減（零軸）',unit:'億元',color:'#b4566e',data:()=>marginDays.slice(1).map((x,i)=>[x.date,x.value-marginDays[i].value]),fmt:v=>signNum(v)+' 億元',bars:true}
 };
-const FACTOR_RANGES=[['30d','30 日',-30],['120d','120 日',-120],['3m','3 個月',3],['6m','6 個月',6],['1y','1 年',12],['3y','3 年',36],['5y','5 年',60],['all','全部',0]];
+const FACTOR_RANGES=[['ref','參考筆數',null],['30d','30 日',-30],['120d','120 日',-120],['3m','3 個月',3],['6m','6 個月',6],['1y','1 年',12],['3y','3 年',36],['5y','5 年',60],['all','全部',0]];
 let factorTrendKey=null;
 const trendPanel=document.createElement('div');trendPanel.className='factor-trend hidden';trendPanel.id='factorTrend';trendPanel.setAttribute('aria-live','polite');
 $('market').querySelector('.factor-rail-nav').after(trendPanel);
@@ -79,7 +79,7 @@ function openFactorTrend(key){
 $('factorRail').addEventListener('click',e=>{if(e.target.closest('select,button,a,input,summary'))return;const t=e.target.closest('[data-trend]');if(t)openFactorTrend(t.dataset.trend)});
 $('factorRail').addEventListener('keydown',e=>{const t=e.target.closest('[data-trend]');if(t&&(e.key==='Enter'||e.key===' ')&&e.target===t){e.preventDefault();openFactorTrend(t.dataset.trend)}});
 function renderFactorTrend(){
-  const key=factorTrendKey;if(!key)return;const def=FACTOR_TRENDS[key],range=FACTOR_RANGES.some(r=>r[0]===settings.factorRange)?settings.factorRange:'1y';
+  const key=factorTrendKey;if(!key)return;const def=FACTOR_TRENDS[key],range=FACTOR_RANGES.some(r=>r[0]===settings.factorRange)?settings.factorRange:'ref';
   const all=def.data().filter(x=>Number.isFinite(x[1]));trendPanel.replaceChildren();
   const head=document.createElement('div');head.className='factor-trend-head';
   head.innerHTML=`<div class="segment" role="group" aria-label="趨勢期間">${FACTOR_RANGES.map(([id,label])=>`<button type="button" data-frange="${id}" class="${id===range?'active':''}" aria-pressed="${id===range}">${label}</button>`).join('')}</div><button class="pill mini" type="button" data-fclose>收合</button>`;
@@ -87,11 +87,11 @@ function renderFactorTrend(){
   trendPanel.append(head);
   if(all.length<2){const p=document.createElement('p');p.className='small';p.textContent='資料讀取中或暫不可用。';trendPanel.append(p);return}
   const months=FACTOR_RANGES.find(r=>r[0]===range)[2];let rows=all;
-  if(months<0){rows=all.slice(months)}else if(months){const d=new Date(all.at(-1)[0]+'T00:00:00Z');d.setUTCMonth(d.getUTCMonth()-months);const from=d.toISOString().slice(0,10);rows=all.filter(x=>x[0]>=from)}
-  // Observation-window high/low used by the score (bars before the last one, same as the tile).
-  const n=marketN(),win=all.slice(Math.max(0,all.length-1-n),-1).map(x=>x[1]);
-  const s=key==='brent'?brentPosition:key==='margin'?mktMarginPosition:null;
-  const bands=key==='bank'?[]:s?(settings.marketMethod==='normal'?[{value:s.center,label:key==='margin'?'零軸':'均值'},...[-3,-2,-1,1,2,3].map(n=>({value:s.center+n*s.scale,label:(n>0?'+':'')+n+'σ'}))]:[{value:s.center,label:key==='margin'?'零軸':'均值'},...[-1,-.6,-.2,.2,.6,1].map(n=>({value:s.center+n*s.half,label:'五等分'}))]):win.length>=20?[{value:Math.max(...win),label:'觀察窗高點'},{value:Math.min(...win),label:'觀察窗低點'}]:[];
+  if(range==='ref'){rows=all.slice(-marketN())}else if(months<0){rows=all.slice(months)}else if(months){const d=new Date(all.at(-1)[0]+'T00:00:00Z');d.setUTCMonth(d.getUTCMonth()-months);const from=d.toISOString().slice(0,10);rows=all.filter(x=>x[0]>=from)}
+  const mean=rows.reduce((total,row)=>total+row[1],0)/rows.length;
+  const bands=key==='bank'?[]:key==='margin'?[{value:0,label:'零軸'}]:[{value:mean,label:'區間均值'}];
+  const gauge=$('factorRail').querySelector('[data-trend="'+key+'"] .lookback-gauge');
+  if(gauge)trendPanel.append(gauge.cloneNode(true));
   if(key==='bank'){
     let net=0;
     rows=rows.map(([date,value])=>[date,net+=value]);
@@ -101,7 +101,7 @@ function renderFactorTrend(){
     series:def.bars?[{name:'增加',color:RISE,data:rows.map(x=>Math.max(0,x[1]))},{name:'減少',color:FALL,data:rows.map(x=>Math.min(0,x[1]))}]:[{name:def.title,color:def.color,data:rows.map(x=>x[1])}],bands,format:def.fmt,
     right:def.right?(()=>{const r=def.right();return{name:r.name,color:r.color,data:rows.map(x=>r.byDate.get(x[0])??null)}})():undefined,
     note:def.bars?'零軸為基準':key==='bank'?'從所選區間首日累計':`區間 ${last>=first?'+':''}${fmt((last/first-1)*100,1)}%`}));
-  if(s){const p=document.createElement('p');p.className='small';const k=key==='brent'?'oil':key,display=polarityReady?directionScore(k):s.core;p.textContent=`前 ${s.count} 筆參考，本次值不放入均值與標準差。${key==='margin'?'以零軸衡量每日增減。':`均值 ${fmt(s.mean,2)}、標準差 ${fmt(s.sd,2)} 美元。`} Z＝${fmt(s.z,2)}，依所選方向 ${fmt(display,2)} 分。`;trendPanel.append(p)}
+
 }
 let factorWidth=0;window.addEventListener('resize',()=>{const w=trendPanel.clientWidth;if(factorTrendKey&&Math.abs(w-factorWidth)>40){factorWidth=w;clearTimeout(window.__factorResize);window.__factorResize=setTimeout(renderFactorTrend,150)}});
 // Keep an open chart current when the window, Brent or FX data change.

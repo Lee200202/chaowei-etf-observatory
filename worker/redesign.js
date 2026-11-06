@@ -74,30 +74,64 @@
   const time=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Taipei',hour:'2-digit',minute:'2-digit',hour12:false}).format(at);
   return [...rows.filter(row=>row.date<date),{date,time,value:quote.price,quote:true}];
  }
- const factorDefs=[['indexScore',()=>marketDisplaySeries('index'),v=>fmt(v,2)+' 點'],['volumeScore',()=>marketDisplaySeries('volume'),v=>fmt(v,2)+' 億股'],['brentScore',()=>marketQuotedSeries(oilDays,live?.oilFuture),v=>fmt(v,2)+' 美元／桶'],['fxScore',()=>marketQuotedSeries(fx,live?.fxQuote),v=>fmt(v,3)+' 新台幣／美元'],['mktMarginScore',()=>marginDays.slice(1).map((x,i)=>({date:x.date,value:x.value-marginDays[i].value})),v=>signNum(v,1)+' 億元'],['bankScore',()=>bankDays,v=>signNum(v,2)+' 億元']];
- function paintFactors(){let available=0;for(const[id,get,format]of factorDefs){const card=$(id)?.closest('.factor');if(!card)continue;card.classList.add('rd-market-card');let graph=card.querySelector('.rd-factor-context');if(!graph){graph=make('div','rd-factor-context');card.querySelector('h4').after(graph)}const all=get().filter(x=>Number.isFinite(x.value)),last=all.at(-1);if(!last){graph.innerHTML='<p class="small">尚無可用歷史資料</p>';continue}const prior=all.filter(x=>x.date<last.date).slice(-marketN()),rank=prior.length>=20&&!last.partialVolume?prior.filter(x=>x.value<=last.value).length/prior.length:null;if(Number.isFinite(parseFloat($(id).textContent)))available++;
-   // Taiwan colours on the 30-point line: levels compare with 30 points ago, flows (margin, bank) use today's sign.
-   const flow=id==='mktMarginScore'||id==='bankScore',dir=Math.sign(flow?last.value:last.value-all.slice(-30)[0].value),tone=dir>0?' rise':dir<0?' fall':'';
-   graph.innerHTML=`<strong class="factor-value${flow?(dir>0?' up':dir<0?' down':''):''}" data-number="${last.value}" data-final="${format(last.value)}">${format(last.value)}</strong><span class="rd-source-date">${last.date}${last.time?" "+last.time.slice(0,5):""}${last.quote?' · Yahoo 延遲報價':''}</span>${!flow&&!last.partialVolume&&all.length>1?`<span class="rd-factor-change ${dir>0?'up':dir<0?'down':''}">近 ${Math.min(30,all.length)} 筆 ${signNum((last.value/all.slice(-30)[0].value-1)*100,1)}%</span>`:''}<div class="rd-spark${tone}">${factorSpark(all)}</div><div class="rd-percentile"><span>${last.partialVolume?'盤中累計 · 分數採同時刻比較':prior.length>=20?'參考 '+prior.length+' 筆中的位置':'歷史樣本不足'}</span><b>${rank==null?'—':'P'+Math.round(rank*100)}</b></div><div class="rd-percentile-track" role="img" aria-label="${rank==null?'歷史百分位不足':prior.length+' 筆樣本中位於第 '+Math.round(rank*100)+' 百分位'}"><b class="ph10-percentile-fill" style="width:${rank==null?0:rank*100}%"></b><i style="left:${rank==null?0:rank*100}%" ${rank==null?'hidden':''}></i></div>`;
-   // Taller trend: stretch the 30-point line to the card's plot height, keeping a constant stroke width.
-   const svg=graph.querySelector('.rd-spark svg');if(svg){svg.setAttribute('preserveAspectRatio','none');svg.querySelector('polyline')?.setAttribute('vector-effect','non-scaling-stroke')}
-  }$('rdAvailable').textContent=available+' / '+factorDefs.length;
-  // One bar per factor score (0-5). The colour follows the suggestion tag: 4+ red (add), 2 or less green (trim).
-  const short={indexScore:'加權',volumeScore:'成交',brentScore:'原油',fxScore:'匯率',mktMarginScore:'融資',bankScore:'官股'},bars=$('rdFactorBars'),said=[];bars.replaceChildren();for(const[id]of factorDefs){const v=parseFloat($(id)?.textContent),col=make('div','rd-factor-bar'+(v>=4?' rise':v<=2?' fall':''));col.innerHTML='<b></b><span><i></i></span><small></small>';col.querySelector('b').textContent=Number.isFinite(v)?fmt(v,1):'—';col.querySelector('i').style.height=(Number.isFinite(v)?v/5*100:0)+'%';col.querySelector('small').textContent=short[id];said.push(short[id]+(Number.isFinite(v)?' '+fmt(v,1)+' 分':' 無資料'));bars.append(col)}bars.setAttribute('aria-label','各因子分數，滿分 5：'+said.join('、'));
+ const factorDefs=[['indexScore',()=>marketDisplaySeries('index'),v=>fmt(v,2)+' 點'],['volumeScore',()=>marketDisplaySeries('volume'),v=>fmt(v,2)+' 億股'],['brentScore',()=>marketQuotedSeries(oilDays,live?.oilFuture),v=>fmt(v,2)+' 美元／桶'],['fxScore',()=>marketQuotedSeries(fx,live?.fxQuote),v=>fmt(v,3)+' 新台幣／美元'],['mktMarginScore',()=>marginDays.slice(1).map((x,i)=>({date:x.date,value:x.value-marginDays[i].value})),v=>signNum(v,1)+' 億元'],['bankScore',()=>bankDays,v=>signNum(v,2)+' 億元'],['vixScore',()=>vixDays,v=>fmt(v,2)+' 點']];
+ function paintFactors(){
+  let available=0;
+  const overview=$('rdFactorBars'),said=[];
+  overview.replaceChildren();
+  const short={indexScore:'加權',volumeScore:'成交',brentScore:'原油',fxScore:'匯率',mktMarginScore:'融資',bankScore:'官股',vixScore:'VIX'};
+  for(const [id,get,format] of factorDefs){
+    const scoreNode=$(id),card=scoreNode?.closest('.factor');
+    if(!card)continue;
+    card.classList.add('rd-market-card');
+    let graph=card.querySelector('.rd-factor-context');
+    if(!graph){graph=make('div','rd-factor-context');card.querySelector('h4').after(graph)}
+    const all=get().filter(row=>Number.isFinite(row.value)),last=all.at(-1);
+    const score=parseFloat(scoreNode.textContent);
+    if(Number.isFinite(score))available++;
+    if(!last){graph.innerHTML='<p class="small">尚無可用歷史資料</p>'}
+    else{
+      const key=card.dataset.trend,flow=key==='margin'||key==='bank';
+      const daily=FACTOR_TRENDS[key].data().filter(row=>Number.isFinite(row[1]));
+      const prior=all.filter(x=>x.date<last.date).slice(-marketN());
+      const rank=key==='vix'?1-DM.vixScore(last.value)/5:last.partialVolume?(marketPosition?.volumeGrade==null?null:marketPosition.rank):
+        prior.length>=20?prior.filter(row=>row.value<=last.value).length/prior.length:null;
+      const dir=Math.sign(last.value);
+      graph.innerHTML='<div class="factor-headline"><strong class="factor-value'+(flow?(dir>0?' up':dir<0?' down':''):'')+'">'+format(last.value)+'</strong><span class="rd-source-date">'+last.date+
+        (last.time?' '+last.time.slice(0,5):'')+(last.quote?' · Yahoo 延遲報價':'')+(last.partialVolume?' · 盤中累計':'')+'</span>'+
+        lookbackGauge(rank,key==='vix')+'</div><div class="lookback-factor-chart">'+renderLookbackTrend(daily,marketN(),format,key==='volume'&&last.partialVolume?'完整交易日':'')+'</div>';
+    }
+    const col=make('div','rd-factor-bar'+(score>=4?' rise':score<=2?' fall':''));
+    col.innerHTML='<b></b><span><i></i></span><small></small>';
+    col.querySelector('b').textContent=Number.isFinite(score)?fmt(score,1):'—';
+    col.querySelector('i').style.height=(Number.isFinite(score)?score/5*100:0)+'%';
+    col.querySelector('small').textContent=short[id];
+    said.push(short[id]+(Number.isFinite(score)?' '+fmt(score,1)+' 分':' 無資料'));overview.append(col);
+  }
+  $('rdAvailable').textContent=available+' / '+factorDefs.length;
+  overview.setAttribute('aria-label','各因子分數，滿分 5：'+said.join('、'));
  }
- let factorFrame=0;const factorsChanged=()=>{if(!factorFrame)factorFrame=requestAnimationFrame(()=>{factorFrame=0;paintFactors()})};for(const[id]of factorDefs)new MutationObserver(factorsChanged).observe($(id),{childList:true,subtree:true,characterData:true});factorsChanged();
+ let factorFrame=0;
+ const factorsChanged=()=>{if(!factorFrame)factorFrame=requestAnimationFrame(()=>{factorFrame=0;paintFactors()})};
+ for(const [id] of factorDefs)if($(id))new MutationObserver(factorsChanged).observe($(id),{childList:true,subtree:true,characterData:true});
+ document.addEventListener('market-lookback',factorsChanged);
+ document.addEventListener('vix-updated',factorsChanged);
+ factorsChanged();
 
  // Matrix trends fetch through the same cached history API, at most two concurrent requests.
  const matrixCache=new Map();let matrixQueue=[],matrixRunning=0;
- // The vertical scale follows the 60 closes only, so a quiet stretch still shows its swings. MA960 is drawn
- // when it sits inside that range; otherwise a label says whether it lies above or below and at what level.
- function spark(values,average){if(values.length<2)return'<span class="small">可用走勢不足</span>';const lo=Math.min(...values),hi=Math.max(...values),pad=(hi-lo)*.08||hi*.002||1,min=lo-pad,span=hi+pad-min;const ma=average.filter(Number.isFinite),inside=ma.length&&ma.every(v=>v>=min&&v<=min+span),points=a=>a.map((v,i)=>Number.isFinite(v)?`${6+i*288/(a.length-1)},${100-(v-min)/span*94}`:null).filter(Boolean).join(' ');
-  const maLine=inside?'<polyline fill="none" stroke="var(--rd-amber)" stroke-dasharray="4 3" stroke-width="1.7" vector-effect="non-scaling-stroke" points="'+points(average)+'"/>':'',maNote=ma.length&&!inside?`<span class="rd-ma-note">MA960 ${fmt(ma.at(-1),2)} 在${ma.at(-1)<min?'下方':'上方'}</span>`:'';
-  return`<svg viewBox="0 0 300 104" preserveAspectRatio="none" role="img" aria-label="近 ${values.length} 筆收盤走勢，縱軸 ${fmt(lo,2)} 至 ${fmt(hi,2)}${ma.length?'；MA960 '+fmt(ma.at(-1),2):''}"><polyline fill="none" stroke="currentColor" stroke-width="2.2" vector-effect="non-scaling-stroke" points="${points(values)}"/>${maLine}</svg><span class="rd-spark-range"><span>${fmt(hi,2)}</span><span>${fmt(lo,2)}</span></span>${maNote}`}
- function applyMatrix(card,rows){let graph=card.querySelector('.rd-matrix-spark');if(!graph){graph=make('div','rd-matrix-spark');card.querySelector('.matrix-meter').before(graph)}const cutoff=new Date(rows.at(-1).date+'T00:00:00Z');cutoff.setUTCMonth(cutoff.getUTCMonth()-1);const monthStartIdx=rows.findIndex(x=>x.date>=cutoff.toISOString().slice(0,10)),from=Math.max(0,monthStartIdx),list=rows.slice(from),avg=list.map((_,j)=>{const i=from+j;if(i<959)return null;let sum=0;for(let k=i-959;k<=i;k++)sum+=rows[k].close;return sum/960});graph.innerHTML=spark(list.map(x=>x.close),avg);graph.dataset.loaded='true';
-  // Taiwan colours over the displayed month; only missing MA960 needs a per-card note.
-  const first=list[0]?.close,last=list.at(-1)?.close;graph.classList.toggle('rise',last>first);graph.classList.toggle('fall',last<first);
-  if(!avg.some(Number.isFinite)){const note=make('small','rd-matrix-note');note.textContent='MA960 歷史不足';graph.append(note)}}
+ function applyMatrix(card,rows){
+  let graph=card.querySelector('.rd-matrix-spark');
+  if(!graph){graph=make('div','rd-matrix-spark');card.querySelector('.matrix-meter').before(graph)}
+  graph.innerHTML=renderLookbackTrend(rows.map(row=>[row.date,row.close]),marketN(),v=>fmt(v,2)+' 元');
+  graph.dataset.loaded='true';
+ }
+ document.addEventListener('market-lookback',()=>{
+   for(const card of $('matrixCards').querySelectorAll('.matrix-card')){
+     const rows=matrixCache.get(card.querySelector('.matrix-code')?.textContent.trim());
+     if(rows)applyMatrix(card,rows);
+   }
+ });
  function drain(){while(matrixRunning<2&&matrixQueue.length){const task=matrixQueue.shift();matrixRunning++;fetch('/api/history?code='+encodeURIComponent(task.code)).then(r=>{if(!r.ok)throw Error('history unavailable');return r.json()}).then(d=>{const rows=(d.bars||[]).filter(b=>b&&Number.isFinite(b.close)&&!b.intraday);matrixCache.set(task.code,rows);if(task.card.isConnected)applyMatrix(task.card,rows)}).catch(()=>{if(task.card.isConnected){const n=make('p','small');n.textContent='趨勢暫不可用';task.card.append(n)}}).finally(()=>{matrixRunning--;drain()})}}
  const matrixObserver=new IntersectionObserver(entries=>{for(const e of entries)if(e.isIntersecting){const card=e.target,code=card.querySelector('.matrix-code')?.textContent.trim();matrixObserver.unobserve(card);if(matrixCache.has(code))applyMatrix(card,matrixCache.get(code));else{matrixQueue.push({card,code});drain()}}},{rootMargin:'200px'});
  const matrixMutation=new MutationObserver(()=>{$('matrixCards').querySelectorAll('.matrix-card:not([data-rd-observed])').forEach(card=>{card.dataset.rdObserved='true';matrixObserver.observe(card)})});matrixMutation.observe($('matrixCards'),{childList:true});$('matrixCards').querySelectorAll('.matrix-card').forEach(card=>{card.dataset.rdObserved='true';matrixObserver.observe(card)});

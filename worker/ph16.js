@@ -16,29 +16,30 @@
   $('fxScore').closest('.factor').querySelector('h4').textContent = '美元／新台幣';
   $('factorNote').textContent = '行情每 5 分鐘檢查 · 日資料依來源發布';
 
-  let vix = [];
   const vixTile = document.createElement('div');
   vixTile.className = 'factor vix-factor';
-  vixTile.innerHTML = '<h4>恐慌指數 VIX</h4><strong class="factor-value">—</strong><span class="rd-source-date"></span><p>反映美股未來約 30 天的預期波動。</p><span class="factor-more">查看歷史趨勢</span>';
+  vixTile.innerHTML = '<h4>恐慌指數 VIX</h4><strong id="vixScore">—</strong><p class="direction-action" id="action-vix"></p><p class="vix-frequency">Cboe 美東交易日收盤</p><span class="factor-more">查看歷史趨勢</span>';
   rail.append(vixTile);
-  const number = vixTile.querySelector('strong');
-  const vixDate = vixTile.querySelector('.rd-source-date');
+  makeDirection('vix',vixTile,$('vixScore'));
+  const vixDate = vixTile.querySelector('.vix-frequency');
   async function loadVix() {
     try {
       const response = await fetch('/api/vix');
       const data = await response.json();
       if (!response.ok || !Array.isArray(data.days) || !data.days.length) throw Error('無 VIX 日資料');
-      vix = mergeDays(vix, data.days.filter(row => /^\d{4}-\d{2}-\d{2}$/.test(row.date) && row.value > 0));
-      const last = vix.at(-1);
+      vixDays = mergeDays(vixDays, data.days.filter(row => /^\d{4}-\d{2}-\d{2}$/.test(row.date) && row.value > 0));
+      const last = vixDays.at(-1);
       if (!last) return;
-      number.textContent = fmt(last.value, 2) + ' 點';
-      vixDate.textContent = last.date + ' · Cboe 收盤（美東交易日）';
+      refreshDirectionViews();
+      updateWeights();
+      document.dispatchEvent(new Event('vix-updated'));
       if (factorTrendKey === 'vix') renderFactorTrend();
     } catch {
-      if (!vix.length) vixDate.textContent = 'Cboe 日資料暫不可用';
+      document.dispatchEvent(new Event('vix-updated'));
+      if (!vixDays.length) vixDate.textContent = 'Cboe 日資料暫不可用';
     }
   }
-  FACTOR_TRENDS.vix = {title:'恐慌指數 VIX', unit:'點', color:'#8563af', data:()=>vix.map(row=>[row.date,row.value]), fmt:value=>fmt(value,2)+' 點'};
+  FACTOR_TRENDS.vix = {title:'恐慌指數 VIX', unit:'點', color:'#8563af', data:()=>vixDays.map(row=>[row.date,row.value]), fmt:value=>fmt(value,2)+' 點'};
   FACTOR_TRENDS.bank = {title:'八大官股 · 區間累計淨額', unit:'億元', color:'#16867d', data:()=>bankDays.map(row=>[row.date,row.value]), fmt:value=>fmt(value,2)+' 億元'};
   bankTile.dataset.trend = 'bank';
   vixTile.dataset.trend = 'vix';
@@ -60,7 +61,7 @@
     fx:['中央銀行收盤匯率','https://www.cbc.gov.tw/tw/lp-645-1.html','趨勢及分數採銀行間收盤，卡片另可顯示 Yahoo 延遲報價。'],
     margin:['臺灣證券交易所信用交易統計','https://www.twse.com.tw/zh/trading/margin/mi-margn.html','以每日融資餘額增減比較。'],
     bank:['玩股網官股參考','https://www.wantgoo.com/stock/public-bank/buy-sell','圖表採 HiStock 八大行庫全市場每日淨額。'],
-    vix:['Cboe VIX 歷史資料','https://www.cboe.com/tradable-products/vix/vix-historical-data','以美東交易日收盤呈現市場波動背景。']
+    vix:['Cboe VIX 歷史資料','https://www.cboe.com/tradable-products/vix/vix-historical-data','以美東交易日收盤計分。14 以下波動偏低，25 起恐慌偏高，30 起屬高恐慌區；分數依設定方向換算。']
   };
   modal.querySelector('button').onclick = () => modal.close();
   modal.addEventListener('click', event => { if (event.target === modal) modal.close(); });
@@ -93,6 +94,9 @@
     link.target = '_blank';
     link.rel = 'noopener noreferrer';
     source.replaceChildren(document.createTextNode(description+' '),link);
+    if(key==='vix')for(const [name,url] of [['OANDA 指數說明','https://www.oanda.com/bvi-ft/lab-education/dictionary/vix/'],['CMoney 波動解讀','https://www.cmoney.tw/notes/note-detail.aspx?nid=60671']]){
+      const extra=link.cloneNode();extra.textContent=name;extra.href=url;source.append(' · ',extra);
+    }
     trendPanel.classList.remove('hidden');
     bankPanel.hidden = key !== 'bank';
     if (!modal.open) modal.showModal();
@@ -113,7 +117,28 @@
   const box = document.createElement('div');
   box.className = 'etf-typeahead';
   box.innerHTML = '<label for="etfLiveSearchInput">快速切換 ETF</label><input id="etfLiveSearchInput" type="search" placeholder="輸入代號或名稱，例如 0050、高股息" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="etfAutocompleteDropdown" autocomplete="off"><div id="etfAutocompleteDropdown" role="listbox" aria-label="ETF 搜尋結果" hidden></div><p class="small" role="status"></p>';
-  $('compactTicker').after(box);
+  const ticker=$('compactTicker');
+  ticker.before(box);
+  const chips=document.createElement('div');
+  chips.className='etf-quick-switch';
+  chips.setAttribute('role','group');
+  chips.setAttribute('aria-label','熱門 ETF 快速切換');
+  for(const code of ['0050','0056','00878','00919','00980A','00981A','00982A']){
+    const button=document.createElement('button');
+    button.type='button';
+    button.className='pill mini'+(code.endsWith('A')?' is-active-type':'');
+    button.textContent=code;
+    button.dataset.quickCode=code;
+    button.addEventListener('click',()=>choose(code));
+    chips.append(button);
+  }
+  box.append(chips);
+  function reflectQuick(){
+    for(const button of chips.children)button.setAttribute('aria-pressed',String(button.dataset.quickCode===selected));
+  }
+  reflectQuick();
+  const previousPosition=renderPosition;
+  renderPosition=function(){previousPosition();reflectQuick()};
   const input = $('etfLiveSearchInput'), list = $('etfAutocompleteDropdown'), status = box.querySelector('[role=status]');
   let choices = [], highlighted = -1, generation = 0;
   function close() {
@@ -126,7 +151,7 @@
   function choose(code) {
     close();
     input.value = '';
-    pick(code);
+    pick(code,false);
   }
   function paint(snapshot) {
     list.replaceChildren();

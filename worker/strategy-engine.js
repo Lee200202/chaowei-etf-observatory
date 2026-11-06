@@ -51,7 +51,7 @@ function createChaoweiEngine(){
     for(let i=8;i<n;i++){let hi=-Infinity,lo=Infinity;for(let j=i-8;j<=i;j++){hi=Math.max(hi,high[j]);lo=Math.min(lo,low[j])}const rsv=hi>lo?100*(close[i]-lo)/(hi-lo):50;k=(2*k+rsv)/3;d=(2*d+k)/3;kdK[i]=k;kdD[i]=d}
     // Already aligned, published-before-signal margin observations. Missing values remain NaN.
     const marginDrop5=Float64Array.from({length:n},(_,i)=>Number.isFinite(extras.marginDrop5?.[i])?extras.marginDrop5[i]:NaN);
-    return{bars,n,open,close,high,low,vol,ma20,ma60,ma120,ma200,volMa20,bbUp,bbLo,bw,bwRank,rsi,atr,hh22,sigma,kdK,kdD,marginDrop5,div,monthStart,macro:macro||null,refCache:new Map(),scoreCache:new Map()};
+    return{bars,n,open,close,high,low,vol,ma20,ma60,ma120,ma200,volMa20,bbUp,bbLo,bw,bwRank,rsi,atr,hh22,sigma,kdK,kdD,marginDrop5,div,monthStart,macro:macro||null,refCache:new Map(),scoreCache:new Map(),momentumMa:new Map()};
   }
   // Reference high/low at day i from the window of bars before i (no look-ahead).
   function reference(ctx,window,anchorMode,anchorCount){
@@ -292,6 +292,51 @@ function createChaoweiEngine(){
     else if(cfg.strategy==='margin_fear_contrarian'){const m=ctx.marginDrop5[i];st.marginValid=(st.marginValid||0)+Number(Number.isFinite(m));signal=ctx.ma60[i]>0&&c/ctx.ma60[i]-1<=-p.bias/100&&Number.isFinite(m)&&m<=-p.marginDrop/100&&h.water?.core[i]>=p.minScore;reason='融資近五筆下降＋負乖離＋低價水位';}
     if(signal){const before=acc.trades.length,sh=acc.buy(i,acc.cash/Math.max(1,p.parts-st.batches),reason+'：剩餘現金分批','add');if(sh&&acc.trades.length>before){st.satShares+=sh;st.satCost+=acc.trades.at(-1).amount;st.batches++;st.last=i}}
   }
+  const momentumBound=(value,min,max)=>Math.max(min,Math.min(max,value));
+  function momentumSignal(ctx,i,params){
+    const period=Math.round(momentumBound(Number(params.period)||120,5,120));
+    if(i<period)return null;
+    const fast=Math.floor(period/2),c=ctx.close[i];
+    const shortMa=Math.max(2,Math.floor(period/3));
+    if(!ctx.momentumMa.has(shortMa))ctx.momentumMa.set(shortMa,sma(ctx.close,shortMa));
+    return{period,fast,shortMa,shortMean:ctx.momentumMa.get(shortMa)[i],season:ctx.ma60[i],mean:ctx.ma120[i],
+      momentum:.5*(c/ctx.close[i-fast]-1)+.5*(c/ctx.close[i-period]-1)};
+  }
+  function momentumDay(i,ctx,cfg,acc,st,h,inflow){
+    const p=cfg.params,core=momentumBound(Number(p.core)||0,0,80),parts=Math.round(momentumBound(Number(p.parts)||1,1,8));
+    const period=Math.round(momentumBound(Number(p.period)||120,5,120)),legacy=core===0&&parts===1&&period===120;
+    const signal=momentumSignal(ctx,i,p);
+    if(core>0&&inflow>0)acc.buy(i,inflow*core/100,'已到位資金 '+core+'% 建立核心（保留）','core');
+    if(legacy&&!monthDay(ctx,i,h.months[0])||!signal){
+      if(legacy&&st.on&&inflow&&acc.cash>0)acc.buy(i,acc.cash,'動能期間投入新入金','add');
+      return;
+    }
+    const trend=legacy?ctx.close[i]>signal.mean:signal.shortMean>signal.season&&ctx.close[i]>signal.season;
+    const on=trend&&signal.momentum>cfg.parking/200&&(!p.minScore||h.water?.core[i]>=p.minScore);
+    const momentumText='近 '+signal.fast+'／'+period+' 日 '+(signal.momentum*100).toFixed(1)+'%';
+    if(legacy){
+      if(on&&!st.on)acc.buy(i,acc.cash,'動能轉正：'+momentumText+'，站上 MA120','entry');
+      if(!on&&st.on&&acc.shares)acc.sell(i,acc.shares,'動能轉弱或跌破 MA120，轉入停泊','exit');
+      st.on=on;
+      if(st.on&&inflow&&acc.cash>0)acc.buy(i,acc.cash,'動能期間投入新入金','add');
+      return;
+    }
+    const entry='動能轉強：'+momentumText+'，MA'+signal.shortMa+' 與收盤站上季線';
+    const exit='動能轉弱或跌破季線，衛星轉入停泊';
+    st.satellite||=0;
+    if(!on){
+      if(st.satellite>0&&acc.sell(i,st.satellite,exit,'exit')>0)st.satellite=0;
+      st.batches=0;
+    }else{
+      if(!st.on||inflow>0&&(st.batches||0)>=parts)st.batches=0;
+      const left=parts-(st.batches||0);
+      if(left>0){
+        const shares=acc.buy(i,acc.cash/left,entry+' · 第 '+((st.batches||0)+1)+' 批',st.satellite>0?'add':'entry');
+        if(shares>0){st.satellite+=shares;st.batches=(st.batches||0)+1}
+      }
+    }
+    st.on=on;
+  }
   const STRATEGIES={
     chat_ladder:{day(i,ctx,cfg,acc,st,h,inflow){const p=cfg.params,params={...PARAMS.classic,entry:'drop',drop:p.drop,step:p.step,adds:p.parts-1,core:p.core>0,basePct:p.core,exit:p.takeProfit>0?'gain':'hold',rise:p.takeProfit};classicDay(i,ctx,{...cfg,params},acc,st,{...h,tranches:0},inflow)}},
     trend_pullback_ma60:{day:reserveDay},kd_oversold_golden_dca:{day:reserveDay},margin_fear_contrarian:{day:reserveDay},
@@ -341,17 +386,7 @@ function createChaoweiEngine(){
       const p=cfg.params,w=p.weight/100,band=p.band/100,cur=acc.value(i)>0?acc.shares*ctx.close[i]/acc.value(i):0;
       if(inflow||cur>w+band||cur<w-band)acc.toWeight(i,w,inflow?'入金後回到 '+p.weight+'%':'偏離 '+(cur*100).toFixed(0)+'%，再平衡回 '+p.weight+'%');
     }},
-    dual_momentum:{day(i,ctx,cfg,acc,st,h,inflow){
-      const p=cfg.params,c=ctx.close[i];
-      if(monthDay(ctx,i,h.months[0])&&i>=120){
-        const mom=0.5*(c/ctx.close[i-60]-1)+0.5*(c/ctx.close[i-120]-1),hurdle=cfg.parking/100*0.5,okScore=!p.minScore||(h.water.core[i]>=p.minScore);
-        const on=mom>hurdle&&c>ctx.ma120[i]&&okScore;
-        if(on&&!st.on)acc.buy(i,acc.cash,'動能轉正：近 60／120 日 '+(mom*100).toFixed(1)+'%，站上 MA120','entry');
-        if(!on&&st.on&&acc.shares)acc.sell(i,acc.shares,'動能轉弱或跌破 MA120，轉入停泊','exit');
-        st.on=on;
-      }
-      if(st.on&&inflow&&acc.cash>0)acc.buy(i,acc.cash,'動能期間投入新入金','add');
-    }},
+    dual_momentum:{day:momentumDay},
     macro_regime:{day(i,ctx,cfg,acc,st,h){
       const p=cfg.params,c=ctx.close[i];if(!(ctx.ma200[i]>0)||i<220)return;
       const bull=c>ctx.ma200[i]&&ctx.ma200[i]>ctx.ma200[i-20];
@@ -412,7 +447,7 @@ function createChaoweiEngine(){
     tech_bb_rsi_dca:{baseRatio:0.6,dipMult:2,pbLow:0.15,rsiLow:35,pbHigh:1.05,rsiHigh:80,trimPct:10},
     core_satellite:{core:70,mult:[0.3,0.7,1,1.8,3],satGrade:4,step:8,trail:10},
     rebalance_50_50:{weight:50,band:10},
-    dual_momentum:{minScore:0},
+    dual_momentum:{minScore:0,core:0,period:120,parts:1},
     macro_regime:{pullback:6,trail:10,stop:15,macroFilter:true,macroMin:1.5},
     vol_targeting:{target:18,minW:20,band:10},
     bb_squeeze:{squeeze:15,volume:true},
@@ -455,11 +490,12 @@ function createChaoweiEngine(){
     {id:'smartDca',family:'value',name:'潮位動態定投',...P('smart_dca_water',{})},
     {id:'bias',family:'value',name:'均線乖離階梯定投',...P('bias_tiered_dca',{})},
     {id:'coreSat',family:'trend',name:'70/30 核心衛星',...P('core_satellite',{upfrontCore:true})},
+    {id:'momentumLab',family:'trend',name:'雙動能趨勢',...P('dual_momentum',{})},
     {id:'regime',family:'trend',name:'多空體制切換',...P('regime_switch',{})},
     {id:'chandelier',family:'trend',name:'潮位抄底＋移動停利',...P('classic',{entry:'grade',buyGrade:4,step:8,adds:2,exit:'trailing',trail:10,atrMult:3})}
   ];
   const RETIRED={drop20:'coreSwing',ladder10:'coreSwing',backToHigh:'chandelier',fib:'smartDca',grade51:'coreSat',pyramid:'chandelier',ma960:'regime',ma4flow:'regime',va:'smartDca',bbRsi:'bias',momentum:'regime',volTarget:'regime',squeeze:'regime',rebalance:'coreSat'};
   function closedRounds(trades,divs=[]){let shares=0,cost=0,proceeds=0,opened=null;const rounds=[],events=[...trades.map((t,i)=>({...t,order:i+1})),...divs.map(([time,amount])=>({date:new Date(time).toISOString().slice(0,10),type:'dividend',amount,order:0}))].sort((a,b)=>a.date.localeCompare(b.date)||a.order-b.order);for(const t of events){if(t.type==='dividend'){if(shares>1e-7)proceeds+=t.amount;continue}if(t.type==='buy'){if(shares<1e-8)opened=t.date;shares+=t.shares;cost+=t.amount}else{shares-=t.shares;proceeds+=t.amount;if(shares<=1e-7&&cost>0){rounds.push({from:opened,to:t.date,pnl:proceeds-cost,ret:proceeds/cost-1});shares=0;cost=0;proceeds=0;opened=null}}}return{rounds,total:rounds.length,wins:rounds.filter(x=>x.pnl>0).length,open:shares>1e-7}}
-  return{prepare,marginHistory,reference,water,score,lineFlow,run,xirr,fundingCalendar,fundingInfo,positionUsage,riskSharpe,drawdownEvents,closedRounds,STRATEGIES,PARAMS,PRESETS,FAMILIES,RETIRED,LEGACY_PRESETS};
+  return{prepare,momentumSignal,marginHistory,reference,water,score,lineFlow,run,xirr,fundingCalendar,fundingInfo,positionUsage,riskSharpe,drawdownEvents,closedRounds,STRATEGIES,PARAMS,PRESETS,FAMILIES,RETIRED,LEGACY_PRESETS};
 }
 const ChaoweiEngine=createChaoweiEngine();

@@ -11,7 +11,7 @@
  function motionLabel(){const off=document.body.classList.contains('motion-paused'),label=off?'播放頁面動畫':'暫停頁面動畫';motionIcon.setAttribute('aria-label',label);motionIcon.title=label;motionIcon.textContent=label;motionIcon.setAttribute('aria-pressed',String(off))};new MutationObserver(motionLabel).observe(document.body,{attributes:true,attributeFilter:['class']});motionLabel();
  // The observation header contains only the selected ETF. Candidate choices stay inside Search.
  const ticker=node('section','compact-ticker');ticker.id='compactTicker';ticker.setAttribute('aria-label','目前觀測 ETF');const toolbar=document.querySelector('.toolbar');$('researchDesk').before(ticker);ticker.append(toolbar);
- const search=node('button','pill mini ticker-search','搜尋 ETF');search.type='button';search.onclick=openSearch;toolbar.append(search);$('quickInline').hidden=true;
+ $('quickInline').hidden=true;
  // Search is global: a dialog inside a hidden route cannot open from Home, Market or Guide.
  $('top').append($('searchOverlay'));
  const menuAccount=document.querySelector('[data-menu-account]');menuAccount.textContent='我的帳號與外觀';

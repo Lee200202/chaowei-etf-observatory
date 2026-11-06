@@ -3,14 +3,15 @@
 const EXTRA_FACTORS=[
   {id:'wMargin',setting:'marginWeight',label:'本檔融資餘額',name:'本檔融資',score:()=>marginScore()},
   {id:'wMktMargin',setting:'mktMarginWeight',label:'大盤融資每日增減',name:'大盤融資增減',score:()=>mktMarginPosition?.core??null},
-  {id:'wBank',setting:'bankWeight',label:'八大官股（全市場）',name:'全市場官股',score:()=>bankPosition?.core??null}
+  {id:'wBank',setting:'bankWeight',label:'八大官股（全市場）',name:'全市場官股',score:()=>bankPosition?.core??null},
+  {id:'wVix',setting:'vixWeight',label:'恐慌指數 VIX',name:'VIX',score:()=>vixDays.length?directionScore('vix'):null}
 ];
 for(const f of EXTRA_FACTORS){
   const row=document.createElement('div');row.className='weight';
   row.innerHTML=`<label for="${f.id}">${f.label}</label><input id="${f.id}" type="range" min="0" max="100" step="1" value="0"><input class="w-num" type="number" min="0" max="100" step="1" data-for="${f.id}" aria-label="${f.label}權重數值"><output id="o${f.id.slice(1)}">0%</output>`;
   $('weights').querySelector('.weights').append(row);f.row=row;
   settings[f.setting]=Math.max(0,Math.min(100,Number(settings[f.setting])||0));
-  $(f.id).value=settings[f.setting];$(f.id).disabled=shareView;row.querySelector('.w-num').value=$(f.id).value;
+  $(f.id).value=settings[f.setting];$(f.id).disabled=shareView;row.querySelector('.w-num').value=$(f.id).value;row.querySelector('.w-num').disabled=shareView;
   $(f.id).addEventListener('input',()=>{row.querySelector('.w-num').value=$(f.id).value;updateWeights()});
   row.querySelector('.w-num').addEventListener('input',e=>{$(f.id).value=Math.max(0,Math.min(100,Number(e.target.value)||0));updateWeights()});
 }
@@ -39,9 +40,9 @@ function factorScores(){
 // One weighted score for any weight list (the sliders, or a saved plan), always from the latest data.
 function weightedScore(weights){
   const w=(weights||[]).map(x=>Math.max(0,Number(x)||0)),sum=w.reduce((a,b)=>a+b,0),scores=factorScores();
-  if(sum<=0||!position)return{value:null,sum,scores,missing:-1};
+  if(sum<=0)return{value:null,sum,scores,missing:-1};
   const missing=w.findIndex((x,i)=>x>0&&!Number.isFinite(scores[i]));if(missing>=0)return{value:null,sum,scores,missing};
-  return{value:w.reduce((n,x,i)=>n+x*scores[i],0)/sum,sum,scores,missing:-1};
+  return{value:w.reduce((n,x,i)=>n+(x>0?x*scores[i]:0),0)/sum,sum,scores,missing:-1};
 }
 const currentWeights=()=>[...(settings.weights||[]).map(x=>Number(x)||0),...EXTRA_FACTORS.map(f=>Number($(f.id).value)||0)];
 const fiveFactorWeights=updateWeights;
@@ -58,7 +59,7 @@ updateWeights=function(){
   if(value==null){$('combined').textContent='—';$('combinedExtra').textContent=sum<=0?'請至少設定一項權重':missing>=5?`${names[missing]}可用資料不足，暫停綜合分`:'選取的因子資料不足';$('weightPreview').textContent='';save();return}
   $('combined').textContent=fmt(value,1)+' / 5';
   $('combinedExtra').textContent=EXTRA_FACTORS.map((f,i)=>extra[i]>0?`${f.name} ${fmt(scores[5+i],1)} 分`:'').filter(Boolean).join(' · ')||'延伸綜合分請參照各項位置';
-  const etfScore=polarityReady?directionScore('etf'):position.core,d=value-etfScore;
+  const etfScore=polarityReady?directionScore('etf'):position?.core,d=Number.isFinite(etfScore)?value-etfScore:0;
   $('weightPreview').innerHTML=`只看 ${selected}：<b>${fmt(etfScore,1)}</b> 分  至  依你的權重：<b>${fmt(value,1)}</b> 分`+(Math.abs(d)>=0.05?`（${d>0?'偏向增加':'偏向降低'} ${fmt(Math.abs(d),1)} 分）`:'');
   save();
 };

@@ -39,3 +39,24 @@ for(const p of E.PRESETS){const cfg={ref:{window:'240',anchorMode:'wick',anchorC
   near(b.equity,b.cash+b.shares*real.at(-1).close,1e-6);if(b.trades.length&&a.trades.length)checked++}
 assert.ok(checked>=7,'at least seven of the eight public strategies trade in both models');
 console.log(`PASS Q03 fill model: T+1 open with 5 bps slippage, overnight cash and dividend entitlement, last-day orders unfilled, no data past the window, ${checked} real 0050 presets in both models.`);
+
+// Momentum sliders feed the actual strategy. Core buys are excluded from satellite sell sizing.
+const momentumCtx=E.prepare(real,[]);
+const momentum={...base,capital:1200000,parking:0,fill:'nextOpen',slipBps:5,strategy:'dual_momentum'};
+const lo=momentumCtx.n-850,hi=momentumCtx.n-1;
+const original=E.run(momentumCtx,{...momentum,params:{minScore:0}},lo,hi);
+const defaults=E.run(momentumCtx,{...momentum,params:E.PARAMS.dual_momentum},lo,hi);
+assert.deepEqual(defaults.trades,original.trades);
+const simulate=params=>E.run(momentumCtx,{...momentum,params},lo,hi);
+const custom=simulate({core:40,period:45,parts:3});
+const coreBuy=custom.trades.find(t=>t.kind==='core');
+near(coreBuy.amount,480000);
+assert.ok(custom.trades.some(t=>t.type==='sell'));
+for(const t of custom.trades)assert.equal(t.i,t.signal+1);
+assert.ok(custom.series.every(d=>d.exposure>=0&&d.exposure<=1+1e-8));
+assert.ok(custom.shares>=coreBuy.shares-1e-8);
+assert.notDeepEqual(custom.trades,simulate({core:0,period:45,parts:3}).trades);
+assert.notDeepEqual(custom.trades,simulate({core:40,period:70,parts:3}).trades);
+assert.notDeepEqual(custom.trades,simulate({core:40,period:45,parts:5}).trades);
+near(custom.equity,custom.cash+custom.shares*real[hi].close);
+console.log('PASS v17 momentum: 0–80% protected core, adjustable lookback and tranches, real fill dates and cash reconciliation.');

@@ -9,9 +9,14 @@ function computeBank(){
   renderBankTrend();
 }
 function renderBankTrend(){
-  bankPanel.replaceChildren();const head=document.createElement('div');head.className='factor-trend-head';head.innerHTML='<h4>八大官股買賣超 · 全市場</h4><div class="segment" role="group" aria-label="官股趨勢期間">'+[20,60,120,0].map(n=>`<button type="button" data-bank-range="${n}" aria-pressed="${settings.bankRange===n}" class="${settings.bankRange===n?'active':''}">${n?n+' 日':'全部'}</button>`).join('')+'</div>';
-  head.addEventListener('click',e=>{const b=e.target.closest('[data-bank-range]');if(b){settings.bankRange=Number(b.dataset.bankRange);save();renderBankTrend()}});bankPanel.append(head);
-  const a=settings.bankRange?bankDays.slice(-settings.bankRange):bankDays;if(!a.length){bankPanel.append(document.createTextNode('正在讀取 HiStock 全市場資料…'));return}
+  bankPanel.replaceChildren();
+  const range=settings.bankRange,head=document.createElement('div');head.className='factor-trend-head';
+  const options=[['ref','參考筆數'],[20,'20 日'],[60,'60 日'],[120,'120 日'],[0,'全部']];
+  head.innerHTML='<h4>八大官股買賣超 · 全市場</h4><div class="segment" role="group" aria-label="官股趨勢期間">'+options.map(([n,label])=>'<button type="button" data-bank-range="'+n+'" aria-pressed="'+(range===n)+'" class="'+(range===n?'active':'')+'">'+label+'</button>').join('')+'</div>';
+  head.addEventListener('click',e=>{const b=e.target.closest('[data-bank-range]');if(b){settings.bankRange=b.dataset.bankRange==='ref'?'ref':Number(b.dataset.bankRange);save();renderBankTrend()}});
+  bankPanel.append(head);
+  const n=range==='ref'?marketN():range,a=n?bankDays.slice(-n):bankDays;
+  if(!a.length){bankPanel.append(document.createTextNode('正在讀取 HiStock 全市場資料…'));return}
   bankPanel.append(chipChart({title:'HiStock 八大行庫每日淨額',unit:'億元',width:Math.max(280,bankPanel.clientWidth||600),height:innerWidth<600?225:300,dates:a.map(x=>x.date),kind:'stack',series:[{name:'買超',color:RISE,data:a.map(x=>Math.max(0,x.value))},{name:'賣超',color:FALL,data:a.map(x=>Math.min(0,x.value))}],format:v=>signNum(v,2)+' 億元'}));
   const p=document.createElement('p');p.className='small';p.textContent=`HiStock 同一來源，共 ${bankDays.length} 日；正值買超、負值賣超，零軸為中性。平日約 23:15 單次更新，失敗保留原資料。這是全市場公股券商交易淨額，不是 ETF 或政府持有庫存。`;bankPanel.append(p);
 }
@@ -20,6 +25,6 @@ async function loadBanks(){
   computeBank();updateWeights();
   if(window.CHAOWEI_BANK)try{const d=await window.CHAOWEI_BANK();if(d.rows?.length){bankDays=mergeDays(bankDays,d.rows.map(x=>({date:x[0],value:x[1],index:x[2]})));computeBank();updateWeights()}}catch{}
 }
-const marketApplyProfile=window.chaoweiApplyProfile;window.chaoweiApplyProfile=p=>{marketApplyProfile(p);settings.marketWindow=Math.max(20,Math.min(2400,Number(settings.marketWindow)||120));settings.marketMethod=settings.marketMethod==='mean'?'mean':'normal';fillMarketConfig();recomputeFactors()};
+const marketApplyProfile=window.chaoweiApplyProfile;window.chaoweiApplyProfile=p=>{marketApplyProfile(p);settings.marketWindow=Math.max(20,Math.min(2400,Number(settings.marketWindow)||120));settings.marketMethod=settings.marketMethod==='mean'?'mean':'normal';fillMarketConfig();recomputeFactors();document.dispatchEvent(new Event('market-lookback'))};
 window.addEventListener('resize',()=>{clearTimeout(window.__bankResize);window.__bankResize=setTimeout(renderBankTrend,150)});
 loadBanks();

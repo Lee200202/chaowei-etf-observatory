@@ -796,6 +796,70 @@ body.subtraction-site #top #market.market-compact #factorRail>.factor{min-height
   .market-fullscreen{border-radius:16px}
   .market-fullscreen h2{font-size:calc((20px) * var(--text-scale,1))}
 }
+
+/* Shared reference plots and five-zone reading scale. */
+.lookback-plot{display:block;width:100%;height:92px;overflow:visible}
+.lookback-caption{display:block;margin-top:4px;color:var(--muted);font-size:calc((13px) * var(--text-scale,1))}
+.lookback-gauge{display:grid;gap:7px;margin:8px 0 12px;font-size:calc((13px) * var(--text-scale,1));color:var(--muted)}
+.lookback-rail{display:grid;grid-template-columns:repeat(5,1fr);gap:3px;position:relative;height:8px;margin-inline:4px}
+.lookback-rail i{border-radius:5px;background:#10b981}.lookback-rail i:nth-child(2){background:#06b6d4}.lookback-rail i:nth-child(3){background:#94a3b8}.lookback-rail i:nth-child(4){background:#f59e0b}.lookback-rail i:nth-child(5){background:#f43f5e}
+.lookback-rail b{position:absolute;top:50%;transform:translate(-50%,-50%);width:12px;height:12px;border:2px solid #fff;border-radius:50%;background:var(--ink);box-shadow:0 0 0 2px var(--paper),0 0 8px #fff8}
+.lookback-market-controls,.lookback-picker{display:flex;align-items:center;flex-wrap:wrap;gap:10px 16px}
+.lookback-picker label,.lookback-market-controls label{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+.lookback-picker [hidden]{display:none}
+.lookback-picker select,.lookback-market-controls select{border:1px solid var(--line);border-radius:18px;background:var(--paper);color:var(--ink);min-height:40px;padding:4px 10px}
+.lookback-picker input,.lookback-market-controls input{min-width:0;max-width:100%;accent-color:var(--teal)}
+.matrix-lookback{margin:0 0 16px}
+.editorial-site #top .rd-matrix-spark{padding-right:0}
+.editorial-site #top .rd-matrix-spark .lookback-plot{height:86px}
+.etf-lookback{display:grid;grid-template-columns:1fr auto;gap:10px 18px;margin:0 0 14px;padding:14px 20px;border:1px solid var(--line);border-radius:22px;background:var(--paper)}
+.etf-lookback h4{margin:0;align-self:center}.etf-lookback-plot{grid-column:1/-1}.etf-lookback-plot .lookback-plot{height:112px}
+.etf-typeahead{grid-template-columns:max-content minmax(150px,1fr) auto;align-items:center}
+.etf-quick-switch{display:flex;flex-wrap:wrap;gap:6px}.etf-quick-switch button{min-height:38px}.etf-quick-switch [aria-pressed=true]{background:var(--ink);color:var(--paper)}
+.etf-quick-switch .is-active-type:not([aria-pressed=true]){border-color:#9b79c0;color:var(--ink)}
+body.subtraction-site #top #factorRail .rd-factor-context{display:grid;gap:8px;margin:0}
+body.subtraction-site #top #factorRail .rd-factor-context .factor-value{display:block}
+#factorRail .lookback-factor-chart{padding:9px 10px;border-radius:12px;background:var(--mist)}
+#factorRail .factor-meta,#factorRail .factor-note,#factorRail #indexMeta,#factorRail #volumeMeta,#factorRail #brentMeta,#factorRail #fxMeta,#factorRail #mktMarginMeta,#factorRail #bankMeta{display:none}
+#factorRail .vix-frequency{color:var(--muted);font-size:calc((13px) * var(--text-scale,1))}
+body.subtraction-site #top #factorRail>.vix-factor .rd-factor-context{grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:14px;align-items:center}
+#factorRail .vix-factor .lookback-plot{height:112px}
+#marketFullscreenModal .lookback-gauge{max-width:350px}
+@media(min-width:1000px){
+ body.subtraction-site #top #matrixCards>.matrix-card:nth-child(n){grid-column:span var(--wave-span,4);margin-top:var(--wave-offset,0);border-radius:24px 40px 24px 24px}
+ #matrixCards>.matrix-card:nth-child(6n+1),#matrixCards>.matrix-card:nth-child(6n+5){--wave-span:5}
+ #matrixCards>.matrix-card:nth-child(6n+2),#matrixCards>.matrix-card:nth-child(6n+6){--wave-span:4;--wave-offset:14px}
+ #matrixCards>.matrix-card:nth-child(6n+3),#matrixCards>.matrix-card:nth-child(6n+4){--wave-span:3;--wave-offset:23px}
+ #matrixCards>.matrix-card:nth-child(3n+1):last-child{--wave-span:12}
+ #matrixCards>.matrix-card:nth-child(6n+1):nth-last-child(2){--wave-span:7}
+ #matrixCards>.matrix-card:nth-child(6n+2):last-child{--wave-span:5}
+ #matrixCards>.matrix-card:nth-child(6n+4):nth-last-child(2){--wave-span:5}
+ #matrixCards>.matrix-card:nth-child(6n+5):last-child{--wave-span:7}
+ body.subtraction-site #top #factorRail>.factor:nth-child(n){grid-column:span var(--factor-span,7);margin-top:var(--factor-offset,0)}
+ #factorRail>.factor:nth-child(2){--factor-span:5;--factor-offset:23px}
+ #factorRail>.factor:nth-child(3){--factor-span:4}
+ #factorRail>.factor:nth-child(4){--factor-span:8;--factor-offset:15px}
+ #factorRail>.factor:nth-child(5){--factor-span:5;--factor-offset:15px}
+ #factorRail>.vix-factor:nth-child(7){--factor-span:12}
+}
+@media(max-width:999px){
+ body.subtraction-site #top #factorRail>.vix-factor:nth-child(7){grid-column:1/-1}
+ .etf-typeahead{grid-template-columns:max-content minmax(0,1fr)}
+ .etf-quick-switch{grid-column:1/-1}
+}
+@media(max-width:599px){
+ body.subtraction-site #top #factorRail>.vix-factor .rd-factor-context,.etf-lookback,.etf-typeahead{grid-template-columns:1fr}
+ .etf-lookback{padding:12px}
+ .etf-quick-switch button{min-height:44px}
+}
+
+.rd-factor-bars{grid-template-columns:repeat(7,minmax(0,1fr))}
+#btParams .strategy-legend{display:grid;grid-column:1/-1;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:center;margin:8px 0;padding:14px;border:1px solid var(--line);border-radius:18px;background:var(--mist)}
+.strategy-legend svg{width:100%;max-height:145px}.strategy-legend p{margin:6px 0}.strategy-links{display:flex;flex-wrap:wrap;gap:7px 14px;margin-top:8px;font-size:calc((13px) * var(--text-scale,1))}
+#btParams .strategy-slider{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
+.strategy-slider output{font-weight:700;color:var(--teal);white-space:nowrap}
+.strategy-slider input{grid-column:1/-1;width:100%;accent-color:var(--teal);min-height:32px;padding:0}
+@media(max-width:599px){#btParams .strategy-legend{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -868,6 +932,6 @@ body.subtraction-site #top #market.market-compact #factorRail>.factor{min-height
     <footer><div>潮位 ETF 觀測所 · ETF 與大盤資料來自<a href="https://www.twse.com.tw/zh/ETFortune/products" target="_blank" rel="noopener noreferrer">臺灣證券交易所</a>；油價計分使用 Yahoo Finance BZ=F 布蘭特近月期貨每日收盤（美元／桶，延遲行情），即時報價只作參考、不計分。另保存 <a href="https://www.taifex.com.tw/cht/2/bRF" target="_blank" rel="noopener noreferrer">臺灣期貨交易所布蘭特原油期貨（BRF）</a>近月結算歷史（新台幣／桶），資料來源 <a href="https://finmindtrade.com/" target="_blank" rel="noopener noreferrer">FinMind</a>；匯率來自<a href="https://data.gov.tw/dataset/7232" target="_blank" rel="noopener noreferrer">中央銀行開放資料</a>。<br>本站是位置觀測工具，非投資建議。本站記錄匿名使用統計（搜尋字詞、查看的 ETF、停留時間），不含姓名或 email，可在「帳號與外觀」關閉。</div><div>歷史日 K 為每日盤後快照（約十年）· 圖表使用 <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer">TradingView</a> Lightweight Charts™ · 2026</div></footer>
   </div>
   <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
-  <script src="https://lee200202.github.io/chaowei-etf-observatory/gas-runtime-751a63e39d7e65c6.js"></script>
+  <script src="https://lee200202.github.io/chaowei-etf-observatory/gas-runtime-c29e2e492c3b6fff.js"></script>
 </body>
 </html>

@@ -25,7 +25,7 @@ let lastFocus=null,restoringSearchFocus=false,searchFocusTimer=null;
 function openSearch(){if(restoringSearchFocus||!$('searchOverlay').classList.contains('hidden'))return;lastFocus=document.activeElement;$('searchOverlay').classList.remove('hidden');document.body.classList.add('searching');renderList();searchFocusTimer=setTimeout(()=>{if(!$('searchOverlay').classList.contains('hidden')){$('search').focus();$('search').select()}},30)}
 // After a pick, focus must not jump back to the opener: the same Enter press would "click" it and reopen the sheet.
 function closeSearch(restore=true){if($('searchOverlay').classList.contains('hidden'))return;clearTimeout(searchFocusTimer);$('searchOverlay').classList.add('hidden');document.body.classList.remove('searching');if(restore){restoringSearchFocus=true;try{lastFocus?.focus?.({preventScroll:true})}finally{restoringSearchFocus=false}}else document.activeElement?.blur?.()}
-function pick(code){chartRange='1m';if(lwc)lwc.routeRange=null;selected=code;closeSearch(false);renderList();loadBars();const t=document.querySelector('.toolbar');window.scrollTo({top:t.getBoundingClientRect().top+scrollY-12,behavior:'instant'})}
+function pick(code,scroll=true){chartRange='1m';if(lwc)lwc.routeRange=null;selected=code;closeSearch(false);renderList();loadBars();if(scroll){const t=document.querySelector('.toolbar');window.scrollTo({top:t.getBoundingClientRect().top+scrollY-12,behavior:'instant'})}}
 /* Risk badge from the catalog name and index: inverse and leveraged first (their index names look like the core ones). */
 function etfRisk(code){
   const e=catalog.find(x=>x.code===code);if(!e)return null;const t=e.name+' '+(e.note||'');

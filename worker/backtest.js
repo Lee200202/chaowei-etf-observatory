@@ -54,7 +54,7 @@ const BT_SCHEMA={
   tech_bb_rsi_dca:[['baseRatio','每月底倉比例','num',{min:0,max:1,step:0.1,unit:'倍'}],['dipMult','超賣加碼','num',{min:0.5,max:5,step:0.5,unit:'倍'}],['pbLow','%B 低於','num',{min:-0.5,max:0.5,step:0.05}],['rsiLow','RSI 低於','num',{min:10,max:50,step:1}],['pbHigh','%B 高於','num',{min:0.8,max:1.5,step:0.05}],['rsiHigh','RSI 高於','num',{min:60,max:95,step:1}],['trimPct','過熱減碼','num',{min:0,max:50,step:5,unit:'%'}]],
   core_satellite:[['core','核心比例','num',{min:10,max:90,step:5,unit:'%'}],['satGrade','衛星進場水位','select',GRADE_OPTS],['step','衛星再跌加碼','num',{min:1,max:30,step:1,unit:'%'}],['trail','衛星自高點回落出場','num',{min:2,max:40,step:1,unit:'%'}]],
   rebalance_50_50:[['weight','目標持股比例','num',{min:10,max:90,step:5,unit:'%'}],['band','偏離多少再平衡','num',{min:2,max:30,step:1,unit:'%'}]],
-  dual_momentum:[['minScore','另需水位分數至少','num',{min:0,max:4,step:0.5,unit:'分'}]],
+  dual_momentum:[['core','期初核心底倉比例','range',{min:0,max:80,step:1,unit:'%'}],['period','動量週期','range',{min:5,max:120,step:1,unit:' 日'}],['parts','分批投入次數','range',{min:1,max:8,step:1,unit:' 批'}],['minScore','另需水位分數至少','num',{min:0,max:4,step:0.5,unit:'分'}]],
   macro_regime:[['pullback','多頭：回落多少買','num',{min:2,max:20,step:1,unit:'%'}],['trail','多頭：自高點回落賣','num',{min:3,max:30,step:1,unit:'%'}],['stop','空頭：停損','num',{min:5,max:40,step:1,unit:'%'}],['macroFilter','原油與匯率濾網','check'],['macroMin','濾網最低分','num',{min:0,max:4,step:0.5,unit:'分'},p=>p.macroFilter]],
   vol_targeting:[['target','目標年化波動','num',{min:5,max:60,step:1,unit:'%'}],['minW','最低持股','num',{min:0,max:80,step:5,unit:'%'}],['band','偏離多少調整','num',{min:2,max:30,step:1,unit:'%'}]],
   bb_squeeze:[['squeeze','帶寬低於近 120 日','num',{min:5,max:40,step:1,unit:'% 分位'}],['volume','突破時需放量','check']],
@@ -69,7 +69,7 @@ const BT_EXPLAIN={chat_annual_regime:'成熟 MA240 上方配置90%，下方30%�
   smart_dca_water:'每月扣款，依水位分數放大或縮小金額；扣不完的錢留作下次加碼',value_averaging:'讓持股市值照目標曲線成長，跌深多買、漲多少買或賣出',
   bias_tiered_dca:'依股價與 MA60 的乖離決定每月扣款倍數',tech_bb_rsi_dca:'每月小額底倉，超賣（%B、RSI 偏低）時加碼，過熱時小幅減碼',
   core_satellite:'資金到位先建立核心部位、不賣出；其餘衛星資金在低水位進場、移動停利出場',rebalance_50_50:'維持固定持股比例，偏離時高賣低買',
-  dual_momentum:'近 60／120 日報酬為正且站上 MA120 時滿倉，轉弱時改持現金',macro_regime:'依 MA200 判斷多空：多頭淺回檔買、空頭只在水位 5 分買',
+  dual_momentum:'調整參數後，以動能、短均線與季線確認衛星進出。核心保留。',macro_regime:'依 MA200 判斷多空：多頭淺回檔買、空頭只在水位 5 分買',
   vol_targeting:'波動低時提高持股、波動放大時降低持股',bb_squeeze:'布林帶寬壓縮後突破上軌才買進，跌破 MA20 賣出',
   ma_offset_flow:'均線分界＋籌碼方向（只做多）：收盤低於往右平移的均線且籌碼方向為正時買進；收盤高於分界線且籌碼方向轉負時全賣。「做空條件」在 ETF 回測中只作出場，不建立空單。MA 長度、平移根數及籌碼期數均可調整'
 };
@@ -106,15 +106,38 @@ const btCfg=(over={})=>{const b=settings.bt,k=[2,3,4].includes(Number(b.entryTra
 /* ---------- form ---------- */
 function btFieldHtml([key,label,type,extra,visible],p){
   const hide=visible&&!visible(p)?' hidden':'';
+  if(type==='range')return '<label class="bt-f strategy-slider">'+label+'<output>'+p[key]+extra.unit+'</output><input type="range" data-k="'+key+'" data-unit="'+extra.unit+'" value="'+p[key]+'" min="'+extra.min+'" max="'+extra.max+'" step="'+extra.step+'"></label>';
   if(type==='select')return `<label class="bt-f${hide}">${label}<select data-k="${key}">${extra.map(([v,t])=>`<option value="${v}"${String(p[key])===v?' selected':''}>${t}</option>`).join('')}</select></label>`;
   if(type==='check')return `<label class="bt-check${hide}"><input type="checkbox" data-k="${key}"${p[key]?' checked':''}>${label}</label>`;
   if(type==='levels')return `<fieldset class="bt-levels${hide}"><legend>${label}</legend>${[0.236,0.382,0.5,0.618,0.786].map(v=>`<label><input type="checkbox" data-level="${v}"${p.levels.includes(v)?' checked':''}>${(v*100).toFixed(1).replace('.0','')}%</label>`).join('')}</fieldset>`;
   if(type==='array5')return `<fieldset class="bt-array${hide}"><legend>${label}</legend>${p[key].map((v,i)=>`<input type="number" data-arr="${key}" data-i="${i}" value="${v}" step="${extra.step}" min="0" max="10" aria-label="${label} 第 ${i+1} 項">`).join('')}</fieldset>`;
   return `<label class="bt-f${hide}">${label}<span class="bt-num"><input type="number" data-k="${key}" value="${p[key]}" min="${extra.min}" max="${extra.max}" step="${extra.step}" inputmode="decimal">${extra.unit?`<em>${extra.unit}</em>`:''}</span></label>`;
 }
+function renderStrategyLegend(strategy){
+  const models={
+    dual_momentum:['動量順勢','調整參數後，動量達門檻、短均線與收盤都站上季線才分批；轉弱退出衛星。','轉強買進','轉弱減碼'],
+    trend_pullback_ma60:['季線回檔收斂','多頭回檔後出現收斂才加碼，核心保留。','收斂加碼',null],
+    core_satellite:['核心衛星','低水位買進衛星，高點回落才退出衛星。','低水位買進','回落減碼']
+  };
+  const model=models[strategy];
+  if(!model)return;
+  const [title,description,buy,sell]=model;
+  const buyX=strategy==='dual_momentum'?146:91,buyY=strategy==='dual_momentum'?36:67;
+  const guide=document.createElement('figure');
+  guide.className='strategy-legend';
+  guide.innerHTML='<svg viewBox="0 0 350 105" role="img" aria-label="'+buy+(sell?'與'+sell:'')+'示意">'+
+    '<path d="M8 66 Q140 52 336 49" stroke="var(--muted)" stroke-width="2" stroke-dasharray="4 5" fill="none"/>'+
+    '<path d="M8 55 L56 49 91 67 146 36 203 25 236 33 273 55 331 72" stroke="var(--teal)" stroke-width="3" fill="none"/>'+
+    '<circle cx="'+buyX+'" cy="'+buyY+'" r="7" fill="#f43f5e"/><text x="'+(buyX+9)+'" y="'+(buyY+16)+'" fill="currentColor">B</text>'+
+    (sell?'<circle cx="273" cy="55" r="7" fill="#10b981"/><text x="284" y="54" fill="currentColor">S</text>':'')+
+    '</svg><figcaption><strong>'+title+' · 規則示意</strong><p>'+description+'</p><span class="up">B '+buy+'</span>'+(sell?' · <span class="down">S '+sell+'</span>':'')+
+    '<div class="strategy-links">'+(strategy==='dual_momentum'?'<a href="https://tw.tradingview.com/support/solutions/43000589187/" target="_blank" rel="noopener">TradingView 動量</a><a href="https://quantpass.org/mtm/" target="_blank" rel="noopener">量化通 MTM</a><a href="https://tquant.tejwin.com/%E7%AF%84%E4%BE%8B%E6%95%99%E5%AD%B8/" target="_blank" rel="noopener">TQuant Lab 範例</a>':'<a href="https://www.cmoney.tw/notes/note-detail.aspx?nid=20148" target="_blank" rel="noopener">CMoney 均線乖離</a>')+'</div></figcaption>';
+  $('btParams').append(guide);
+}
 function btRenderParams(){
   const b=settings.bt,schema=(BT_SCHEMA[b.strategy]||[]).filter(f=>!(b.strategy==='classic'&&f[0]==='adds'));
   $('btParams').innerHTML=(settings.bt.migrationNotice?'<p class="migration-note" role="status">'+settings.bt.migrationNotice+'</p>':'')+(schema.length?schema.map(f=>btFieldHtml(f,b.params)).join(''):'')+`<p class="bt-hint">${BT_EXPLAIN[b.strategy]||''}</p>`;
+  renderStrategyLegend(b.strategy);
   if(b.params.basePct>0){const label=$('btParams').querySelector('[data-k="core"]')?.closest('label');if(label)label.lastChild.textContent='保留核心底倉，不隨波段賣出'}
 }
 function btFillForm(){
@@ -154,6 +177,7 @@ function btRenderSplit(){
   const plan=E.fundingInfo(btCfg());if(plan.tranches&&plan.supported&&b.strategy!=='classic')mine=b.strategy==='core_satellite'?'核心維持定投；衛星預算 '+m(C*(100-p.core)/100)+' 分 '+plan.tranches+' 批':'觸發加碼時，目標單筆 C ÷ '+plan.tranches+' = '+m(C/plan.tranches)+'；最多使用當時現金，賣出後可再運用';
   if(p.core&&p.basePct>0)mine='核心底倉 '+p.basePct+'% = '+m(C*p.basePct/100)+'；剩餘 '+(100-p.basePct)+'% 分 '+(Number(b.entryTranches)||1+p.adds)+' 批，每批目標 '+m(C*(1-p.basePct/100)/(Number(b.entryTranches)||1+p.adds))+'。僅使用已到位現金，底倉不隨波段賣出。';
   if(b.strategy==='core_satellite'&&p.upfrontCore)mine='已到位資金 '+p.core+'% 作核心，剩餘 '+(100-p.core)+'% 為衛星預算。';
+  if(b.strategy==='dual_momentum')mine=p.core===0&&p.period===120&&p.parts===1?'原始雙動能：每月檢查一次，轉強全額投入。':'核心 '+p.core+'% 隨資金到位建立；每日用 '+p.period+' 日動量與季線確認，衛星至多分 '+p.parts+' 批。';
   if(['trend_pullback_ma60','kd_oversold_golden_dca','margin_fear_contrarian'].includes(b.strategy))mine='已到位資金 '+p.core+'% 建立保留核心；剩餘 '+(100-p.core)+'% 分 '+p.parts+' 批，符合加碼條件時以當輪可用現金除剩餘批數投入。';
   $('btSplit').innerHTML=(monthly?'每月入金 C ÷ '+N+' = <b>'+m(base)+'</b>，定期定額當月全數買進':'定期定額：每月 C ÷ '+N+' = <b>'+m(base)+'</b>')+'<br>'+mine+'<br>買進持有：'+(monthly?'每次入金後買進，不預支未來資金':'第一天投入 C = '+m(C))+'。基準排程不是策略的強制持股比例。';
 }
@@ -179,8 +203,15 @@ function btSchedule(){clearTimeout(btTimer);btTimer=setTimeout(renderBacktest,16
 $('btFamilies').addEventListener('click',e=>{const t=e.target.closest('[data-family]');if(!t)return;const p=E.PRESETS.find(x=>x.family===t.dataset.family);btApplyPreset(p.id)});
 $('btPresets').addEventListener('click',e=>{const t=e.target.closest('[data-preset]');if(t)btApplyPreset(t.dataset.preset)});
 function btApplyPreset(id,over){delete settings.bt.migrationNotice;const p=E.PRESETS.find(x=>x.id===id);if(!p)return;Object.assign(settings.bt,{family:p.family,preset:p.id,strategy:p.strategy,params:JSON.parse(JSON.stringify({...E.PARAMS[p.strategy],...p.params}))},over||{});save();btFillForm();renderBacktest()}
-$('backtestCard').addEventListener('change',e=>{if(e.target.closest('.bt-steps,.bt-advanced')){btReadForm();btFillForm();btSchedule()}});
+$('backtestCard').addEventListener('change',e=>{if(!e.target.matches('.strategy-slider input')&&e.target.closest('.bt-steps,.bt-advanced')){btReadForm();btFillForm();btSchedule()}});
 $('btRisk').addEventListener('click',e=>{const t=e.target.closest('[data-preset]');if(t)btApplyPreset(t.dataset.preset)});
+$('btParams').addEventListener('input',e=>{
+  const slider=e.target.closest('.strategy-slider input');
+  if(!slider)return;
+  btReadForm();
+  slider.previousElementSibling.value=slider.value+slider.dataset.unit;
+  btRenderSplit();save();btSchedule();
+});
 $('btYearBudgets').addEventListener('input',e=>{const y=e.target.dataset.budgetYear;if(!y||!e.target.validity.valid)return;settings.bt.funding.years[y]=Math.round(Number(e.target.value)||0);save();btSchedule()});
 $('btAnnualCopy').onclick=()=>{const f=settings.bt.funding;f.annualAmount=Math.round(clampNum($('btAnnualAmount').value,0,1e9,240000));for(const y of btYears())f.years[y]=f.annualAmount;save();btFillForm();btSchedule()};
 $('btCapChips').addEventListener('click',e=>{const t=e.target.closest('[data-cap]');if(!t)return;$('btCapital').value=t.dataset.cap;btReadForm();btFillForm();btSchedule()});
@@ -272,7 +303,7 @@ function btNow(r){
   }else if(s==='smart_dca_water'||s==='core_satellite'||s==='value_averaging'){if(st.reserve>0)rows.push(['蓄水池',money(st.reserve)])}
   else if(s==='bias_tiered_dca'&&ctx.ma60[i]>0){const b=(c/ctx.ma60[i]-1)*100;rows.push(['MA60 乖離',fmt(b,1)+'%'])}
   else if(s==='tech_bb_rsi_dca'){const pb=(c-ctx.bbLo[i])/(ctx.bbUp[i]-ctx.bbLo[i]);rows.push(['%B／RSI',fmt(pb,2)+'／'+fmt(ctx.rsi[i],0)+'（加碼門檻 %B<'+p.pbLow+' 且 RSI<'+p.rsiLow+'）'])}
-  else if(s==='dual_momentum'&&i>=120){const mom=0.5*(c/ctx.close[i-60]-1)+0.5*(c/ctx.close[i-120]-1);rows.push(['動能',pctText(mom)+(c>ctx.ma120[i]?'，在 MA120 之上':'，在 MA120 之下')+(st.on?'（滿倉中）':'（持現金）')])}
+  else if(s==='dual_momentum'){const signal=E.momentumSignal(ctx,i,p);if(signal)rows.push(['動能',pctText(signal.momentum)+(st.on?'（衛星啟動）':'（衛星防守）')])}
   else if(s==='macro_regime'&&ctx.ma200[i]>0){rows.push(['市場體制',c>ctx.ma200[i]&&ctx.ma200[i]>ctx.ma200[i-20]?'多頭（MA200 之上且上彎）':'空頭或盤整']);if(ctx.macro)rows.push(['原油＋匯率分數',Number.isFinite(ctx.macro[i])?fmt(ctx.macro[i],1)+' 分':'—'])}
   else if(s==='vol_targeting'){rows.push(['近 20 日年化波動',fmt(ctx.sigma[i]*100,0)+'%  至  目標持股 '+fmt(Math.max(p.minW,Math.min(100,p.target/ctx.sigma[i])),0)+'%'])}
   else if(s==='bb_squeeze'){rows.push(['布林帶寬','近 120 日第 '+fmt(ctx.bwRank[i]*100,0)+' 百分位'+(r.shares?'；持有中，跌破 MA20 '+fmt(ctx.ma20[i],2)+' 賣出':'')])}

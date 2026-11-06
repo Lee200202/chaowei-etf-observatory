@@ -7,7 +7,7 @@ const near=(a,b,t=1e-7)=>assert.ok(Math.abs(a-b)<t,`${a} != ${b}`),date=i=>new D
 const bar=(i,c=100)=>({date:date(i),open:c,high:c+1,low:c-1,close:c,volume:100});
 const base={capital:1200000,capitalMode:'pool',dcaPeriods:12,fee:0,discount:100,tax:0,parking:0,drip:false,fill:'nextOpen',slipBps:0,ref:{window:'20',anchorMode:'wick',anchorCount:5,method:'equal'}};
 const ids=['trendPullback','kdGolden','marginFear'],cfg=id=>({...base,...E.PRESETS.find(p=>p.id===id)});
-assert.equal(E.PRESETS.length,11);
+assert.equal(E.PRESETS.length,12);
 // KD independent first calculation: 9 bars, RSV=100 -> K=200/3, D=500/9.
 const kd=E.prepare(Array.from({length:9},(_,i)=>({...bar(i),high:100,low:0})),[]);assert.ok(Number.isNaN(kd.kdK[7]));near(kd.kdK[8],200/3);near(kd.kdD[8],500/9);
 // Availability is strict: today's published EOD balance cannot be used at today's close.

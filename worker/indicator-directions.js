@@ -16,7 +16,7 @@ function directionScore(key){
     const p=range?(last.index-range.low)/(range.high-range.low):null;
     return DM.score(key,null,settings.factorModes.volume,{rank:marketPosition.volumeScore/5,pricePosition:p});
   }
-  const base={etf:position?.core,index:marketPosition?.index?.core,oil:brentPosition?.core,fx:fxPosition?(settings.fxDirection==='high'?5-fxPosition.core:fxPosition.core):null,margin:mktMarginPosition?.core,bank:bankPosition?.core}[key];
+  const base={etf:position?.core,index:marketPosition?.index?.core,oil:brentPosition?.core,fx:fxPosition?(settings.fxDirection==='high'?5-fxPosition.core:fxPosition.core):null,margin:mktMarginPosition?.core,bank:bankPosition?.core,vix:DM.vixScore(vixDays.at(-1)?.value)}[key];
   return DM.score(key,base,settings.factorModes[key]);
 }
 const directionSelects=[];
@@ -31,7 +31,7 @@ const scoreIds={index:'indexScore',volume:'volumeScore',oil:'brentScore',fx:'fxS
 makeDirection('etf',$('grade').parentElement,$('grade'));
 for(const[key,id]of Object.entries(scoreIds)){const score=$(id),parent=score.closest('.factor');makeDirection(key,parent,score);const tag=document.createElement('p');tag.className='direction-action';tag.id='action-'+key;score.after(tag)}
 const etfAction=document.createElement('p');etfAction.className='direction-action';etfAction.id='action-etf';$('waterText').after(etfAction);
-for(const[key,id]of Object.entries({etf:'wEtf',index:'wIndex',volume:'wVolume',oil:'wBrent',fx:'wFx',margin:'wMktMargin',bank:'wBank'})){const row=$(id).closest('.weight'),wrap=document.createElement('div');wrap.className='weight-direction';makeDirection(key,wrap);row.append(wrap)}
+for(const[key,id]of Object.entries({etf:'wEtf',index:'wIndex',volume:'wVolume',oil:'wBrent',fx:'wFx',margin:'wMktMargin',bank:'wBank',vix:'wVix'})){const row=$(id).closest('.weight'),wrap=document.createElement('div');wrap.className='weight-direction';makeDirection(key,wrap);row.append(wrap)}
 // Keep old controls for existing saved plans and backtest code, but expose only the explicit wording above.
 $('fxDirection').classList.add('hidden');$('volumeDirection').closest('label').classList.add('hidden');
 const logic=document.createElement('div');logic.className='direction-presets';logic.innerHTML='<p class="small">分數高＝依你的規則偏向增加配置；分數低＝偏向降低。這是位置／規則讀數，不是勝率或固定持股比例。</p><div class="segment" role="group" aria-label="指標方向預設包"><button type="button" data-direction-preset="value"> 價值低接</button><button type="button" data-direction-preset="trend"> 順勢觀察</button><button type="button" data-direction-preset="hedge"> 債券／避險參考</button></div>';
@@ -40,14 +40,14 @@ logic.addEventListener('click',e=>{const b=e.target.closest('[data-direction-pre
 if(shareView)logic.querySelectorAll('button').forEach(b=>b.disabled=true);
 function refreshDirectionViews(){
   if(!polarityReady)return;
-  const ids={...scoreIds,etf:'grade'};
+  const ids={...scoreIds,etf:'grade',vix:'vixScore'};
   for(const[key,id]of Object.entries(ids)){
-    const s=directionScore(key),node=$(id);if(key==='etf'){node.innerHTML=Number.isFinite(s)?fmt(s,1)+'<small>/5</small>':'—<small>/5</small>';$('barGrade').textContent=Number.isFinite(s)?fmt(s,1)+' / 5':'—'}else node.textContent=Number.isFinite(s)?fmt(s,1)+' / 5':'—';
+    const node=$(id);if(!node)continue;const s=directionScore(key);if(key==='etf'){node.innerHTML=Number.isFinite(s)?fmt(s,1)+'<small>/5</small>':'—<small>/5</small>';$('barGrade').textContent=Number.isFinite(s)?fmt(s,1)+' / 5':'—'}else node.textContent=Number.isFinite(s)?fmt(s,1)+' / 5':'—';
     const a=DM.action(s),tag=$('action-'+key);tag.className='direction-action '+a.kind;tag.textContent=a.text;
   }
   for(const select of directionSelects)select.value=settings.factorModes[select.dataset.direction];
   if(fxPosition)$('fxMeta').textContent=fmt(fxPosition.last.value,3)+' 新台幣／美元 · '+fxPosition.last.date+' · '+(settings.factorModes.fx==='twd_strong_buy'?'數字低＝台幣較強，分高':'數字高＝台幣較弱，分高');
-  bankTile.querySelector('small').textContent=(settings.factorModes.bank==='buy_follow'?'買超加分':'賣超加分')+' · 平日約 23:15 單次擷取';
+  bankTile.querySelector(':scope > small').textContent=(settings.factorModes.bank==='buy_follow'?'買超加分':'賣超加分')+' · 平日約 23:15 單次擷取';
   const a=DM.action(Number.parseFloat($('combined').textContent));$('combinedAction').textContent=a.text;$('combinedAction').className='direction-action '+a.kind;
 }
 const combinedAction=document.createElement('p');combinedAction.id='combinedAction';$('combined').after(combinedAction);

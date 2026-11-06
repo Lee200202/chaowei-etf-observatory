@@ -12,7 +12,7 @@
   const label=$('grade').closest('.water-copy').querySelector('.overline'),plainLabel=label.textContent;
   const note=document.createElement('p');note.className='small applied-note hidden';$('grade').after(note);
   const barLabel=$('barGrade').previousElementSibling,plainBar=barLabel?.textContent;
-  const same=(a,b)=>JSON.stringify((a||[]).map(Number))===JSON.stringify((b||[]).map(Number));
+  const same=(a,b)=>Array.from({length:Math.max(a?.length||0,b?.length||0)},(_,i)=>(Number(a?.[i])||0)===(Number(b?.[i])||0)).every(Boolean);
   function status(){
     const p=settings.appliedPlan,changed=p&&!same(p.weights,currentWeights());
     $('appliedStatus').textContent=shareView?'檢視分享的方案：主畫面水位依這組權重計算。':p?`主畫面水位使用「${p.name}」（${p.savedAt} 儲存）`+(changed?'；目前滑桿與已套用的不同，按「儲存並套用到水位」更新。':'。'):'主畫面水位目前只看本檔價格位置；按下按鈕後改用這組權重，並隨最新資料更新。';

@@ -16,7 +16,7 @@
  function follow(){const raw=decodeURIComponent(location.hash.slice(1)),id=aliases[raw]||raw||'homePage';activate(destination(id),id)}
  let tourReturn=null;window.chaoweiBeginTour=()=>{tourReturn={key:current,y:scrollY}};window.chaoweiEndTour=()=>{if(tourReturn){activate(tourReturn.key,'',false);window.scrollTo({top:tourReturn.y,behavior:'instant'});tourReturn=null}};
  window.chaoweiTourTarget=target=>{if(!target)return;const panel=target.closest('.route-page');if(panel){const key=Object.keys(panels).find(k=>panels[k]===panel);activate(key,target.id||panel.id,false)}let d=target.closest('details');while(d){d.open=true;d=d.parentElement.closest('details')}};
- window.chaoweiNavigate=(key,id)=>{const anchor=id||({home:'homePage',etf:'explore',market:'market',board:'strategyBoardPage',guide:'method-story'})[key];if(location.hash==='#'+anchor)activate(key,anchor);else location.hash=anchor};window.addEventListener('hashchange',follow);const oldPick=pick;pick=function(code){activate('etf','explore',false);if(!etf.contains($(location.hash.slice(1))))history.pushState(null,'','#explore');oldPick(code)};
+ window.chaoweiNavigate=(key,id)=>{const anchor=id||({home:'homePage',etf:'explore',market:'market',board:'strategyBoardPage',guide:'method-story'})[key];if(location.hash==='#'+anchor)activate(key,anchor);else location.hash=anchor};window.addEventListener('hashchange',follow);const oldPick=pick;pick=function(code,scroll){activate('etf','explore',false);if(!etf.contains($(location.hash.slice(1))))history.pushState(null,'','#explore');oldPick(code,scroll)};
  let matrixQuoteGeneration=0;
  async function refreshMatrixQuotes(){
   if(document.hidden||document.body.dataset.page!=='home'||!window.CHAOWEI_QUOTE)return;

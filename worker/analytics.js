@@ -42,7 +42,7 @@ $('search').addEventListener('input',()=>{clearTimeout(searchTimer);searchTimer=
 // Selections and time spent on each ETF.
 let viewing=null,viewStart=0,visibleSince=Date.now(),activeMs=0;
 const pickTracked=pick;
-pick=function(code){track('select',{code,query:$('search').value.trim()});pickTracked(code)};
+pick=function(code,scroll){track('select',{code,query:$('search').value.trim()});pickTracked(code,scroll)};
 function endView(){if(viewing&&viewStart){const s=(Date.now()-viewStart)/1000;if(s>=3)track('view',{code:viewing,seconds:s})}viewing=null;viewStart=0}
 const trackLoadBars=loadBars;
 loadBars=async function(keepView){if(!keepView&&viewing!==selected){endView();viewing=selected;viewStart=Date.now()}return trackLoadBars(keepView)};

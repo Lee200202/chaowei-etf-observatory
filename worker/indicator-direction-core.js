@@ -7,12 +7,13 @@ const IndicatorDirection=(()=>{
     oil:{name:'布蘭特原油',modes:[['low_buy','油價越低分數越高'],['high_buy','油價越高分數越高']],default:'low_buy'},
     fx:{name:'美元／新台幣',modes:[['twd_strong_buy','匯率低／台幣升分數越高'],['twd_weak_buy','匯率高／台幣貶分數越高']],default:'twd_strong_buy'},
     margin:{name:'大盤融資增減',modes:[['decrease_buy','融資減少分數越高'],['increase_buy','融資增加分數越高']],default:'decrease_buy'},
-    bank:{name:'全市場官股',modes:[['buy_follow','官股買超分數越高'],['sell_follow','官股賣超分數越高']],default:'buy_follow'}
+    bank:{name:'全市場官股',modes:[['buy_follow','官股買超分數越高'],['sell_follow','官股賣超分數越高']],default:'buy_follow'},
+    vix:{name:'恐慌指數 VIX',modes:[['fear_buy','恐慌越高分數越高'],['calm_buy','波動越低分數越高']],default:'fear_buy'}
   };
   const presets={
-    value:{etf:'low_buy',index:'low_buy',volume:'low_buy',oil:'low_buy',fx:'twd_weak_buy',margin:'decrease_buy',bank:'buy_follow'},
-    trend:{etf:'high_buy',index:'high_buy',volume:'high_buy',oil:'low_buy',fx:'twd_strong_buy',margin:'increase_buy',bank:'sell_follow'},
-    hedge:{etf:'low_buy',index:'high_buy',volume:'smart_pv',oil:'low_buy',fx:'twd_strong_buy',margin:'decrease_buy',bank:'buy_follow'}
+    value:{etf:'low_buy',index:'low_buy',volume:'low_buy',oil:'low_buy',fx:'twd_weak_buy',margin:'decrease_buy',bank:'buy_follow',vix:'fear_buy'},
+    trend:{etf:'high_buy',index:'high_buy',volume:'high_buy',oil:'low_buy',fx:'twd_strong_buy',margin:'increase_buy',bank:'sell_follow',vix:'calm_buy'},
+    hedge:{etf:'low_buy',index:'high_buy',volume:'smart_pv',oil:'low_buy',fx:'twd_strong_buy',margin:'decrease_buy',bank:'buy_follow',vix:'fear_buy'}
   };
   function normalize(m={}){return Object.fromEntries(Object.entries(meta).map(([k,v])=>[k,v.modes.some(x=>x[0]===m?.[k])?m[k]:v.default]))}
   function score(key,base,mode,{rank,pricePosition}={}){
@@ -22,9 +23,17 @@ const IndicatorDirection=(()=>{
       return clamp(5*(mode==='low_buy'?1-rank:rank));
     }
     if(!Number.isFinite(base))return null;
-    const flip=mode==='high_buy'||mode==='increase_buy'||mode==='sell_follow'||key==='fx'&&mode==='twd_weak_buy';
+    const flip=mode==='high_buy'||mode==='increase_buy'||mode==='sell_follow'||mode==='calm_buy'||key==='fx'&&mode==='twd_weak_buy';
     return clamp(flip?5-base:base);
   }
+  // Site-defined contrarian scale. Intermediate knots interpolate continuously.
+  function vixScore(value){
+    if(!Number.isFinite(value)||value<=0)return null;
+    const knots=[12,14,18,25,30,35];
+    if(value<=knots[0])return 0;
+    for(let i=1;i<knots.length;i++)if(value<=knots[i])return i-1+(value-knots[i-1])/(knots[i]-knots[i-1]);
+    return 5;
+  }
   function action(score){return !Number.isFinite(score)?{kind:'missing',text:'資料不足，暫不判讀'}:score>=4?{kind:'increase',text:'依設定：偏向增加配置'}:score<=2?{kind:'decrease',text:'依設定：偏向降低配置'}:{kind:'neutral',text:'依設定：維持觀察'}}
-  return{meta,presets,normalize,score,action};
+  return{meta,presets,normalize,score,vixScore,action};
 })();
