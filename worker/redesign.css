@@ -126,3 +126,8 @@ body.editorial-site .to-top{display:none!important}
 .rc-row strong{white-space:nowrap}
 @media(max-width:760px){.range-compare-sliders label{grid-template-columns:auto minmax(0,1fr)}.range-compare-sliders output{text-align:right}.range-compare-sliders input{grid-column:1/-1;order:3}}
 .rc-val{font-size:12px;font-weight:700;fill:var(--ink);font-variant-numeric:tabular-nums}.rc-chg{font-size:12.5px;font-weight:800;font-variant-numeric:tabular-nums}
+/* Hover line, locked start and end preview for the range compare. */
+.rc-cross{position:absolute;top:28px;bottom:26px;width:0;border-left:1.5px dashed var(--ink);opacity:.75;pointer-events:none;z-index:1}
+.rc-cross span{position:absolute;top:-24px;left:6px;white-space:nowrap;font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:1px 7px}.rc-cross span.flip{left:auto;right:6px}
+.rc-edge.locked{stroke:var(--ink);stroke-opacity:.9;stroke-width:2.2}.rc-edge.preview{stroke-dasharray:4 3;stroke-opacity:.7}
+.rc-hint{min-height:1.4em;margin:6px 0 0;color:var(--ink);font-weight:700}.range-compare.rc-picking .rc-hit{cursor:col-resize}
