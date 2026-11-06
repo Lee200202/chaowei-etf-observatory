@@ -3105,7 +3105,7 @@ function renderFactorTrend(){
     rows=rows.map(([date,value])=>[date,net+=value]);
   }
   const first=rows[0][1],last=rows.at(-1)[1];
-  trendPanel.append(chipChart({title:def.title,unit:def.unit,width:Math.max(280,Math.round(trendPanel.clientWidth||600)),height:innerWidth<600?245:330,dates:rows.map(x=>x[0]),kind:def.bars?'stack':'area',
+  trendPanel.append(chipChart({title:def.title,unit:def.unit,width:Math.max(280,Math.round(trendPanel.clientWidth||600)),height:innerWidth<600?315:420,dates:rows.map(x=>x[0]),kind:def.bars?'stack':'area',
     series:def.bars?[{name:'增加',color:RISE,data:rows.map(x=>Math.max(0,x[1]))},{name:'減少',color:FALL,data:rows.map(x=>Math.min(0,x[1]))}]:[{name:def.title,color:def.color,data:rows.map(x=>x[1])}],bands,format:def.fmt,
     right:def.right?(()=>{const r=def.right();return{name:r.name,color:r.color,data:rows.map(x=>r.byDate.get(x[0])??null)}})():undefined,
     note:def.bars?'零軸為基準':key==='bank'?'從所選區間首日累計':`區間 ${last>=first?'+':''}${fmt((last/first-1)*100,1)}%`}));
@@ -3136,7 +3136,7 @@ function renderBankTrend(){
   bankPanel.append(head);
   const n=range==='ref'?marketN():range,a=n?bankDays.slice(-n):bankDays;
   if(!a.length){bankPanel.append(document.createTextNode('正在讀取 HiStock 全市場資料…'));return}
-  bankPanel.append(chipChart({title:'HiStock 八大行庫每日淨額',unit:'億元',width:Math.max(280,bankPanel.clientWidth||600),height:innerWidth<600?225:300,dates:a.map(x=>x.date),kind:'stack',series:[{name:'買超',color:RISE,data:a.map(x=>Math.max(0,x.value))},{name:'賣超',color:FALL,data:a.map(x=>Math.min(0,x.value))}],format:v=>signNum(v,2)+' 億元'}));
+  bankPanel.append(chipChart({title:'HiStock 八大行庫每日淨額',unit:'億元',width:Math.max(280,bankPanel.clientWidth||600),height:innerWidth<600?290:390,dates:a.map(x=>x.date),kind:'stack',series:[{name:'買超',color:RISE,data:a.map(x=>Math.max(0,x.value))},{name:'賣超',color:FALL,data:a.map(x=>Math.min(0,x.value))}],format:v=>signNum(v,2)+' 億元'}));
   const p=document.createElement('p');p.className='small';p.textContent=`HiStock 同一來源，共 ${bankDays.length} 日；正值買超、負值賣超，零軸為中性。平日約 23:15 單次更新，失敗保留原資料。這是全市場公股券商交易淨額，不是 ETF 或政府持有庫存。`;bankPanel.append(p);
 }
 async function loadBanks(){
@@ -3663,7 +3663,12 @@ const ChartMeasurement=(()=>{
 const ViewportMath=(()=>{
   function clamp(range,n){if(!range||!n||![range.from,range.to].every(Number.isFinite))return null;const span=Math.max(Math.min(2,n),Math.min(n,Math.max(0,range.to-range.from))),from=Math.max(-.5,Math.min(n-.5-span,range.from));return{from,to:from+span}}
   function anchor(daily,display,index){if(!daily.length||!display.length)return-1;const next=display[Math.min(display.length-1,index)+1]?.date;let lo=0,hi=daily.length;while(lo<hi){const m=(lo+hi)>>1;if(!next||daily[m].date<next)lo=m+1;else hi=m}return lo-1}
-  return{clamp,anchor};
+  function levels(low,high,method){
+    if(!Number.isFinite(low)||!Number.isFinite(high)||high<=low)return[];
+    const inner=method==='fib'?[0,.236,.382,.618,.786,1]:[0,.2,.4,.6,.8,1];
+    return[-.5,...inner,1.5].map(ratio=>({ratio,price:low+(high-low)*ratio}));
+  }
+  return{clamp,anchor,levels};
 })();
 
 // Historical guide lines follow the rightmost visible bar; current cards and backtests keep their own dates.
@@ -3677,16 +3682,23 @@ const ViewportMath=(()=>{
     $('chart').dataset.fromIndex=safe.from;$('chart').dataset.toIndex=safe.to;$('chart').dataset.barCount=lwc.data.length;const daily=lwc.daily||bars;if(source!==daily){source=daily;ctx={n:daily.length,bars:daily,refCache:new Map()};key=''}
     const end=Math.max(0,Math.min(lwc.data.length-1,Math.floor(safe.to))),at=ViewportMath.anchor(daily,lwc.data,end),anchor=daily[at];if(!anchor)return;
     const next=[at,settings.window,settings.anchorMode,settings.anchorCount,settings.method,settings.showLevels].join('|');
-    if(next!==key){key=next;clear();const ref=E.reference(ctx,settings.window,settings.anchorMode,settings.anchorCount),low=ref.lo[at],high=ref.hi[at];bounds=settings.showLevels&&Number.isFinite(low)&&Number.isFinite(high)&&high>low?{low,high}:null;
-      if(bounds)for(const f of settings.method==='fib'?[0,.236,.382,.618,.786,1]:[0,.2,.4,.6,.8,1])lines.push(lwc.s.candle.createPriceLine({price:low+(high-low)*f,color:f===0||f===1?'#438d98':'#9abfc0',lineWidth:f===0||f===1?2:1,lineStyle:2,axisLabelVisible:true,title:`${Number((f*100).toFixed(1))}%`}));
+    if(next!==key){key=next;clear();const ref=E.reference(ctx,settings.window,settings.anchorMode,settings.anchorCount),low=ref.lo[at],high=ref.hi[at];
+      const levels=settings.showLevels?ViewportMath.levels(low,high,settings.method):[];
+      bounds=levels.length?{low,high,lower:levels[0].price,upper:levels.at(-1).price}:null;
+      for(const {ratio,price} of levels){
+        const outer=ratio<0||ratio>1,edge=ratio===0||ratio===1;
+        const title=outer?(ratio<0?'下界 −0.5':'上界 1.5'):`${Number((ratio*100).toFixed(1))}%`;
+        lines.push(lwc.s.candle.createPriceLine({price,color:outer?'#a982cf':edge?'#438d98':'#9abfc0',lineWidth:outer||edge?2:1,lineStyle:2,axisLabelVisible:true,title}));
+      }
     }
     lwc.visibleAnchor=end;updateLegend(end);const historical=at<daily.length-1;lwc.s.candle.applyOptions({lastValueVisible:!historical,priceLineVisible:!historical});if(historical)lwc.s.candle.applyOptions({title:''});else labelLastBar();
-    $('viewportNote').textContent=`圖上錨點 ${anchor.date}${bounds?' · 前 '+(settings.window==='all'?at:settings.window)+' 交易日：'+fmt(bounds.low,2)+' 至 '+fmt(bounds.high,2):settings.showLevels?' · 前期資料不足，暫不畫水位線':' · 水位線未開啟'}${historical?'；上方卡片仍為最近報價。':'。'}`;
+    $('viewportNote').textContent=`圖上錨點 ${anchor.date}${bounds?' · 參考低高價 '+fmt(bounds.low,2)+' 至 '+fmt(bounds.high,2)+' · 延伸 −0.5／1.5：'+fmt(bounds.lower,2)+'／'+fmt(bounds.upper,2):settings.showLevels?' · 前期資料不足，暫不畫水位線':' · 水位線未開啟'}${historical?'；上方卡片仍為最近報價。':'。'}`;
     $('viewportNote').dataset.anchor=anchor.date;$('viewportNote').dataset.low=bounds?.low??'';$('viewportNote').dataset.high=bounds?.high??'';
+    $('viewportNote').dataset.lower=bounds?.lower??'';$('viewportNote').dataset.upper=bounds?.upper??'';
     lwc.main.priceScale('right').applyOptions({autoScale:true});
   }
   function schedule(){if(!frame)frame=requestAnimationFrame(refresh)}
-  function bind(){if(!lwc||chart===lwc.main)return;chart=lwc.main;chart.timeScale().subscribeVisibleLogicalRangeChange(schedule);lwc.s.candle.applyOptions({autoscaleInfoProvider:original=>{const info=original();if(!info?.priceRange)return info;let{minValue:lo,maxValue:hi}=info.priceRange;if(bounds){lo=Math.min(lo,bounds.low);hi=Math.max(hi,bounds.high)}const pad=Math.max(hi-lo,Math.abs(hi)*.0001,.0001)*.06;return{priceRange:{minValue:lo-pad,maxValue:hi+pad}}}});chart.priceScale('right').applyOptions({scaleMargins:{top:0,bottom:0},autoScale:true})}
+  function bind(){if(!lwc||chart===lwc.main)return;chart=lwc.main;chart.timeScale().subscribeVisibleLogicalRangeChange(schedule);lwc.s.candle.applyOptions({autoscaleInfoProvider:original=>{const info=original();if(!info?.priceRange)return info;let{minValue:lo,maxValue:hi}=info.priceRange;if(bounds){lo=Math.min(lo,bounds.lower);hi=Math.max(hi,bounds.upper)}const pad=Math.max(hi-lo,Math.abs(hi)*.0001,.0001)*.06;return{priceRange:{minValue:lo-pad,maxValue:hi+pad}}}});chart.priceScale('right').applyOptions({scaleMargins:{top:0,bottom:0},autoScale:true})}
   function fit(){if(!lwc)return;bounds=null;key='';bind();refresh();lwc.main.priceScale('right').applyOptions({autoScale:true})}
   $('fitViewport').addEventListener('click',fit);$('latestViewport').addEventListener('click',()=>{setRange('1m');fit()});$('chart').addEventListener('dblclick',e=>{if(e.target.closest('.measure-surface'))return;fit()});
   const previous=drawChart;drawChart=function(...args){previous(...args);bind();key='';schedule()};
@@ -3965,7 +3977,6 @@ const TrainingMath=(()=>{
       goTo(index+1);
     },interval);
   }
-  initRail({id:'storyRail',head:'.story-rail-head',interval:3300,label:'觀測卡片',dotsAfter:'rail'});
   initRail({id:'factorRail',head:'.factor-rail-nav',interval:3800,label:'市場卡片',dotsAfter:'nav'});
   const toggle=$('motionToggle');
   toggle.addEventListener('click',()=>{
@@ -4002,6 +4013,9 @@ const TrainingMath=(()=>{
  const features=document.createElement('section');features.className='section feature-gallery';features.innerHTML='<div class="section-heading"><div><p class="kicker teal">YOUR RESEARCH STUDIO</p><h2>把問題，交給圖表。</h2></div></div><div class="feature-grid">'+[['etf-observation','ETF 觀測','價格、日 K 與技術指標，一起看。','chartCard'],['market-context','市場背景','從量能、油價與匯率補齊視角。','market'],['wave-research','波段研究','標記峰谷，看看幅度與時間。','waveStudy'],['historical-validation','歷史驗證','前段選規則，後段獨立驗證。','trainingLab'],['custom-weights','策略白板','拖拉條件，組合自己的研究規則。','strategyBoardPage'],['member-watchlist','我的收藏','登入保存追蹤、偏好與研究。','account']].map(([asset,title,desc,target])=>`<a class="feature-entry" href="#${target}" ${target==='account'?'data-home-account':''}><figure><img src="${assets}${asset}.webp" width="1536" height="1024" loading="lazy" decoding="async" alt="${title}情境插畫"></figure><div><h3>${title}</h3><p>${desc}</p><span class="entry-caption">${['waveStudy','trainingLab','weights','account'].includes(target)?'會員研究功能':'開啟觀測'}</span></div></a>`).join('')+'</div><p class="small">插畫為概念示意；所有行情與統計以工具內的資料日期為準。</p>';home.append(features,document.querySelector('.member-story'));features.querySelector('[data-home-account]').addEventListener('click',e=>{e.preventDefault();$('accountTop').click()});
  marketPage.className+=' section market-page';marketPage.innerHTML='<div class="section-heading"><div><p class="kicker teal">MARKET CONTEXT</p><h2>市場的其他刻度</h2><p class="sub">各項資料保留來源與更新日期；需要時再展開計分條件。</p></div><a href="#weights" class="pill">前往 ETF 權重</a></div>';marketPage.append($('market'));
  const stories=document.querySelector('.story-stage');guide.append($('method-story'));if(stories)guide.append(stories);const help=document.querySelector('.indicator-help');if(help){const link=document.createElement('a');link.className='pill mini guide-link';link.href='#technicalGuide';link.textContent='技術指標說明';help.before(link);help.id='technicalGuide';help.classList.add('metric-detail');guide.append(help)}
+ const author=document.createElement('section');author.id='aboutAuthor';author.className='card guide-author';author.setAttribute('aria-labelledby','authorTitle');
+ author.innerHTML='<h3 id="authorTitle">關於作者</h3><p><strong>李世勛 <span lang="en">Shih-Hsun Lee</span></strong><br>國立臺北大學統計學研究所</p><p>研究機器學習、深度學習、自然語言處理與大型語言模型，主要應用在量化金融。潮位 ETF 觀測所延續「盤勢有據」對資料來源、數字核對與可重現研究的重視。</p><div class="author-links"><a class="pill mini" href="mailto:lindanny0213@gmail.com">Email</a><a class="pill mini" href="https://github.com/Lee200202" target="_blank" rel="noopener noreferrer">GitHub</a><a class="pill mini" href="https://www.notion.so/Shih-Hsun-Lee-8bc6e964fe0a46c199c362a0909eabbb" target="_blank" rel="noopener noreferrer">作品集</a></div>';
+ guide.append(author);
  const nav=document.createElement('nav');nav.id='pageNav';nav.className='page-nav';nav.setAttribute('aria-label','內容分頁');nav.innerHTML=[['homePage','首頁'],['explore','ETF 觀測'],['market','市場刻度'],['strategyBoardPage','策略白板'],['method-story','方法說明']].map(([id,t])=>`<a href="#${id}">${t}</a>`).join('');$('siteHeader').append(nav);const panels={home,etf,market:marketPage,board:boardPage,guide};let current='';
  const aliases={method:'weights','wave-lab':'waveStudy',chips:'chipCard',backtest:'backtestCard',top:'homePage',home:'homePage',board:'strategyBoardPage'};
  function destination(id){if(['homePage','matrixView','top',''].includes(id))return'home';if(id==='strategyBoardPage'||boardPage.contains($(id)))return'board';if(id==='market'||id==='marketPage'||marketPage.contains($(id)))return'market';if(id==='method-story'||id==='guidePage'||guide.contains($(id)))return'guide';return'etf'}
@@ -4172,7 +4186,6 @@ function createChaoweiBoardStage(host,options={}){
  {id:'strengthMethod',heading:'06 千分強度怎麼組成？',text:'本站時序研究版：均線乖離在自身前 240 日的百分位乘 700，加上成交額百分位乘 300。這是另一種強度讀數，不是 0–5 水位，也不是勝率；歷史不足留白。',title:'MA 與成交額配分示意',svg:'<rect x="18" y="20" width="132" height="48" rx="18" fill="#badbd5"/><rect x="18" y="96" width="132" height="48" rx="18" fill="#e1d2ab"/><text x="34" y="50" fill="#183d43">MA 上限 700</text><text x="30" y="126" fill="#183d43">成交額 300</text><path class="motion-path" d="M150 44 H220 Q240 44 240 82 H282 M150 120 H220 Q240 120 240 82" stroke="#5e9997" stroke-width="3" fill="none"/><rect x="282" y="58" width="120" height="48" rx="18" fill="#315a67"/><text x="297" y="88" fill="#f1f8f4">上限 1000</text>'},
  {id:'validationMethod',heading:'07 歷史當下怎麼驗證？',text:'先固定訓練與驗證日期，只用訓練期選規則與觀察窗，再鎖定參數檢查後段。各方法按訓練排名逐列對照；看完驗證結果再調參屬新一輪探索，不再是原先那次獨立驗證。',title:'訓練截止與後段驗證示意',svg:'<rect x="24" y="45" width="176" height="60" rx="18" fill="#94bfb6"/><rect x="220" y="45" width="176" height="60" rx="18" fill="#9aaecd"/><text x="58" y="82" fill="#173f45">已知：訓練</text><text x="254" y="82" fill="#173f45">後段：驗證</text><path d="M210 18 V142" stroke="#d6b265" stroke-width="3"/><text x="154" y="165">鎖定參數</text><path class="motion-path" d="M30 122 H194 M226 122 H390" stroke="#5e9997" stroke-width="2"/>'}
  ];const target=document.querySelector('.method-steps'),observe=new IntersectionObserver(entries=>entries.forEach(e=>e.target.classList.toggle('diagram-visible',e.isIntersecting)),{threshold:.15});for(const row of rows){let d=row.target;if(!d){d=document.createElement('details');d.id=row.id;d.innerHTML='<summary>'+row.heading+'</summary><p>'+row.text+'</p>';target.append(d)}const wrap=document.createElement('div');wrap.className='method-figure';wrap.innerHTML='<svg class="method-diagram" viewBox="0 0 420 185" role="img" aria-label="'+row.title+'"><title>'+row.title+'，概念示意</title>'+row.svg+'</svg><button class="pill mini diagram-toggle" type="button" aria-pressed="false">暫停圖解</button>';d.querySelector('summary').after(wrap);const button=wrap.querySelector('button');button.onclick=()=>{const paused=wrap.classList.toggle('diagram-paused');button.textContent=paused?'播放圖解':'暫停圖解';button.setAttribute('aria-pressed',String(paused))};observe.observe(wrap)}
- const foot=document.querySelector('footer>div:first-child');if(foot){const d=document.createElement('details');d.className='source-footer';d.innerHTML='<summary>資料來源與使用說明</summary>';foot.before(d);d.append(foot)}
 })();
 
 /* Sizing comparison uses the same account, dates and deposits; only the entry sizing changes. */
@@ -4223,14 +4236,14 @@ function createChaoweiBoardStage(host,options={}){
  $('btMode').hidden=true;$('btMode').setAttribute('aria-hidden','true');
  const originalPosition=computePosition;function observationTitle(){const w=$('window').value,m=$('method').value;advanced.querySelector('summary').textContent='觀察設定 · '+(w==='all'?'全部':w+' 日')+'／'+(m==='fib'?'黃金分割':'等距')}computePosition=function(...args){const r=originalPosition(...args);observationTitle();return r};observationTitle();
  const range=$('rangeSeg'),more=document.createElement('select');more.id='chartRangeMore';more.setAttribute('aria-label','其他顯示期間');more.add(new Option('其他期間',''));const extraButtons=new Map();for(const b of range.querySelectorAll('[data-range]'))if(!['1m','3m','1','all'].includes(b.dataset.range)){extraButtons.set(b.dataset.range,b);more.add(new Option(b.textContent.trim(),b.dataset.range));b.hidden=true}range.append(more);more.onchange=()=>{extraButtons.get(more.value)?.click()};const oldRange=setRange;setRange=function(v,...args){const r=oldRange(v,...args);more.value=extraButtons.has(v)?v:'';return r};
- const indicators=document.createElement('details');indicators.id='chartIndicatorSettings';indicators.className='metric-detail';indicators.innerHTML='<summary>技術指標與圖表設定</summary>';const indicatorTools=$('chartCard').querySelector('.indicator-tools');indicatorTools.before(indicators);indicators.append(indicatorTools,$('chartCard').querySelector('.level-tools'),$('indSettings'));
+ const indicators=document.createElement('section');indicators.id='chartIndicatorSettings';indicators.setAttribute('aria-labelledby','chartIndicatorTitle');indicators.innerHTML='<h4 id="chartIndicatorTitle">技術指標與圖表設定</h4>';const indicatorTools=$('chartCard').querySelector('.indicator-tools');indicatorTools.before(indicators);indicators.append(indicatorTools,$('chartCard').querySelector('.level-tools'));
  const step=$('btParams').closest('.bt-step'),title=step.querySelector('h4');if(title)title.innerHTML='<b>2</b> 觸發條件';
  const label=$('btDcaPeriods').closest('label');label.classList.remove('expert-only');$('btCapitalMode').closest('label').classList.remove('expert-only');
  for(const details of group.children)if(details.tagName==='DETAILS')details.addEventListener('toggle',()=>{if(details.open)for(const other of group.children)if(other!==details&&other.tagName==='DETAILS')other.open=false});
  // The chart pans and zooms by wheel, drag and pinch; the four step buttons move into the chart settings so the
  // toolbar keeps only the ranges plus 貼合畫面／回到最新區間. They stay available for keyboard users there.
  const zoom=$('chartCard').querySelector('.zoom-controls'),settingsPanel=$('chartIndicatorSettings');
- if(zoom&&settingsPanel){const box=document.createElement('div');box.className='zoom-moved';box.innerHTML='<span class="small">移動與縮放（也可用滑鼠滾輪、拖曳或雙指）</span>';box.append(zoom);settingsPanel.querySelector(':scope > summary').after(box)}
+ if(zoom&&settingsPanel){const box=document.createElement('div');box.className='zoom-moved';box.innerHTML='<span class="small">移動與縮放（也可用滑鼠滾輪、拖曳或雙指）</span>';box.append(zoom);settingsPanel.append(box)}
 })();
 
 /* ---------- Saved weight plan drives the main water level ----------
@@ -4474,8 +4487,6 @@ function tideTail(x,y,color){
  // Route aliases retain all old URLs, and #board now has an explicit destination.
  if(location.hash==='#board')window.chaoweiNavigate('board');
  document.querySelectorAll('a[href="#board"]').forEach(a=>a.href='#strategyBoardPage');
- // The retained old intro rail is redundant with the new theatre; its text is kept in an expandable note.
- const oldStory=guide.querySelector('.story-stage');if(oldStory){const archive=make('details','method-original');archive.innerHTML='<summary>再看三種觀測視角</summary>';oldStory.before(archive);archive.append(oldStory)}
  // Resize the original charts after moving them; keep all ranges, markers, settings and auth contracts.
  requestAnimationFrame(()=>window.dispatchEvent(new Event('resize')));
  document.documentElement.dataset.designVersion='ph8-editorial-1';
@@ -5100,9 +5111,9 @@ function setTideTone(card, location) {
     item.querySelector('a').setAttribute('aria-label',term+'原理教學');
     terms.append(item);
   }
-  const formulas=document.createElement('details');
-  formulas.className='metric-detail';
-  formulas.innerHTML='<summary>指標公式與口徑</summary>';
+  const formulas=document.createElement('section');
+  formulas.className='tech-formulas';
+  formulas.innerHTML='<h4>指標公式與口徑</h4>';
   formulas.append(...guide.querySelectorAll(':scope > dl,:scope > p'));
   function diagram(){
     const figure=document.createElement('figure');

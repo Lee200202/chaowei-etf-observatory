@@ -154,8 +154,6 @@
  // Route aliases retain all old URLs, and #board now has an explicit destination.
  if(location.hash==='#board')window.chaoweiNavigate('board');
  document.querySelectorAll('a[href="#board"]').forEach(a=>a.href='#strategyBoardPage');
- // The retained old intro rail is redundant with the new theatre; its text is kept in an expandable note.
- const oldStory=guide.querySelector('.story-stage');if(oldStory){const archive=make('details','method-original');archive.innerHTML='<summary>再看三種觀測視角</summary>';oldStory.before(archive);archive.append(oldStory)}
  // Resize the original charts after moving them; keep all ranges, markers, settings and auth contracts.
  requestAnimationFrame(()=>window.dispatchEvent(new Event('resize')));
  document.documentElement.dataset.designVersion='ph8-editorial-1';

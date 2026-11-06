@@ -56,7 +56,7 @@ body.subtraction-site #top #factorRail .factor strong[id$=Score]{margin:8px 0 0}
  body.subtraction-site #top :is(#matrixCards,#factorRail)>:nth-child(7n+1) :is(.matrix-price,.factor-value){font-size:1.95rem}
  body.subtraction-site #top :is(#matrixCards,#factorRail)>:nth-child(7n+4) :is(.matrix-price,.factor-value){font-size:1.7rem}
  body.subtraction-site #top :is(#matrixCards,#factorRail)>:nth-child(7n+6) :is(.matrix-price,.factor-value){font-size:1.25rem}
- body.subtraction-site #top :is(#matrixCards,#factorRail) svg.lookback-plot{height:var(--tide-chart-height,86px)}
+ body.subtraction-site #top :is(#matrixCards,#factorRail) svg.lookback-plot{height:calc(var(--tide-chart-height,86px) + 52px)}
  body.subtraction-site #top #researchPane0 .score-grid{grid-template-columns:minmax(0,7fr) minmax(0,5fr);align-items:start}
  body.subtraction-site #top #researchPane0 .score-grid>.water-card{min-height:230px;border-top-right-radius:48px}
  body.subtraction-site #top #researchPane0 .score-grid>.price-card{min-height:180px;margin-top:22px}
@@ -77,3 +77,42 @@ body.motion-paused [data-tide-plot] .tide-tail-halo{animation:none}
 .tide-canvas-host.tide-in-view .tide-canvas-dot::after{animation:tide-tail-glow 2.5s ease-out 1s infinite}
 body.motion-paused .tide-canvas-dot::after{animation:none!important}
 @media(prefers-reduced-motion:reduce){.tide-canvas-dot::after{animation:none!important}}
+
+/* Extra vertical room for price movement and technical panes. */
+#matrixCards .rd-matrix-spark svg.lookback-plot,#factorRail svg.lookback-plot{height:136px}
+#researchDesk .etf-lookback-plot svg.lookback-plot{height:185px}
+body.subtraction-site #top #chart{height:560px}
+body.subtraction-site #top #volChart{height:205px}
+body.subtraction-site #top .osc-pane .osc-chart{height:230px}
+#chartIndicatorSettings>h4,#indSettings>h4{margin:0 0 10px}
+#chartIndicatorSettings .zoom-moved{margin-top:10px}
+#indSettings{margin-top:18px;padding:14px}
+
+#guidePage #storyRail{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;
+  width:100%;max-width:none;margin:0;padding:0;overflow:visible;
+}
+#guidePage #storyRail .story-tile{min-width:0;min-height:0;padding:clamp(16px,3vw,28px)}
+#guidePage #storyRail .story-tile h3{font-size:clamp(1.25rem,2.1vw,1.75rem)}
+#guidePage #storyRail :is(.tile-wave,.tile-bars,.tile-ring){width:100%;max-width:230px;height:112px;margin:12px auto}
+#guidePage #storyRail .tile-ring{width:112px}
+#technicalGuide,.guide-author{margin:26px 0;padding:clamp(16px,3vw,28px);border:1px solid var(--line);border-radius:24px}
+#technicalGuide h3,.guide-author h3{margin:0 0 12px}
+.tech-formulas{margin-top:24px}
+.guide-author .author-links{display:flex;flex-wrap:wrap;gap:8px}
+.guide-author .author-links a{display:inline-flex;align-items:center;text-decoration:none}
+.source-table{width:100%;table-layout:fixed;border-collapse:collapse;margin-bottom:18px;text-align:left}
+.source-table caption{text-align:left;font-size:1.08rem;font-weight:800;margin-bottom:8px}
+.source-table th,.source-table td{padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top;overflow-wrap:anywhere}
+.source-table th:first-child{width:23%}
+.source-table th:nth-child(2){width:27%}
+@media(max-width:760px){
+  #researchDesk .etf-lookback-plot svg.lookback-plot{height:155px}
+  body.subtraction-site #top #chart{height:440px}
+  body.subtraction-site #top #volChart{height:165px}
+  body.subtraction-site #top .osc-pane .osc-chart{height:185px}
+  #guidePage #storyRail{grid-template-columns:1fr}
+  #technicalGuide dl{grid-template-columns:1fr;gap:3px}
+  #technicalGuide dd{margin-bottom:10px}
+  .source-table th,.source-table td{padding:7px 4px}
+}

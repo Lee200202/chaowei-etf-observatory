@@ -97,7 +97,7 @@ function renderFactorTrend(){
     rows=rows.map(([date,value])=>[date,net+=value]);
   }
   const first=rows[0][1],last=rows.at(-1)[1];
-  trendPanel.append(chipChart({title:def.title,unit:def.unit,width:Math.max(280,Math.round(trendPanel.clientWidth||600)),height:innerWidth<600?245:330,dates:rows.map(x=>x[0]),kind:def.bars?'stack':'area',
+  trendPanel.append(chipChart({title:def.title,unit:def.unit,width:Math.max(280,Math.round(trendPanel.clientWidth||600)),height:innerWidth<600?315:420,dates:rows.map(x=>x[0]),kind:def.bars?'stack':'area',
     series:def.bars?[{name:'增加',color:RISE,data:rows.map(x=>Math.max(0,x[1]))},{name:'減少',color:FALL,data:rows.map(x=>Math.min(0,x[1]))}]:[{name:def.title,color:def.color,data:rows.map(x=>x[1])}],bands,format:def.fmt,
     right:def.right?(()=>{const r=def.right();return{name:r.name,color:r.color,data:rows.map(x=>r.byDate.get(x[0])??null)}})():undefined,
     note:def.bars?'零軸為基準':key==='bank'?'從所選區間首日累計':`區間 ${last>=first?'+':''}${fmt((last/first-1)*100,1)}%`}));

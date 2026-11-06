@@ -384,9 +384,9 @@ function setTideTone(card, location) {
     item.querySelector('a').setAttribute('aria-label',term+'原理教學');
     terms.append(item);
   }
-  const formulas=document.createElement('details');
-  formulas.className='metric-detail';
-  formulas.innerHTML='<summary>指標公式與口徑</summary>';
+  const formulas=document.createElement('section');
+  formulas.className='tech-formulas';
+  formulas.innerHTML='<h4>指標公式與口徑</h4>';
   formulas.append(...guide.querySelectorAll(':scope > dl,:scope > p'));
   function diagram(){
     const figure=document.createElement('figure');

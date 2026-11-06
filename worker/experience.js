@@ -100,7 +100,6 @@
       goTo(index+1);
     },interval);
   }
-  initRail({id:'storyRail',head:'.story-rail-head',interval:3300,label:'觀測卡片',dotsAfter:'rail'});
   initRail({id:'factorRail',head:'.factor-rail-nav',interval:3800,label:'市場卡片',dotsAfter:'nav'});
   const toggle=$('motionToggle');
   toggle.addEventListener('click',()=>{

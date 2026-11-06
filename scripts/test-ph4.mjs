@@ -12,6 +12,16 @@ for(const window of [20,60,240,'all'])for(const mode of ['wick','close','average
   const cut=E.reference({n:211,bars:small.slice(0,211),refCache:new Map()},window,mode,k);near(cut.hi[210],out.hi[210]);near(cut.lo[210],out.lo[210]);
 }
 const V=new Function(read('worker/viewport-core.js')+';return ViewportMath')();
+for(const method of ['equal','fib']){
+  const levels=V.levels(80,120,method);
+  assert.equal(levels.length,8);
+  assert.deepEqual(levels[0],{ratio:-.5,price:60});
+  assert.deepEqual(levels.at(-1),{ratio:1.5,price:140});
+  assert.equal(levels[1].price,80);
+  assert.equal(levels.at(-2).price,120);
+}
+assert.deepEqual(V.levels(100,100,'equal'),[]);
+assert.deepEqual(V.levels(NaN,120,'fib'),[]);
 assert.equal(V.clamp(null,100),null);assert.deepEqual(V.clamp({from:-1000,to:-950},100),{from:-.5,to:49.5});assert.deepEqual(V.clamp({from:1000,to:1030},100),{from:69.5,to:99.5});assert.deepEqual(V.clamp({from:0,to:1000},100),{from:-.5,to:99.5});
 const d=['2024-01-02','2024-01-03','2024-01-05','2024-01-08','2024-02-01'].map(date=>({date}));assert.equal(V.anchor(d,d,1),1);assert.equal(V.anchor(d,[d[0],d[3],d[4]],0),2);assert.equal(V.anchor(d,[d[0],d[4]],0),3);assert.equal(V.anchor(d,[d[0],d[4]],1),4);
 // A tiny asynchronous IndexedDB double verifies reload, stale revalidation, deduplication and failure fallback.

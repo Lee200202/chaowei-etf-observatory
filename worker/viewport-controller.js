@@ -9,16 +9,23 @@
     $('chart').dataset.fromIndex=safe.from;$('chart').dataset.toIndex=safe.to;$('chart').dataset.barCount=lwc.data.length;const daily=lwc.daily||bars;if(source!==daily){source=daily;ctx={n:daily.length,bars:daily,refCache:new Map()};key=''}
     const end=Math.max(0,Math.min(lwc.data.length-1,Math.floor(safe.to))),at=ViewportMath.anchor(daily,lwc.data,end),anchor=daily[at];if(!anchor)return;
     const next=[at,settings.window,settings.anchorMode,settings.anchorCount,settings.method,settings.showLevels].join('|');
-    if(next!==key){key=next;clear();const ref=E.reference(ctx,settings.window,settings.anchorMode,settings.anchorCount),low=ref.lo[at],high=ref.hi[at];bounds=settings.showLevels&&Number.isFinite(low)&&Number.isFinite(high)&&high>low?{low,high}:null;
-      if(bounds)for(const f of settings.method==='fib'?[0,.236,.382,.618,.786,1]:[0,.2,.4,.6,.8,1])lines.push(lwc.s.candle.createPriceLine({price:low+(high-low)*f,color:f===0||f===1?'#438d98':'#9abfc0',lineWidth:f===0||f===1?2:1,lineStyle:2,axisLabelVisible:true,title:`${Number((f*100).toFixed(1))}%`}));
+    if(next!==key){key=next;clear();const ref=E.reference(ctx,settings.window,settings.anchorMode,settings.anchorCount),low=ref.lo[at],high=ref.hi[at];
+      const levels=settings.showLevels?ViewportMath.levels(low,high,settings.method):[];
+      bounds=levels.length?{low,high,lower:levels[0].price,upper:levels.at(-1).price}:null;
+      for(const {ratio,price} of levels){
+        const outer=ratio<0||ratio>1,edge=ratio===0||ratio===1;
+        const title=outer?(ratio<0?'下界 −0.5':'上界 1.5'):`${Number((ratio*100).toFixed(1))}%`;
+        lines.push(lwc.s.candle.createPriceLine({price,color:outer?'#a982cf':edge?'#438d98':'#9abfc0',lineWidth:outer||edge?2:1,lineStyle:2,axisLabelVisible:true,title}));
+      }
     }
     lwc.visibleAnchor=end;updateLegend(end);const historical=at<daily.length-1;lwc.s.candle.applyOptions({lastValueVisible:!historical,priceLineVisible:!historical});if(historical)lwc.s.candle.applyOptions({title:''});else labelLastBar();
-    $('viewportNote').textContent=`圖上錨點 ${anchor.date}${bounds?' · 前 '+(settings.window==='all'?at:settings.window)+' 交易日：'+fmt(bounds.low,2)+' 至 '+fmt(bounds.high,2):settings.showLevels?' · 前期資料不足，暫不畫水位線':' · 水位線未開啟'}${historical?'；上方卡片仍為最近報價。':'。'}`;
+    $('viewportNote').textContent=`圖上錨點 ${anchor.date}${bounds?' · 參考低高價 '+fmt(bounds.low,2)+' 至 '+fmt(bounds.high,2)+' · 延伸 −0.5／1.5：'+fmt(bounds.lower,2)+'／'+fmt(bounds.upper,2):settings.showLevels?' · 前期資料不足，暫不畫水位線':' · 水位線未開啟'}${historical?'；上方卡片仍為最近報價。':'。'}`;
     $('viewportNote').dataset.anchor=anchor.date;$('viewportNote').dataset.low=bounds?.low??'';$('viewportNote').dataset.high=bounds?.high??'';
+    $('viewportNote').dataset.lower=bounds?.lower??'';$('viewportNote').dataset.upper=bounds?.upper??'';
     lwc.main.priceScale('right').applyOptions({autoScale:true});
   }
   function schedule(){if(!frame)frame=requestAnimationFrame(refresh)}
-  function bind(){if(!lwc||chart===lwc.main)return;chart=lwc.main;chart.timeScale().subscribeVisibleLogicalRangeChange(schedule);lwc.s.candle.applyOptions({autoscaleInfoProvider:original=>{const info=original();if(!info?.priceRange)return info;let{minValue:lo,maxValue:hi}=info.priceRange;if(bounds){lo=Math.min(lo,bounds.low);hi=Math.max(hi,bounds.high)}const pad=Math.max(hi-lo,Math.abs(hi)*.0001,.0001)*.06;return{priceRange:{minValue:lo-pad,maxValue:hi+pad}}}});chart.priceScale('right').applyOptions({scaleMargins:{top:0,bottom:0},autoScale:true})}
+  function bind(){if(!lwc||chart===lwc.main)return;chart=lwc.main;chart.timeScale().subscribeVisibleLogicalRangeChange(schedule);lwc.s.candle.applyOptions({autoscaleInfoProvider:original=>{const info=original();if(!info?.priceRange)return info;let{minValue:lo,maxValue:hi}=info.priceRange;if(bounds){lo=Math.min(lo,bounds.lower);hi=Math.max(hi,bounds.upper)}const pad=Math.max(hi-lo,Math.abs(hi)*.0001,.0001)*.06;return{priceRange:{minValue:lo-pad,maxValue:hi+pad}}}});chart.priceScale('right').applyOptions({scaleMargins:{top:0,bottom:0},autoScale:true})}
   function fit(){if(!lwc)return;bounds=null;key='';bind();refresh();lwc.main.priceScale('right').applyOptions({autoScale:true})}
   $('fitViewport').addEventListener('click',fit);$('latestViewport').addEventListener('click',()=>{setRange('1m');fit()});$('chart').addEventListener('dblclick',e=>{if(e.target.closest('.measure-surface'))return;fit()});
   const previous=drawChart;drawChart=function(...args){previous(...args);bind();key='';schedule()};
