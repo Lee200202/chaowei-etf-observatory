@@ -3843,7 +3843,7 @@ const RangeCompare=(()=>{
   // a drag to its right fixes the end; a tap left of the start does nothing, since the start stays on the left.
   charts.addEventListener('pointerup',e=>{const hit=e.target.closest('[data-rc-plot]');if(!hit||view.length<2)return;const i=at(e,hit);
     if(e.pointerType!=='mouse'){const now=e.timeStamp;if(now-lastTap.t<350&&Math.abs(e.clientX-lastTap.x)<30){lastTap={t:0,x:0};lockStart(i);cross(i);return}lastTap={t:now,x:e.clientX}}
-    if(picking!=null&&i>picking)commit(i)});
+    cross(i);if(picking!=null&&i>picking)commit(i)});
   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&picking!=null){picking=null;sel=before||sel;before=null;cross(null);paint()}});
   // Sliders give keyboard and fine-touch control; the start can never pass the end.
   sec.querySelector('.range-compare-sliders').addEventListener('input',e=>{const input=e.target.closest('[data-rc-end]');if(!input||!sel)return;const v=Number(input.value),n=view.length;
