@@ -821,7 +821,7 @@ body.subtraction-site #top #factorRail .rd-factor-context{display:grid;gap:8px;m
 body.subtraction-site #top #factorRail .rd-factor-context .factor-value{display:block}
 #factorRail .lookback-factor-chart{padding:9px 10px;border-radius:12px;background:var(--mist)}
 #factorRail .factor-meta,#factorRail .factor-note,#factorRail #indexMeta,#factorRail #volumeMeta,#factorRail #brentMeta,#factorRail #fxMeta,#factorRail #mktMarginMeta,#factorRail #bankMeta{display:none}
-#factorRail .vix-frequency{color:var(--muted);font-size:calc((13px) * var(--text-scale,1))}
+#factorRail .vix-frequency,#factorRail .vix-session{color:var(--muted);font-size:calc((13px) * var(--text-scale,1))}
 body.subtraction-site #top #factorRail>.vix-factor .rd-factor-context{grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:14px;align-items:center}
 #factorRail .vix-factor .lookback-plot{height:112px}
 #marketFullscreenModal .lookback-gauge{max-width:350px}
@@ -5506,10 +5506,29 @@ const QuantChat=(()=>{
 
   const vixTile = document.createElement('div');
   vixTile.className = 'factor vix-factor';
-  vixTile.innerHTML = '<h4>恐慌指數 VIX</h4><strong id="vixScore">—</strong><p class="direction-action" id="action-vix"></p><p class="vix-frequency">Cboe 美東交易日收盤</p><span class="factor-more">查看歷史趨勢</span>';
+  vixTile.innerHTML = '<h4>恐慌指數 VIX</h4><strong id="vixScore">—</strong><p class="direction-action" id="action-vix"></p><p class="vix-frequency">Cboe 美東交易日收盤</p><p class="vix-session" hidden></p><span class="factor-more">查看歷史趨勢</span>';
   rail.append(vixTile);
   makeDirection('vix',vixTile,$('vixScore'));
   const vixDate = vixTile.querySelector('.vix-frequency');
+  const vixSession=vixTile.querySelector('.vix-session');
+  function renderVixSession() {
+    const q=live?.vixQuote, daily=vixDays.at(-1);
+    const at=Date.parse(q?.time), now=Date.now();
+    const usable=q?.symbol==='^VIX'&&q.open>0&&q.price>0&&Number.isFinite(at)&&now-at<72*3600000&&at<=now+60000;
+    vixSession.hidden=!usable;
+    if(!usable)return;
+    const localTime=new Intl.DateTimeFormat('en-GB',{timeZone:'America/New_York',hour:'2-digit',minute:'2-digit'});
+    const provisional=!!daily&&q.date>daily.date&&now<Date.parse(q.endTime)&&now-at<45*60000;
+    const change=q.price-q.open;
+    const score=DM.score('vix',DM.vixScore(q.price),settings.factorModes.vix);
+    vixSession.textContent=q.date+' 美東 · 時段起始 '+fmt(q.open,2)+'（'+localTime.format(Date.parse(q.openTime))+'） · '+(provisional?'盤中':'該時段末筆')+
+      ' '+fmt(q.price,2)+'（'+localTime.format(at)+'，較起始 '+signNum(change,2)+' 點） · Yahoo 延遲'+
+      (provisional?' · 盤中試算 '+fmt(score,1)+'／5':'');
+  }
+  const previousLive=applyLive;
+  applyLive=function(...args){const result=previousLive(...args);renderVixSession();return result};
+  const previousDirectionRefresh=refreshDirectionViews;
+  refreshDirectionViews=function(){previousDirectionRefresh();renderVixSession()};
   async function loadVix() {
     try {
       const response = await fetch('/api/vix');
@@ -5549,7 +5568,7 @@ const QuantChat=(()=>{
     fx:['中央銀行收盤匯率','https://www.cbc.gov.tw/tw/lp-645-1.html','趨勢及分數採銀行間收盤，卡片另可顯示 Yahoo 延遲報價。'],
     margin:['臺灣證券交易所信用交易統計','https://www.twse.com.tw/zh/trading/margin/mi-margn.html','以每日融資餘額增減比較。'],
     bank:['玩股網官股參考','https://www.wantgoo.com/stock/public-bank/buy-sell','圖表採 HiStock 八大行庫全市場每日淨額。'],
-    vix:['Cboe VIX 歷史資料','https://www.cboe.com/tradable-products/vix/vix-historical-data','以美東交易日收盤計分。14 以下波動偏低，25 起恐慌偏高，30 起屬高恐慌區；分數依設定方向換算。']
+    vix:['Cboe VIX 歷史資料','https://www.cboe.com/tradable-products/vix/vix-historical-data','以 Cboe 美東交易日收盤計分；盤中單筆試算使用 Yahoo 延遲行情。14 以下波動偏低，25 起恐慌偏高，30 起屬高恐慌區；分數依設定方向換算。']
   };
   modal.querySelector('button').onclick = () => modal.close();
   modal.addEventListener('click', event => { if (event.target === modal) modal.close(); });

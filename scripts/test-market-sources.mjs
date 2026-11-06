@@ -22,6 +22,24 @@ assert.equal(fx.price,32.962);
 assert.equal(fx.unit,'TWD/USD');
 assert.equal(fx.time,'2026-11-06T02:30:43.000Z');
 assert.equal(fx.delayed,true);
+// Yahoo's session metadata begins 15 min before the first published 03:15 ET VIX bar.
+const vixStart=at('2026-11-05',8),vixEnd=at('2026-11-05',21,15);
+const vixRow={meta:{symbol:'^VIX',currency:'USD',regularMarketPrice:28.18,regularMarketTime:vixEnd+1,
+  currentTradingPeriod:{regular:{start:vixStart,end:vixEnd}}},
+  timestamp:[vixStart-86400,vixStart+900,vixEnd],indicators:{quote:[{open:[19.2,17.139999,28.18]}]}};
+box.UrlFetchApp.fetch=url=>{
+  assert.match(url,/%5EVIX.*range=1d&interval=5m/);
+  return {getResponseCode:()=>200,getContentText:()=>JSON.stringify({chart:{result:[vixRow]}})};
+};
+const vix=box.vixQuote_();
+assert.equal(vix.open,17.14);
+assert.equal(vix.openTime,'2026-11-05T08:15:00.000Z');
+assert.equal(vix.date,'2026-11-05');
+assert.equal(vix.price,28.18);
+assert.equal(vix.delayed,true);
+assert.equal(box.yahooVixSession_({...vixRow,timestamp:[vixStart-86400,vixStart+1200,vixEnd]}),null);
+assert.equal(box.yahooVixSession_({...vixRow,meta:{...vixRow.meta,regularMarketTime:vixStart-1}}),null);
+console.log('VIX opening point: first same-session bar, previous session and missing opening rejected.');
 const table=total=>'<option value="20260911" selected>'+[12,13,14,15].map((n,i)=>`<tr><td>${n}</td><td>bucket</td><td>${i+1}</td><td>${(i+1)*100000}</td><td>1</td></tr>`).join('')+`<tr><td>${total}</td><td>合 計</td><td>20</td><td>10000000</td><td>100</td></tr>`;
 for(const total of[16,17]){const r=box.tdccParse_(table(total),'0050','20260911');assert.equal(r[0],'2026-09-11');assert.equal(r[2],10);assert.equal(r[3],4);assert.equal(r[4],10);assert.equal(r[5],4)}
 assert.throws(()=>box.tdccParse_(table(17),'0050','20260918'),/日期不符/);

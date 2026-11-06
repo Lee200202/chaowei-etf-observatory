@@ -22,7 +22,7 @@ body.subtraction-site #top #factorRail .rd-factor-context{display:grid;gap:8px;m
 body.subtraction-site #top #factorRail .rd-factor-context .factor-value{display:block}
 #factorRail .lookback-factor-chart{padding:9px 10px;border-radius:12px;background:var(--mist)}
 #factorRail .factor-meta,#factorRail .factor-note,#factorRail #indexMeta,#factorRail #volumeMeta,#factorRail #brentMeta,#factorRail #fxMeta,#factorRail #mktMarginMeta,#factorRail #bankMeta{display:none}
-#factorRail .vix-frequency{color:var(--muted);font-size:13px}
+#factorRail .vix-frequency,#factorRail .vix-session{color:var(--muted);font-size:13px}
 body.subtraction-site #top #factorRail>.vix-factor .rd-factor-context{grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:14px;align-items:center}
 #factorRail .vix-factor .lookback-plot{height:112px}
 #marketFullscreenModal .lookback-gauge{max-width:350px}

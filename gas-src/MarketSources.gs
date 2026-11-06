@@ -36,6 +36,26 @@ function yahooMarketQuote_(symbol,currency,unit){
   cache.put(key,JSON.stringify(result),240);
   return result;
 }
+// Yahoo offers delayed five-minute bars. Use an opening bar only if it belongs to
+// the quote's session and is inside its first 15 minutes (including the first published VIX value).
+function yahooVixSession_(row){
+  const meta=row?.meta,period=meta?.currentTradingPeriod?.regular;
+  const last=meta?.regularMarketTime,price=meta?.regularMarketPrice;
+  if(meta?.symbol!=='^VIX'||meta.currency!=='USD'||!(price>0)||!(period?.start>0)||
+    !(period.end>period.start)||!(last>=period.start&&last<=period.end+60))return null;
+  const opens=row.indicators?.quote?.[0]?.open||[],times=row.timestamp||[];
+  const first=times.findIndex((time,i)=>time>=period.start&&time<=period.start+900&&time<=last&&opens[i]>0);
+  if(first<0)return null;
+  return {symbol:'^VIX',date:Utilities.formatDate(new Date(last*1000),'America/New_York','yyyy-MM-dd'),
+    open:Math.round(opens[first]*100)/100,openTime:new Date(times[first]*1000).toISOString(),
+    price,time:new Date(last*1000).toISOString(),endTime:new Date(period.end*1000).toISOString(),
+    delayed:true,source:'Yahoo Finance ^VIX'};
+}
+function vixQuote_(){
+  const response=UrlFetchApp.fetch('https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?range=1d&interval=5m',{muteHttpExceptions:true});
+  if(response.getResponseCode()!==200)throw Error('HTTP '+response.getResponseCode());
+  return yahooVixSession_(JSON.parse(response.getContentText('UTF-8')).chart?.result?.[0]);
+}
 function getBankHistory(){
   const cache=CacheService.getScriptCache(),hit=cache.get('histock-bank-public-v1');if(hit)return JSON.parse(hit);
   const ss=store_(),sh=ss&&ss.getSheetByName(STORE_TABS.bank[0]);
