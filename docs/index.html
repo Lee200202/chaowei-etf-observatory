@@ -577,6 +577,30 @@ body.editorial-site #top>#siteHeader{width:100%;max-width:1320px;margin-inline:a
 /* The pinned ETF tab already returns to the desk; the old centred floater obscures controls. */
 body.editorial-site .to-top{display:none!important}
 
+/* Range compare: TAIEX and margin balance over one shared, left-to-right selection. */
+.range-compare{margin-top:22px;padding:24px;border:1px solid var(--line);border-radius:24px;background:var(--paper)}
+.range-compare-head{display:flex;flex-wrap:wrap;justify-content:space-between;gap:14px 24px;align-items:flex-end}.range-compare-head h3{margin:6px 0 6px}.range-compare-head .small{margin:0;max-width:520px}
+.range-compare-tools{display:flex;flex-wrap:wrap;gap:8px}.range-compare-tools .segment button{white-space:nowrap}
+.range-compare-result{margin:18px 0 6px;display:grid;gap:10px}.rc-period{margin:0;font-weight:700;font-variant-numeric:tabular-nums}.rc-period span{margin-left:10px;color:var(--muted);font-weight:500}
+.rc-row{display:grid;grid-template-columns:34px minmax(0,1fr) minmax(80px,200px);gap:12px;align-items:center;padding:12px 14px;border:1px solid var(--line);border-radius:16px;background:color-mix(in srgb,var(--paper) 70%,var(--pale))}
+.rc-tag{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:var(--rd-ink,#203a34);color:var(--paper);font-weight:800}
+.rc-row b{font-size:calc((14px) * var(--text-scale,1))}.rc-row p{margin:2px 0 0;font-size:calc((17px) * var(--text-scale,1));font-variant-numeric:tabular-nums}
+.rc-bar{display:block;height:10px;border-radius:10px;background:var(--line);overflow:hidden}.rc-bar>i{display:block;height:100%;border-radius:inherit}.rc-bar .up-bg{background:var(--tw-rise)}.rc-bar .down-bg{background:var(--tw-fall)}
+.rc-ratio{margin:2px 0 0}
+.range-compare-charts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:10px}
+.rc-figure{margin:0;padding:12px 12px 8px;border:1px solid var(--line);border-radius:18px;min-width:0}.rc-figure figcaption{display:flex;justify-content:space-between;align-items:baseline;font-size:calc((14px) * var(--text-scale,1))}.rc-figure figcaption span{color:var(--muted);font-size:calc((13px) * var(--text-scale,1))}
+.rc-plot{position:relative;margin-top:6px}.rc-svg svg{display:block;width:100%;height:auto;overflow:visible}
+.rc-hit{position:absolute;top:0;bottom:26px;cursor:crosshair;touch-action:pan-y}.rc-hit.dragging{cursor:ew-resize}
+.rc-grid{stroke:var(--line);stroke-width:1}.rc-tick,.rc-axis,.rc-pin{font-size:calc((13px) * var(--text-scale,1));fill:var(--muted);font-variant-numeric:tabular-nums}.rc-edge{stroke:var(--ink);stroke-opacity:.25;stroke-width:1}
+.rc-hi{fill:var(--tw-rise)}.rc-lo{fill:var(--tw-fall)}
+.rc-ends{display:flex;justify-content:space-between;gap:8px;margin:6px 2px 0;font-size:calc((13px) * var(--text-scale,1));font-variant-numeric:tabular-nums}
+.range-compare-sliders{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 20px;margin-top:14px}.range-compare-sliders label{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;font-size:calc((13px) * var(--text-scale,1))}.range-compare-sliders input{width:100%}.range-compare-sliders output{font-variant-numeric:tabular-nums;color:var(--muted);white-space:nowrap}
+.range-compare-note{margin:12px 0 0}
+@media(max-width:760px){.range-compare{padding:18px 14px}.range-compare-charts,.range-compare-sliders{grid-template-columns:1fr}.rc-row{grid-template-columns:30px minmax(0,1fr);row-gap:8px}.rc-row .rc-bar{grid-column:1/-1}.rc-row p{font-size:calc((15px) * var(--text-scale,1))}.rc-tag{width:30px;height:30px}}
+.rc-peak{display:block;margin-top:4px;font-size:calc((13px) * var(--text-scale,1));color:var(--muted);font-variant-numeric:tabular-nums}.rc-peak strong{font-weight:700}
+.rc-row strong{white-space:nowrap}
+@media(max-width:760px){.range-compare-sliders label{grid-template-columns:auto minmax(0,1fr)}.range-compare-sliders output{text-align:right}.range-compare-sliders input{grid-column:1/-1;order:3}}
+
 /* One visual hierarchy; shared typography scaling is applied by the build. */
 .subtraction-site [hidden]{display:none!important}
 .subtraction-site .ph9-nav-tool{width:38px;height:38px;min-width:38px;padding:8px;display:grid;place-items:center}
@@ -754,7 +778,7 @@ body.subtraction-site #top #btPresets button.pill.on{background:var(--ink);borde
 <fieldset><legend>RSI／KD</legend><label>RSI 期數<input type="number" id="indRsi" min="2" max="60" step="1" inputmode="decimal"></label><label>KD 期數<input type="number" id="indKd" min="3" max="60" step="1" inputmode="decimal"></label></fieldset>
 <fieldset><legend>K 線樣式</legend><label>圖表<select id="chartType"><option value="candle">K 棒</option><option value="ohlc">美國線</option><option value="line">收盤線</option></select></label><label>漲跌顏色<select id="colorScheme"><option value="tw">紅漲綠跌（台股）</option><option value="intl">綠漲紅跌（國際）</option></select></label></fieldset>
 </div><button class="pill mini" id="indReset" type="button">恢復預設</button></details><div class="chart-legend" id="chartLegend" aria-live="off">—</div><div class="chart-wrap"><div class="chart" id="chart" role="img" aria-label="ETF K 線圖"></div><div class="chart-tip hidden" id="chartTip" aria-hidden="true"></div></div><div class="pane-resizer" data-resize="chart" role="separator" aria-orientation="horizontal" aria-label="拖曳調整價格圖高度" tabindex="0"><span></span></div><div class="vol-wrap"><span class="vol-label">成交量（張）</span><div class="vol-chart" id="volChart" role="img" aria-label="成交量柱狀圖"></div></div><div class="pane-resizer" data-resize="volChart" role="separator" aria-orientation="horizontal" aria-label="拖曳調整成交量圖高度" tabindex="0"><span></span></div><div class="osc-pane hidden" id="paneMacd"><div class="osc-legend" id="legendMacd"></div><div class="osc-chart" id="chartMacd" role="img" aria-label="MACD 副圖"></div><div class="pane-resizer" data-resize="chartMacd" role="separator" aria-orientation="horizontal" aria-label="拖曳調整MACD 副圖高度" tabindex="0"><span></span></div></div><div class="osc-pane hidden" id="paneRsi"><div class="osc-legend" id="legendRsi"></div><div class="osc-chart" id="chartRsi" role="img" aria-label="RSI 副圖"></div><div class="pane-resizer" data-resize="chartRsi" role="separator" aria-orientation="horizontal" aria-label="拖曳調整RSI 副圖高度" tabindex="0"><span></span></div></div><div class="osc-pane hidden" id="paneKd"><div class="osc-legend" id="legendKd"></div><div class="osc-chart" id="chartKd" role="img" aria-label="KD 副圖"></div><div class="pane-resizer" data-resize="chartKd" role="separator" aria-orientation="horizontal" aria-label="拖曳調整KD 副圖高度" tabindex="0"><span></span></div></div><div class="chart-foot"><span class="small" id="chartCaption">滑鼠滾輪或雙指縮放、拖曳平移；游標停在 K 棒上可看當日數值。</span></div><div class="tech-read" id="techRead" aria-live="polite"></div><details class="indicator-help"><summary>技術指標怎麼看？</summary><dl><dt>K 線與成交量</dt><dd>台股慣例紅漲綠跌：收盤高於開盤為紅 K，反之為綠 K。下方柱狀為成交股數；週、月 K 由日 K 聚合。</dd><dt>MA 移動平均</dt><dd>最近 N 根收盤價的平均。MA5 約一週、MA20 約一個月、MA60 約一季。價格在均線上方且均線上彎，代表該期間的平均成本正在墊高；反之則在下降。</dd><dt>布林通道（20, 2）</dt><dd>中線是 MA20，上下軌為中線 ± 2 倍標準差。通道收窄代表波動降低、擴張代表波動加大；%B 表示收盤落在通道中的位置（0 為下軌、1 為上軌）。觸及上下軌本身不是買賣訊號。</dd><dt>MACD（12, 26, 9）</dt><dd>DIF＝EMA12 − EMA26；訊號線 DEA＝DIF 的 9 期 EMA；柱狀體＝(DIF − DEA) × 2。DIF 由下往上穿越 DEA 稱黃金交叉，反之為死亡交叉；柱狀體由負轉正表示短期動能轉強。</dd><dt>RSI（14）</dt><dd>14 期內平均漲幅占平均漲跌幅的比例（Wilder 平滑），介於 0–100。習慣上 70 以上視為偏熱、30 以下視為偏冷；強勢趨勢中可長時間停留在高檔。</dd><dt>KD（9, 3, 3）</dt><dd>RSV＝(收盤 − 9 期最低) ÷ (9 期最高 − 9 期最低) × 100；K＝前 K × 2/3 + RSV × 1/3，D＝前 D × 2/3 + K × 1/3，首日以 50 起算。80 以上為高檔、20 以下為低檔。</dd></dl><p>所有指標依目前選的日、週、月 K 重新計算，只描述價格已發生的狀態，不納入水位分數，也不是買賣建議。</p></details></div>
-            <div class="factor-card card" id="market"><div class="card-heading"><div><p class="kicker teal">BEYOND THE ETF</p><h3>市場的其他刻度</h3></div><span class="small" id="factorNote">盤中每 5 分鐘檢查 · 日資料依來源發布</span></div><div class="factor-grid" id="factorRail" tabindex="0" aria-label="市場刻度卡片，可左右滑動"><div class="factor"><span class="factor-icon"></span><h4>台灣加權指數</h4><strong id="indexScore">—</strong><p id="indexMeta">讀取大盤盤後資料中</p></div><div class="factor"><span class="factor-icon"></span><h4>大盤成交股數 · 活躍度</h4><strong id="volumeScore">—</strong><p id="volumeMeta">同口徑歷史百分位</p></div><div class="factor"><span class="factor-icon"></span><h4>布蘭特原油 · 現貨</h4><strong id="brentScore">—</strong><p id="brentMeta">讀取 FinMind 原油現貨中</p></div><div class="factor"><span class="factor-icon"></span><h4>美元／新台幣 · 央行最新收盤</h4><select id="fxDirection" class="factor-dir" aria-label="匯率計分方向"><option value="high">台幣升值分數低（預設）</option><option value="low">台幣升值分數高</option></select><strong id="fxScore">—</strong><p id="fxMeta">讀取中央銀行日收盤資料中</p></div><div class="factor"><span class="factor-icon"></span><h4>最近檢查</h4><strong id="refreshClock">—</strong><p id="liveMeta">休市沿用最近收盤；盤中每 5 分鐘檢查</p></div></div><div class="factor-rail-nav"><span>市場資料 · 左右探索</span><div><button class="pill story-arrow" type="button" data-rail="factorRail" data-dir="-1" aria-label="上一張市場卡"></button><button class="pill story-arrow" type="button" data-rail="factorRail" data-dir="1" aria-label="下一張市場卡"> 至 </button></div></div></div>
+            <div class="factor-card card" id="market"><div class="card-heading"><div><p class="kicker teal">BEYOND THE ETF</p><h3>市場的其他刻度</h3></div><span class="small" id="factorNote">盤中每 5 分鐘檢查 · 日資料依來源發布</span></div><div class="factor-grid" id="factorRail" tabindex="0" aria-label="市場刻度卡片，可左右滑動"><div class="factor"><span class="factor-icon"></span><h4>台灣加權指數</h4><strong id="indexScore">—</strong><p id="indexMeta">讀取大盤盤後資料中</p></div><div class="factor"><span class="factor-icon"></span><h4>大盤成交股數 · 活躍度</h4><strong id="volumeScore">—</strong><p id="volumeMeta">同口徑歷史百分位</p></div><div class="factor"><span class="factor-icon"></span><h4>布蘭特原油 · 期貨 BZ=F</h4><strong id="brentScore">—</strong><p id="brentMeta">讀取 Yahoo 布蘭特期貨 BZ=F 中</p></div><div class="factor"><span class="factor-icon"></span><h4>美元／新台幣 · 央行最新收盤</h4><select id="fxDirection" class="factor-dir" aria-label="匯率計分方向"><option value="high">台幣升值分數低（預設）</option><option value="low">台幣升值分數高</option></select><strong id="fxScore">—</strong><p id="fxMeta">讀取中央銀行日收盤資料中</p></div><div class="factor"><span class="factor-icon"></span><h4>最近檢查</h4><strong id="refreshClock">—</strong><p id="liveMeta">休市沿用最近收盤；盤中每 5 分鐘檢查</p></div></div><div class="factor-rail-nav"><span>市場資料 · 左右探索</span><div><button class="pill story-arrow" type="button" data-rail="factorRail" data-dir="-1" aria-label="上一張市場卡"></button><button class="pill story-arrow" type="button" data-rail="factorRail" data-dir="1" aria-label="下一張市場卡"> 至 </button></div></div></div>
             <div class="backtest-card card member-only" id="backtestCard"><div class="member-lock" role="group" aria-label="策略回測：會員專屬"><div class="member-lock-box"><span class="member-badge">會員專屬</span><h4>策略回測與比較</h4><p>多種策略、同樣入金，和定期定額比報酬與風險。</p><button class="action" type="button" data-open-account>用 Google 登入解鎖</button><p class="small">免費登入，設定會同步到你的 Google 帳號。</p></div></div>
 <div class="card-heading"><div><h3>策略回測與比較</h3><p class="small">每種策略拿到同樣的入金，和定期定額比報酬與風險</p></div><div class="bt-head-actions"><div class="segment bt-mode" id="btMode" role="group" aria-label="介面模式"><button type="button" data-mode="novice">新手</button><button type="button" data-mode="expert">專家</button></div><button class="action bt-opt-btn" id="btOptimize" type="button">尋找最佳策略</button></div></div>
 <div class="segment bt-families" id="btFamilies" role="tablist" aria-label="策略類型"></div>
@@ -779,13 +803,13 @@ body.subtraction-site #top #btPresets button.pill.on{background:var(--ink);borde
 <p class="small bt-note">預設訊號於 T 日收盤確認、T+1 開盤成交並計入滑價（可在交易成本設定改為 T 日收盤對照）；價格已還原分割；配息依證交所除息資料入帳。為歷史模擬，不代表未來報酬。</p>
 </div>
 
-            <div class="weights-card card member-only" id="weights"><div class="member-lock" role="group" aria-label="我的權重方案：會員專屬"><div class="member-lock-box"><span class="member-badge">會員專屬</span><h4>我的權重方案</h4><p>自訂 ETF、大盤、量能、原油與匯率的權重，算出你的綜合分數，並儲存多組方案。</p><button class="action" type="button" data-open-account>用 Google 登入解鎖</button><p class="small">免費登入，設定會同步到你的 Google 帳號。</p></div></div><div class="card-heading"><h3>我的權重方案</h3><span class="small">本機儲存 · 可複製檢視連結</span></div><div class="weights"><div class="weight"><label for="wEtf">本檔 ETF</label><input id="wEtf" type="range" min="0" max="100" step="1" value="100"><input class="w-num" type="number" min="0" max="100" step="1" data-for="wEtf" aria-label="權重數值"><output id="oEtf">100%</output></div><div class="weight"><label for="wIndex">大盤價格</label><input id="wIndex" type="range" min="0" max="100" step="1" value="0"><input class="w-num" type="number" min="0" max="100" step="1" data-for="wIndex" aria-label="權重數值"><output id="oIndex">0%</output></div><div class="weight"><label for="wVolume">大盤量能</label><input id="wVolume" type="range" min="0" max="100" step="1" value="0"><input class="w-num" type="number" min="0" max="100" step="1" data-for="wVolume" aria-label="權重數值"><output id="oVolume">0%</output></div><div class="weight"><label for="wBrent">布蘭特現貨</label><input id="wBrent" type="range" min="0" max="100" step="1" value="0"><input class="w-num" type="number" min="0" max="100" step="1" data-for="wBrent" aria-label="權重數值"><output id="oBrent">0%</output></div><div class="weight"><label for="wFx">美元／新台幣</label><input id="wFx" type="range" min="0" max="100" step="1" value="0"><input class="w-num" type="number" min="0" max="100" step="1" data-for="wFx" aria-label="權重數值"><output id="oFx">0%</output></div></div><div class="controls"><label>量能解讀<select id="volumeDirection"><option value="off">不納入綜合分</option><option value="low">低量分高</option><option value="high">高量分高</option></select></label></div><div class="weight-bar" id="weightBar" aria-hidden="true"></div><p class="weight-preview" id="weightPreview" aria-live="polite"></p><div class="summary"><div><p class="small" id="weightStatus">權重合計 100%</p><strong id="combined">—</strong><p class="small" id="combinedExtra">連續分：—</p></div><div class="summary-actions"><button class="pill" id="normalize" type="button">平均分配</button><button class="pill" id="share" type="button">複製方案連結</button></div></div><p class="small">各因子可自訂方向：分數高偏向增加配置，低偏向降低；綜合分數依權重計算。匯率數字小代表台幣較強。分數不是勝率。</p></div>
+            <div class="weights-card card member-only" id="weights"><div class="member-lock" role="group" aria-label="我的權重方案：會員專屬"><div class="member-lock-box"><span class="member-badge">會員專屬</span><h4>我的權重方案</h4><p>自訂 ETF、大盤、量能、原油與匯率的權重，算出你的綜合分數，並儲存多組方案。</p><button class="action" type="button" data-open-account>用 Google 登入解鎖</button><p class="small">免費登入，設定會同步到你的 Google 帳號。</p></div></div><div class="card-heading"><h3>我的權重方案</h3><span class="small">本機儲存 · 可複製檢視連結</span></div><div class="weights"><div class="weight"><label for="wEtf">本檔 ETF</label><input id="wEtf" type="range" min="0" max="100" step="1" value="100"><input class="w-num" type="number" min="0" max="100" step="1" data-for="wEtf" aria-label="權重數值"><output id="oEtf">100%</output></div><div class="weight"><label for="wIndex">大盤價格</label><input id="wIndex" type="range" min="0" max="100" step="1" value="0"><input class="w-num" type="number" min="0" max="100" step="1" data-for="wIndex" aria-label="權重數值"><output id="oIndex">0%</output></div><div class="weight"><label for="wVolume">大盤量能</label><input id="wVolume" type="range" min="0" max="100" step="1" value="0"><input class="w-num" type="number" min="0" max="100" step="1" data-for="wVolume" aria-label="權重數值"><output id="oVolume">0%</output></div><div class="weight"><label for="wBrent">布蘭特原油</label><input id="wBrent" type="range" min="0" max="100" step="1" value="0"><input class="w-num" type="number" min="0" max="100" step="1" data-for="wBrent" aria-label="權重數值"><output id="oBrent">0%</output></div><div class="weight"><label for="wFx">美元／新台幣</label><input id="wFx" type="range" min="0" max="100" step="1" value="0"><input class="w-num" type="number" min="0" max="100" step="1" data-for="wFx" aria-label="權重數值"><output id="oFx">0%</output></div></div><div class="controls"><label>量能解讀<select id="volumeDirection"><option value="off">不納入綜合分</option><option value="low">低量分高</option><option value="high">高量分高</option></select></label></div><div class="weight-bar" id="weightBar" aria-hidden="true"></div><p class="weight-preview" id="weightPreview" aria-live="polite"></p><div class="summary"><div><p class="small" id="weightStatus">權重合計 100%</p><strong id="combined">—</strong><p class="small" id="combinedExtra">連續分：—</p></div><div class="summary-actions"><button class="pill" id="normalize" type="button">平均分配</button><button class="pill" id="share" type="button">複製方案連結</button></div></div><p class="small">各因子可自訂方向：分數高偏向增加配置，低偏向降低；綜合分數依權重計算。匯率數字小代表台幣較強。分數不是勝率。</p></div>
             </div>
         </div>
       </section>
       <section class="method-story" id="method-story" aria-labelledby="methodStoryTitle"><div class="method-intro reveal"><p class="kicker">THE METHOD</p><h2 id="methodStoryTitle">分數背後，<br><em>每一步都看得見。</em></h2><p>價格位置可超出原先 0–1 區間。顯示分數為 0–5 分，預設價格低分高，也可切換方向；分數是條件讀數。</p><a class="action" href="#explore">回到儀表板 </a></div><div class="method-steps"><details><summary><span>01</span> 高低點怎麼選？ </summary><p>可選最高／最低價、收盤極值，或取多筆高低價平均；觀察窗可從 60 日延伸到約十年。</p></details><details><summary><span>02</span> 黃金分割與等距有何不同？ </summary><p>等距刻度為 0、0.2、0.4、0.6、0.8、1；黃金分割刻度為 0、0.236、0.382、0.618、0.786、1。兩者都在 K 線上標示，價格可超出 0–1。</p></details><details><summary><span>03</span> 綜合分數如何產生？ </summary><p>登入後可設定 ETF、大盤價格、量能、原油與匯率權重。畫面會顯示每個來源的資料日期；綜合分數是選定條件的加權結果。</p></details><details><summary><span>04</span> 這代表可以買進嗎？ </summary><p>水位描述已發生的價格位置，不預測報酬。圖表、技術指標及回測可作為輔助觀察；交易風險仍需自行評估。</p></details></div></section>
     <div class="bt-sheet hidden" id="btOptSheet" role="dialog" aria-modal="true" aria-labelledby="btOptTitle"><div class="bt-sheet-card card"><div class="search-head"><h2 id="btOptTitle">最佳策略排行</h2><button class="pill" id="btOptClose" type="button"> 關閉</button></div><p class="small" id="btOptNote"></p><div id="btOptBody"></div></div></div></main>
-    <footer><div>潮位 ETF 觀測所 · ETF 與大盤資料來自<a href="https://www.twse.com.tw/zh/ETFortune/products" target="_blank" rel="noopener noreferrer">臺灣證券交易所</a>；油價計分使用 FinMind Brent 現貨日資料（美元／桶）；盤中期貨參考為 Yahoo Finance BZ=F（延遲行情），兩者分開。另保存 <a href="https://www.taifex.com.tw/cht/2/bRF" target="_blank" rel="noopener noreferrer">臺灣期貨交易所布蘭特原油期貨（BRF）</a>近月結算歷史（新台幣／桶），資料來源 <a href="https://finmindtrade.com/" target="_blank" rel="noopener noreferrer">FinMind</a>；匯率來自<a href="https://data.gov.tw/dataset/7232" target="_blank" rel="noopener noreferrer">中央銀行開放資料</a>。<br>本站是位置觀測工具，非投資建議。本站記錄匿名使用統計（搜尋字詞、查看的 ETF、停留時間），不含姓名或 email，可在「帳號與外觀」關閉。</div><div>歷史日 K 為每日盤後快照（約十年）· 圖表使用 <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer">TradingView</a> Lightweight Charts™ · 2026</div></footer>
+    <footer><div>潮位 ETF 觀測所 · ETF 與大盤資料來自<a href="https://www.twse.com.tw/zh/ETFortune/products" target="_blank" rel="noopener noreferrer">臺灣證券交易所</a>；油價計分使用 Yahoo Finance BZ=F 布蘭特近月期貨每日收盤（美元／桶，延遲行情），即時報價只作參考、不計分。另保存 <a href="https://www.taifex.com.tw/cht/2/bRF" target="_blank" rel="noopener noreferrer">臺灣期貨交易所布蘭特原油期貨（BRF）</a>近月結算歷史（新台幣／桶），資料來源 <a href="https://finmindtrade.com/" target="_blank" rel="noopener noreferrer">FinMind</a>；匯率來自<a href="https://data.gov.tw/dataset/7232" target="_blank" rel="noopener noreferrer">中央銀行開放資料</a>。<br>本站是位置觀測工具，非投資建議。本站記錄匿名使用統計（搜尋字詞、查看的 ETF、停留時間），不含姓名或 email，可在「帳號與外觀」關閉。</div><div>歷史日 K 為每日盤後快照（約十年）· 圖表使用 <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer">TradingView</a> Lightweight Charts™ · 2026</div></footer>
   </div>
   <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
   <script>// Public market snapshots only. Identity, tokens and intraday quotes never enter this database.
@@ -1578,7 +1602,7 @@ function renderLiveMeta(){
   const parts=[];
   if(live?.intraday)parts.push('大盤 '+live.intraday.date+' '+live.intraday.time.slice(0,5));
   else if(market.at(-1)?.date)parts.push('台股 '+shortDate(market.at(-1).date));
-  if(live?.oil?.unit==='USD/barrel')parts.push('原油現貨 '+shortDate(live.oil.latest));
+  if(live?.oil?.unit==='USD/barrel')parts.push('原油 BZ=F '+shortDate(live.oil.latest));
   if(live?.fx)parts.push('匯率 '+shortDate(live.fx.latest));
   if(live?.errors?.length)parts.push('部分來源暫不可用：'+live.errors.join('；'));
   $('liveMeta').textContent=parts.join(' · ')||'休市沿用最近收盤；等待下次檢查';
@@ -2830,7 +2854,7 @@ function btEnsureMargin(){if(btMarginPromise&&Date.now()-btMarginAt<300000)retur
 async function btEnsureDividends(){await btEnsureMargin();if(btDivs)return btDivs;try{const r=await fetch('/api/dividends'),d=await r.json();btDivs=r.ok?d.events||{}:{}}catch{btDivs={}}return btDivs}
 function btMacro(){
   // Average of the oil score (cheaper = higher) and the USD/TWD score (user's direction), on each bar's date.
-  // Use the same FinMind Brent spot series as the card; never mix ETF/futures prices with spot prices.
+  // Use the same Yahoo BZ=F daily-close series as the card; never mix it with the archived FinMind spot history.
   const oilList=oilDays;
   if(!oilList.length||!fx.length)return null;
   const series=(list,flip)=>{const out=new Map();for(let k=0;k<list.length;k++){const s=Math.max(0,k-240),w=list.slice(s,k);if(w.length<40)continue;const lo=Math.min(...w.map(x=>x.value)),hi=Math.max(...w.map(x=>x.value));if(hi>lo){const r=(list[k].value-lo)/(hi-lo);out.set(list[k].date,5*(1-(flip?1-r:r)))}}return out};
@@ -3468,7 +3492,7 @@ $('window').addEventListener('change',()=>setTimeout(markScenario,0));
 markScenario();
 
 /* ---------- Weights: used in proportion, so any total works; live preview of the combined score ---------- */
-const WEIGHT_LABELS=['本檔 ETF','大盤價格','大盤量能','布蘭特現貨','美元／新台幣'];
+const WEIGHT_LABELS=['本檔 ETF','大盤價格','大盤量能','布蘭特原油','美元／新台幣'];
 const shareUpdateWeights=updateWeights;
 updateWeights=function(){
   shareUpdateWeights();
@@ -3571,21 +3595,21 @@ async function loadMktMargin(){
 }
 const mmComputeMarket=computeMarket;computeMarket=function(){mmComputeMarket();computeMktMargin()};
 
-/* ---------- Brent spot in USD/barrel, via FinMind CrudeOilPrices ---------- */
+/* ---------- Brent in USD/barrel: Yahoo Finance BZ=F front-month daily closes ---------- */
 var oilDays=[];
 computeBrent=function(){
   const usable=oilDays,last=usable.at(-1),s=factorScore(usable.map(x=>x.value));
-  if(!last||!s){brentPosition=null;$('brentScore').textContent='—';$('brentMeta').textContent=last?'觀察窗資料不足':'讀取 FinMind 布蘭特現貨中';return}
+  if(!last||!s){brentPosition=null;$('brentScore').textContent='—';$('brentMeta').textContent=last?'觀察窗資料不足':'讀取 Yahoo 布蘭特期貨 BZ=F 中';return}
   const age=bars.length?(Date.parse(bars.at(-1).date)-Date.parse(last.date))/86400000:0;
-  if(age>14){brentPosition=null;$('brentScore').textContent='逾期';$('brentMeta').textContent=last.date+' 之後沒有新現貨資料，暫停計分';return}
+  if(age>14){brentPosition=null;$('brentScore').textContent='逾期';$('brentMeta').textContent=last.date+' 之後沒有新收盤，暫停計分';return}
   brentPosition={...s,last};
-  $('brentScore').textContent=fmt(s.core,1)+' / 5';$('brentMeta').textContent=`${fmt(last.value,2)} 美元／桶 · ${last.date}（官方最新）· 均值 ${fmt(s.mean,2)} · 偏離 ${signNum(s.deviation)}%`;
+  $('brentScore').textContent=fmt(s.core,1)+' / 5';$('brentMeta').textContent=`${fmt(last.value,2)} 美元／桶 · ${last.date} 收盤 · 均值 ${fmt(s.mean,2)} · 偏離 ${signNum(s.deviation)}%`;
   $('oilSpark').innerHTML=factorSpark(oilDays);
 };
 async function loadOil(){
   try{const res=await fetch('/api/oil'),d=await res.json();if(!res.ok||d.unit!=='USD/barrel'||!d.days?.length)throw Error(d.error||'原油格式異常');
     oilDays=mergeDays(oilDays,d.days)}
-  catch(e){brentPosition=null;$('brentScore').textContent='—';$('brentMeta').textContent='FinMind 原油資料暫不可用：'+e.message;updateWeights();return}
+  catch(e){brentPosition=null;$('brentScore').textContent='—';$('brentMeta').textContent='Yahoo BZ=F 日線暫不可用：'+e.message;updateWeights();return}
   computeBrent();updateWeights();if(factorTrendKey==='brent')renderFactorTrend();
   // The backtest's oil-and-FX filter reads the same series; rebuild it once the closes arrive.
   if(btCtx){btCtx=null;btSchedule()}
@@ -3597,7 +3621,7 @@ setInterval(()=>{if(!document.hidden){loadOil();loadMktMargin();loadBanks()}},30
 const FACTOR_TRENDS={
   index:{title:'台灣加權指數',unit:'點',color:'#0e7490',data:()=>market.map(x=>[x.date,x.index]),fmt:v=>fmt(v,0)+' 點'},
   volume:{title:'大盤成交股數',unit:'億股',color:'#6aa9b8',data:()=>market.map(x=>[x.date,x.volume/1e8]),fmt:v=>fmt(v,1)+' 億股'},
-  brent:{title:'FinMind 布蘭特現貨',unit:'美元／桶',color:'#c98a2b',data:()=>oilDays.map(x=>[x.date,x.value]),fmt:v=>fmt(v,2)+' 美元／桶'},
+  brent:{title:'Yahoo 布蘭特期貨 BZ=F（日收盤）',unit:'美元／桶',color:'#c98a2b',data:()=>oilDays.map(x=>[x.date,x.value]),fmt:v=>fmt(v,2)+' 美元／桶'},
   fx:{title:'美元／新台幣（央行收盤）',unit:'新台幣',color:'#7c6bb0',data:()=>fx.map(x=>[x.date,x.value]),fmt:v=>fmt(v,3)},
   margin:{title:'大盤融資每日增減（零軸）',unit:'億元',color:'#b4566e',data:()=>marginDays.slice(1).map((x,i)=>[x.date,x.value-marginDays[i].value]),fmt:v=>signNum(v)+' 億元',bars:true}
 };
@@ -3607,8 +3631,8 @@ const trendPanel=document.createElement('div');trendPanel.className='factor-tren
 $('market').querySelector('.factor-rail-nav').after(trendPanel);
 const tileFor={index:'indexScore',volume:'volumeScore',brent:'brentScore',fx:'fxScore',margin:'mktMarginScore'};
 // The oil card says plainly what it measures.
-$('brentScore').closest('.factor').querySelector('h4').textContent='布蘭特原油 · 現貨';
-{const note=document.createElement('p');note.className='factor-note';note.textContent='EIA 布蘭特現貨（經 FinMind）· 日資料，EIA 約每週三公布前一週，落後約一週';$('brentScore').before(note);$('brentMeta').insertAdjacentHTML('afterend','<div class="factor-spark" id="oilSpark"></div><p class="small oil-future" id="oilFutureMeta">盤中期貨參考：等待 Yahoo 報價</p>')}
+$('brentScore').closest('.factor').querySelector('h4').textContent='布蘭特原油 · 期貨 BZ=F';
+{const note=document.createElement('p');note.className='factor-note';note.textContent='Yahoo Finance BZ=F 近月連續合約 · 每日收盤（美元／桶），延遲行情；換月時價格可能跳動';$('brentScore').before(note);$('brentMeta').insertAdjacentHTML('afterend','<div class="factor-spark" id="oilSpark"></div><p class="small oil-future" id="oilFutureMeta">即時報價：等待 Yahoo BZ=F</p>')}
 for(const [key,id] of Object.entries(tileFor)){
   const tile=$(id).closest('.factor');tile.dataset.trend=key;tile.tabIndex=0;tile.setAttribute('role','button');tile.setAttribute('aria-expanded','false');
   tile.setAttribute('aria-label',FACTOR_TRENDS[key].title+'：查看趨勢圖');
@@ -3644,7 +3668,7 @@ function renderFactorTrend(){
 }
 let factorWidth=0;window.addEventListener('resize',()=>{const w=trendPanel.clientWidth;if(factorTrendKey&&Math.abs(w-factorWidth)>40){factorWidth=w;clearTimeout(window.__factorResize);window.__factorResize=setTimeout(renderFactorTrend,150)}});
 // Keep an open chart current when the window, Brent or FX data change.
-const ftApplyLive=applyLive;applyLive=function(){ftApplyLive();if(live?.oil?.unit==='USD/barrel'&&live.oil.days?.length)oilDays=mergeDays(oilDays,live.oil.days);computeBrent();const q=live?.oilFuture;$('oilFutureMeta').textContent=q?`Yahoo 期貨 BZ=F ${fmt(q.price,2)} 美元 · ${new Date(q.time).toLocaleString('zh-TW',{timeZone:'Asia/Taipei',hour12:false})}（延遲行情；5 分鐘檢查）`:'盤中期貨參考暫不可用；現貨日資料照常計分';if(factorTrendKey)renderFactorTrend();updateWeights()};
+const ftApplyLive=applyLive;applyLive=function(){ftApplyLive();if(live?.oil?.unit==='USD/barrel'&&live.oil.days?.length)oilDays=mergeDays(oilDays,live.oil.days);computeBrent();const q=live?.oilFuture;{const chg=q&&q.previousClose>0?q.price/q.previousClose-1:null,meta=$('oilFutureMeta');meta.innerHTML=q?`即時 ${fmt(q.price,2)} 美元${chg==null?'':`（較前一日收盤 <span class="${chg>0?'up':chg<0?'down':''}">${chg>0?'+':''}${fmt(chg*100,2)}%</span>）`} · ${new Date(q.time).toLocaleString('zh-TW',{timeZone:'Asia/Taipei',hour12:false})}（延遲行情；5 分鐘檢查；分數以最近收盤計算）`:'即時報價暫不可用；分數以最近收盤計算'}if(factorTrendKey)renderFactorTrend();updateWeights()};
 $('window').addEventListener('change',()=>setTimeout(()=>{if(factorTrendKey)renderFactorTrend()},0));
 loadMktMargin();loadOil();
 
@@ -3673,6 +3697,130 @@ async function loadBanks(){
 const marketApplyProfile=window.chaoweiApplyProfile;window.chaoweiApplyProfile=p=>{marketApplyProfile(p);settings.marketWindow=Math.max(20,Math.min(2400,Number(settings.marketWindow)||120));settings.marketMethod=settings.marketMethod==='mean'?'mean':'normal';fillMarketConfig();recomputeFactors()};
 window.addEventListener('resize',()=>{clearTimeout(window.__bankResize);window.__bankResize=setTimeout(renderBankTrend,150)});
 loadBanks();
+
+/* Range comparison maths for the market page: TAIEX close vs market margin balance on shared trading days. */
+const RangeCompare=(()=>{
+  // Only days present in both series are compared; a missing margin day is skipped, never filled.
+  function join(market,margin){
+    const m=new Map((margin||[]).filter(x=>Number.isFinite(x.value)).map(x=>[x.date,x.value]));
+    return(market||[]).filter(x=>Number.isFinite(x.index)&&!x.intraday&&m.has(x.date)).map(x=>({date:x.date,index:x.index,margin:m.get(x.date)}));
+  }
+  // The last `months` calendar months ending on the latest shared day (0 = everything).
+  function windowRows(rows,months){
+    if(!rows.length||!months)return rows.slice();
+    const d=new Date(rows.at(-1).date+'T00:00:00Z');d.setUTCMonth(d.getUTCMonth()-months);const from=d.toISOString().slice(0,10);
+    return rows.filter(x=>x.date>=from);
+  }
+  const argmax=(rows,key,from=0,to=rows.length-1)=>{let k=-1;for(let i=from;i<=to;i++)if(k<0||rows[i][key]>rows[k][key])k=i;return k};
+  const argmin=(rows,key,from=0,to=rows.length-1)=>{let k=-1;for(let i=from;i<=to;i++)if(k<0||rows[i][key]<rows[k][key])k=i;return k};
+  // Selections always run left to right: the start is the earlier day.
+  function clampSel(n,a,b){
+    if(n<2)return null;a=Math.max(0,Math.min(n-2,Math.round(a)));b=Math.max(a+1,Math.min(n-1,Math.round(b)));return{a,b};
+  }
+  // Presets: from the window's index high to the latest day, or to the lowest index after that high.
+  function preset(rows,kind){
+    const n=rows.length;if(n<2)return null;
+    let a=argmax(rows,'index');if(a>=n-1)a=argmax(rows,'index',0,n-2);
+    const b=kind==='peakToLow'?argmin(rows,'index',a+1):n-1;
+    return clampSel(n,a,b);
+  }
+  // Start minus end, as in "49968 − 41513 = 8455 (跌 16.92%)"; pct is the signed change from start to end.
+  function change(rows,sel,key){
+    const s=rows[sel.a][key],e=rows[sel.b][key];return{start:s,end:e,diff:e-s,pct:s?e/s-1:null,from:rows[sel.a].date,to:rows[sel.b].date,days:sel.b-sel.a};
+  }
+  // How large the margin move was relative to the index move (same sign means margin followed the index).
+  function ratio(a,b){return Number.isFinite(a.pct)&&Number.isFinite(b.pct)&&Math.abs(a.pct)>=1e-4?b.pct/a.pct:null}
+  // Highest value inside the selection and the move from it to the end; null when the start itself is the high.
+  function peakInside(rows,sel,key){const k=argmax(rows,key,sel.a,sel.b);if(k<=sel.a||k>=sel.b)return null;return change(rows,{a:k,b:sel.b},key)}
+  return{join,windowRows,argmax,argmin,clampSel,preset,change,ratio,peakInside};
+})();
+
+/* ---------- 大盤與融資：同一段區間對照（市場刻度卡片最下方） ---------- */
+// Press a start day on either chart and drag right to an end day; both charts share that selection.
+// A plain tap measures from that day to the latest one. The start is always the left end.
+(()=>{
+  const RC=RangeCompare,RANGES=[['3m','3 個月',3],['6m','6 個月',6],['1y','1 年',12],['2y','2 年',24]];
+  const SERIES=[{key:'index',tag:'A',title:'加權指數',unit:'點',line:'#0e7490',up:'漲',down:'跌'},{key:'margin',tag:'B',title:'融資餘額',unit:'億元',line:'#b4566e',up:'增幅',down:'減幅'}];
+  const sec=document.createElement('section');sec.className='range-compare';sec.id='rangeCompare';
+  sec.innerHTML='<div class="range-compare-head"><div><p class="kicker teal">RANGE COMPARE</p><h3>大盤與融資，同一段區間</h3><p class="small">在任一張圖按住起點，往右拖到終點；起點固定在左邊。只點一下，就從那天算到最新一日。</p></div>'+
+    '<div class="range-compare-tools"><div class="segment" role="group" aria-label="圖表期間" data-rc-ranges>'+RANGES.map(([id,label])=>`<button type="button" data-rc-range="${id}">${label}</button>`).join('')+'</div>'+
+    '<div class="segment" role="group" aria-label="快速選取"><button type="button" data-rc-preset="peakToLatest">高點至最新</button><button type="button" data-rc-preset="peakToLow">高點至低點</button></div></div></div>'+
+    '<div class="range-compare-result" aria-live="polite"></div><div class="range-compare-charts"></div>'+
+    '<div class="range-compare-sliders"><label><span>起點</span><input type="range" min="0" step="1" data-rc-end="a" aria-label="區間起點"><output></output></label><label><span>終點</span><input type="range" min="0" step="1" data-rc-end="b" aria-label="區間終點"><output></output></label></div>'+
+    '<p class="small range-compare-note">加權指數用證交所收盤；融資餘額用證交所信用交易統計（上市融資金額）。只比對兩者都有資料的交易日，盤中暫值不納入。</p>';
+  // Appended at the end of the market card: the slot right after the card rail is the carousel progress bar, hidden in grid view.
+  $('market').append(sec);
+  const charts=sec.querySelector('.range-compare-charts'),result=sec.querySelector('.range-compare-result'),plots={};
+  for(const s of SERIES){
+    const fig=document.createElement('figure');fig.className='rc-figure';
+    fig.innerHTML=`<figcaption><b>${s.tag}　${s.title}</b><span>${s.unit}</span></figcaption><div class="rc-plot"><div class="rc-svg"></div><div class="rc-hit" data-rc-plot="${s.key}" aria-hidden="true"></div></div><p class="rc-ends"></p>`;
+    charts.append(fig);plots[s.key]={fig,host:fig.querySelector('.rc-svg'),hit:fig.querySelector('.rc-hit'),ends:fig.querySelector('.rc-ends')};
+  }
+  const H=230,PAD={l:10,r:64,t:16,b:26};
+  let rows=[],view=[],sel=null,dragFrom=null,frame=0,lastWidth=0;
+  const rangeKey=()=>RANGES.some(r=>r[0]===settings.compareRange)?settings.compareRange:'6m';
+  const md=d=>Number(d.slice(5,7))+'/'+d.slice(8,10);
+  const num=(v,s)=>fmt(v,s.key==='index'?2:1);
+  // Keep the chosen days when data refreshes or the window changes, as long as both are still on screen.
+  function rebuild(){
+    const keep=sel&&view.length?[view[sel.a]?.date,view[sel.b]?.date]:null;
+    rows=RC.join(market,marginDays);view=RC.windowRows(rows,RANGES.find(r=>r[0]===rangeKey())[2]);
+    const a=keep?view.findIndex(x=>x.date===keep[0]):-1,b=keep?view.findIndex(x=>x.date===keep[1]):-1;
+    sel=a>=0&&b>a?{a,b}:RC.preset(view,'peakToLatest');paint();
+  }
+  function schedule(){if(!frame)frame=requestAnimationFrame(()=>{frame=0;paint()})}
+  function svgFor(s,w){
+    const n=view.length,pw=w-PAD.l-PAD.r,ph=H-PAD.t-PAD.b,vals=view.map(x=>x[s.key]);let lo=Math.min(...vals),hi=Math.max(...vals);const pad=(hi-lo)*.08||Math.abs(hi)*.01||1;lo-=pad;hi+=pad;
+    const X=i=>PAD.l+(n>1?i*pw/(n-1):0),Y=v=>PAD.t+(hi-v)/(hi-lo)*ph,c=RC.change(view,sel,s.key),tone=c.diff>0?RISE:c.diff<0?FALL:'#7a8a85';
+    const pts=(from,to)=>view.slice(from,to+1).map((x,k)=>X(from+k).toFixed(1)+','+Y(x[s.key]).toFixed(1)).join(' ');
+    const hiI=RC.argmax(view,s.key),loI=RC.argmin(view,s.key),xa=X(sel.a),xb=X(sel.b),ya=Y(c.start),yb=Y(c.end);
+    // Month ticks, thinned so labels never overlap on a phone.
+    const months=[];view.forEach((x,i)=>{if(i&&x.date.slice(0,7)!==view[i-1].date.slice(0,7))months.push(i)});const step=Math.max(1,Math.ceil(months.length/Math.max(2,Math.floor(pw/70))));
+    const ticks=months.filter((_,k)=>k%step===0).map(i=>{const d=view[i].date,label=d.slice(5,7)==='01'?d.slice(0,4):Number(d.slice(5,7))+'月';return`<line x1="${X(i)}" x2="${X(i)}" y1="${PAD.t}" y2="${PAD.t+ph}" class="rc-grid"/><text x="${X(i)}" y="${H-8}" text-anchor="middle" class="rc-tick">${label}</text>`}).join('');
+    const pin=(i,label,cls)=>`<circle cx="${X(i)}" cy="${Y(view[i][s.key])}" r="3" class="${cls}"/><text x="${Math.min(X(i),PAD.l+pw)}" y="${Y(view[i][s.key])+(cls==='rc-hi'?-7:13)}" text-anchor="${X(i)>PAD.l+pw*.8?'end':X(i)<PAD.l+pw*.2?'start':'middle'}" class="rc-pin">${label}</text>`;
+    return`<svg viewBox="0 0 ${w} ${H}" width="${w}" height="${H}" role="img" aria-label="${s.title}：${c.from} ${num(c.start,s)} ${s.unit}，${c.to} ${num(c.end,s)} ${s.unit}">`+
+      `<rect x="${xa}" y="${PAD.t}" width="${Math.max(1,xb-xa)}" height="${ph}" fill="${tone}" opacity=".09"/>${ticks}`+
+      `<text x="${w-PAD.r+6}" y="${Y(vals[hiI])+4}" class="rc-axis">${fmt(vals[hiI],0)}</text><text x="${w-PAD.r+6}" y="${Y(vals[loI])+4}" class="rc-axis">${fmt(vals[loI],0)}</text>`+
+      `<polyline points="${pts(0,n-1)}" fill="none" stroke="${s.line}" stroke-width="1.6" opacity=".45"/>`+
+      `<polyline points="${pts(sel.a,sel.b)}" fill="none" stroke="${tone}" stroke-width="2.6" stroke-linejoin="round"/>`+
+      `<line x1="${xa}" x2="${xb}" y1="${ya}" y2="${ya}" stroke="${tone}" stroke-dasharray="4 4" opacity=".75"/><line x1="${xb}" x2="${xb}" y1="${ya}" y2="${yb}" stroke="${tone}" stroke-width="2"/>`+
+      pin(hiI,'高 '+md(view[hiI].date),'rc-hi')+pin(loI,'低 '+md(view[loI].date),'rc-lo')+
+      `<line x1="${xa}" x2="${xa}" y1="${PAD.t}" y2="${PAD.t+ph}" class="rc-edge"/><line x1="${xb}" x2="${xb}" y1="${PAD.t}" y2="${PAD.t+ph}" class="rc-edge"/>`+
+      `<circle cx="${xa}" cy="${ya}" r="5.5" fill="var(--paper)" stroke="${s.line}" stroke-width="2.4"/><circle cx="${xb}" cy="${yb}" r="5.5" fill="${tone}" stroke="var(--paper)" stroke-width="2"/></svg>`;
+  }
+  // "49,968 − 41,513 = 8,455（跌 16.92%）" for a fall; a rise reads end − start.
+  function sentence(s,c){
+    const pct=c.pct==null?'—':fmt(Math.abs(c.pct)*100,2)+'%',word=c.diff>0?s.up:c.diff<0?s.down:'持平',cls=c.diff>0?'up':c.diff<0?'down':'';
+    const expr=c.diff<0?`${num(c.start,s)} − ${num(c.end,s)} = `:`${num(c.end,s)} − ${num(c.start,s)} = `;
+    return`${expr}<strong class="${cls}">${num(Math.abs(c.diff),s)} ${s.unit}</strong>（${word} <strong class="${cls}">${pct}</strong>）`;
+  }
+  function paint(){
+    sec.querySelectorAll('[data-rc-range]').forEach(b=>{const on=b.dataset.rcRange===rangeKey();b.classList.toggle('active',on);b.setAttribute('aria-pressed',String(on))});
+    if(view.length<2||!sel){result.innerHTML='<p class="small">指數與融資資料讀取中，或共同交易日不足兩天。</p>';for(const s of SERIES){plots[s.key].host.innerHTML='';plots[s.key].ends.textContent=''}return}
+    const live=dragFrom!=null?{a:sel.a,b:Math.max(sel.a,sel.b)}:sel,cs=SERIES.map(s=>RC.change(view,live,s.key)),max=Math.max(...cs.map(c=>Math.abs(c.pct||0)),.0001);
+    result.innerHTML=`<p class="rc-period">${cs[0].from} → ${cs[0].to}<span>${cs[0].days} 個交易日</span></p>`+SERIES.map((s,k)=>{const c=cs[k];return`<div class="rc-row"><span class="rc-tag">${s.tag}</span><div><b>${s.title}</b><p>${sentence(s,c)}</p>${(()=>{const p=RC.peakInside(view,live,s.key);return p?`<small class="rc-peak">區間內最高 ${md(p.from)} ${num(p.start,s)}，至終點 ${sentence(s,p)}</small>`:''})()}</div><i class="rc-bar" aria-hidden="true"><i class="${c.diff>=0?'up-bg':'down-bg'}" style="width:${(Math.abs(c.pct||0)/max*100).toFixed(1)}%"></i></i></div>`}).join('')+
+      (()=>{const r=RC.ratio(cs[0],cs[1]);return r==null?'':`<p class="small rc-ratio">融資變動幅度約為指數的 <b>${fmt(Math.abs(r),2)}</b> 倍${r<0?'，兩者方向相反':''}。</p>`})();
+    sel=live;
+    for(const [k,s] of SERIES.entries()){const p=plots[s.key],w=Math.max(260,Math.round(p.host.clientWidth||charts.clientWidth/2||520)),c=cs[k];
+      p.host.innerHTML=svgFor(s,w);p.hit.style.left=PAD.l+'px';p.hit.style.right=PAD.r+'px';
+      p.ends.innerHTML=`<span>起 ${md(c.from)}　${num(c.start,s)}</span><span class="${c.diff>0?'up':c.diff<0?'down':''}">終 ${md(c.to)}　${num(c.end,s)}</span>`}
+    const [ia,ib]=sec.querySelectorAll('[data-rc-end]');for(const input of [ia,ib]){input.max=String(view.length-1)}ia.value=String(sel.a);ib.value=String(sel.b);
+    ia.nextElementSibling.textContent=view[sel.a].date;ib.nextElementSibling.textContent=view[sel.b].date;lastWidth=charts.clientWidth;
+  }
+  const at=(e,hit)=>{const r=hit.getBoundingClientRect(),n=view.length;return Math.max(0,Math.min(n-1,Math.round((e.clientX-r.left)/Math.max(1,r.width)*(n-1))))};
+  charts.addEventListener('pointerdown',e=>{const hit=e.target.closest('[data-rc-plot]');if(!hit||view.length<2||e.button>0)return;const i=at(e,hit);dragFrom=i;sel={a:i,b:i};try{hit.setPointerCapture(e.pointerId)}catch{}hit.classList.add('dragging');schedule()});
+  charts.addEventListener('pointermove',e=>{if(dragFrom==null)return;const hit=e.target.closest('[data-rc-plot]');if(!hit)return;sel={a:dragFrom,b:Math.max(dragFrom,at(e,hit))};schedule()});
+  const finish=e=>{if(dragFrom==null)return;const n=view.length;sel=sel.b>sel.a?RC.clampSel(n,sel.a,sel.b):RC.clampSel(n,sel.a,n-1);dragFrom=null;sec.querySelectorAll('.rc-hit').forEach(h=>h.classList.remove('dragging'));paint()};
+  charts.addEventListener('pointerup',finish);charts.addEventListener('pointercancel',finish);
+  // Sliders give keyboard and fine-touch control; the start can never pass the end.
+  sec.querySelector('.range-compare-sliders').addEventListener('input',e=>{const input=e.target.closest('[data-rc-end]');if(!input||!sel)return;const v=Number(input.value),n=view.length;
+    sel=input.dataset.rcEnd==='a'?RC.clampSel(n,Math.min(v,sel.b-1),sel.b):RC.clampSel(n,sel.a,Math.max(v,sel.a+1));paint()});
+  sec.querySelector('.range-compare-tools').addEventListener('click',e=>{const r=e.target.closest('[data-rc-range]'),p=e.target.closest('[data-rc-preset]');
+    if(r){settings.compareRange=r.dataset.rcRange;save();rebuild()}if(p){sel=RC.preset(view,p.dataset.rcPreset);paint()}});
+  const prev=computeMktMargin;computeMktMargin=function(...a){const out=prev(...a);clearTimeout(window.__rcRebuild);window.__rcRebuild=setTimeout(rebuild,60);return out};
+  window.addEventListener('resize',()=>{if(Math.abs(charts.clientWidth-lastWidth)>30){clearTimeout(window.__rcResize);window.__rcResize=setTimeout(paint,120)}});
+  rebuild();
+})();
 
 /* Optional margin factors next to the five base weights: this ETF's margin balance and the market-wide balance.
    Absent data never becomes a zero score; a factor with weight but no data pauses the combined score. */
@@ -3727,7 +3875,7 @@ updateWeights=function(){
   EXTRA_FACTORS.forEach((f,i)=>settings[f.setting]=extra[i]);settings.marginDirection=$('marginDirection').value;
   const outs=['oEtf','oIndex','oVolume','oBrent','oFx',...EXTRA_FACTORS.map(f=>'o'+f.id.slice(1))];
   outs.forEach((id,i)=>$(id).textContent=sum?Math.round(weights[i]/sum*100)+'%':'0%');
-  const names=['本檔 ETF','大盤價格','大盤量能','布蘭特現貨','美元／新台幣',...EXTRA_FACTORS.map(f=>f.name)];
+  const names=['本檔 ETF','大盤價格','大盤量能','布蘭特原油','美元／新台幣',...EXTRA_FACTORS.map(f=>f.name)];
   $('weightBar').innerHTML=weights.map((w,i)=>w>0&&sum>0?`<span class="w${i}" style="width:${(w/sum*100).toFixed(2)}%" title="${names[i]} ${Math.round(w/sum*100)}%">${w/sum>=0.12?names[i]+' '+Math.round(w/sum*100)+'%':''}</span>`:'').join('');
   $('weightStatus').textContent=sum===100?'權重合計 100%':sum>0?`權重合計 ${sum}%，依比例換算成 100%`:'請至少設定一項權重';
   const {value,scores,missing}=weightedScore(weights);
@@ -3754,7 +3902,7 @@ const IndicatorDirection=(()=>{
     etf:{name:'ETF 價格',modes:[['low_buy','價格越低分數越高'],['high_buy','價格越高分數越高']],default:'low_buy'},
     index:{name:'大盤價格',modes:[['low_buy','指數越低分數越高'],['high_buy','指數越高分數越高']],default:'low_buy'},
     volume:{name:'大盤量能',modes:[['low_buy','量縮分數越高'],['high_buy','量增分數越高'],['smart_pv','價量配合（實驗規則）']],default:'low_buy'},
-    oil:{name:'布蘭特現貨',modes:[['low_buy','油價越低分數越高'],['high_buy','油價越高分數越高']],default:'low_buy'},
+    oil:{name:'布蘭特原油',modes:[['low_buy','油價越低分數越高'],['high_buy','油價越高分數越高']],default:'low_buy'},
     fx:{name:'美元／新台幣',modes:[['twd_strong_buy','匯率低／台幣升分數越高'],['twd_weak_buy','匯率高／台幣貶分數越高']],default:'twd_strong_buy'},
     margin:{name:'大盤融資增減',modes:[['decrease_buy','融資減少分數越高'],['increase_buy','融資增加分數越高']],default:'decrease_buy'},
     bank:{name:'全市場官股',modes:[['buy_follow','官股買超分數越高'],['sell_follow','官股賣超分數越高']],default:'buy_follow'}
@@ -3832,7 +3980,7 @@ function refreshDirectionViews(){
   const a=DM.action(Number.parseFloat($('combined').textContent));$('combinedAction').textContent=a.text;$('combinedAction').className='direction-action '+a.kind;
 }
 const combinedAction=document.createElement('p');combinedAction.id='combinedAction';$('combined').after(combinedAction);
-const directionHelp=document.createElement('details');directionHelp.innerHTML='<summary><span>05</span> 方向、分數與配置傾向</summary><p>顯示分數為 0–5 分，4 分以上標示偏向增加配置、2 分以下偏向降低，其餘維持觀察；依各項方向設定判讀，不代表勝率或固定持股比例。價格圖與原始相對位置不會因方向反轉而改變。</p><p>匯率是 USD/TWD：數字變小表示台幣較強，變大表示台幣較弱。正反方向得分互補，合計 5 分；不能由匯率或官股單項推定外資流向。價量配合是實驗規則，使用大盤價格位置與成交股數百分位，尚未驗證預測能力。</p><p>油價使用美元現貨日資料，盤中期貨另列。融資用當日增減、官股用全市場淨額，以零為基準；常態模式採 Z 分數映射，並非報酬機率。方向可保存在權重方案；歷史策略的交易條件仍依回測區設定。</p>';
+const directionHelp=document.createElement('details');directionHelp.innerHTML='<summary><span>05</span> 方向、分數與配置傾向</summary><p>顯示分數為 0–5 分，4 分以上標示偏向增加配置、2 分以下偏向降低，其餘維持觀察；依各項方向設定判讀，不代表勝率或固定持股比例。價格圖與原始相對位置不會因方向反轉而改變。</p><p>匯率是 USD/TWD：數字變小表示台幣較強，變大表示台幣較弱。正反方向得分互補，合計 5 分；不能由匯率或官股單項推定外資流向。價量配合是實驗規則，使用大盤價格位置與成交股數百分位，尚未驗證預測能力。</p><p>油價使用 Yahoo BZ=F 期貨每日收盤（美元），即時報價另列。融資用當日增減、官股用全市場淨額，以零為基準；常態模式採 Z 分數映射，並非報酬機率。方向可保存在權重方案；歷史策略的交易條件仍依回測區設定。</p>';
 document.querySelector('.method-steps').append(directionHelp);
 function applyDirections(){
   settings.fxDirection=settings.factorModes.fx==='twd_strong_buy'?'low':'high';$('fxDirection').value=settings.fxDirection;

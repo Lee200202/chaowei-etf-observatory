@@ -28,21 +28,21 @@ async function loadMktMargin(){
 }
 const mmComputeMarket=computeMarket;computeMarket=function(){mmComputeMarket();computeMktMargin()};
 
-/* ---------- Brent spot in USD/barrel, via FinMind CrudeOilPrices ---------- */
+/* ---------- Brent in USD/barrel: Yahoo Finance BZ=F front-month daily closes ---------- */
 var oilDays=[];
 computeBrent=function(){
   const usable=oilDays,last=usable.at(-1),s=factorScore(usable.map(x=>x.value));
-  if(!last||!s){brentPosition=null;$('brentScore').textContent='—';$('brentMeta').textContent=last?'觀察窗資料不足':'讀取 FinMind 布蘭特現貨中';return}
+  if(!last||!s){brentPosition=null;$('brentScore').textContent='—';$('brentMeta').textContent=last?'觀察窗資料不足':'讀取 Yahoo 布蘭特期貨 BZ=F 中';return}
   const age=bars.length?(Date.parse(bars.at(-1).date)-Date.parse(last.date))/86400000:0;
-  if(age>14){brentPosition=null;$('brentScore').textContent='逾期';$('brentMeta').textContent=last.date+' 之後沒有新現貨資料，暫停計分';return}
+  if(age>14){brentPosition=null;$('brentScore').textContent='逾期';$('brentMeta').textContent=last.date+' 之後沒有新收盤，暫停計分';return}
   brentPosition={...s,last};
-  $('brentScore').textContent=fmt(s.core,1)+' / 5';$('brentMeta').textContent=`${fmt(last.value,2)} 美元／桶 · ${last.date}（官方最新）· 均值 ${fmt(s.mean,2)} · 偏離 ${signNum(s.deviation)}%`;
+  $('brentScore').textContent=fmt(s.core,1)+' / 5';$('brentMeta').textContent=`${fmt(last.value,2)} 美元／桶 · ${last.date} 收盤 · 均值 ${fmt(s.mean,2)} · 偏離 ${signNum(s.deviation)}%`;
   $('oilSpark').innerHTML=factorSpark(oilDays);
 };
 async function loadOil(){
   try{const res=await fetch('/api/oil'),d=await res.json();if(!res.ok||d.unit!=='USD/barrel'||!d.days?.length)throw Error(d.error||'原油格式異常');
     oilDays=mergeDays(oilDays,d.days)}
-  catch(e){brentPosition=null;$('brentScore').textContent='—';$('brentMeta').textContent='FinMind 原油資料暫不可用：'+e.message;updateWeights();return}
+  catch(e){brentPosition=null;$('brentScore').textContent='—';$('brentMeta').textContent='Yahoo BZ=F 日線暫不可用：'+e.message;updateWeights();return}
   computeBrent();updateWeights();if(factorTrendKey==='brent')renderFactorTrend();
   // The backtest's oil-and-FX filter reads the same series; rebuild it once the closes arrive.
   if(btCtx){btCtx=null;btSchedule()}
@@ -54,7 +54,7 @@ setInterval(()=>{if(!document.hidden){loadOil();loadMktMargin();loadBanks()}},30
 const FACTOR_TRENDS={
   index:{title:'台灣加權指數',unit:'點',color:'#0e7490',data:()=>market.map(x=>[x.date,x.index]),fmt:v=>fmt(v,0)+' 點'},
   volume:{title:'大盤成交股數',unit:'億股',color:'#6aa9b8',data:()=>market.map(x=>[x.date,x.volume/1e8]),fmt:v=>fmt(v,1)+' 億股'},
-  brent:{title:'FinMind 布蘭特現貨',unit:'美元／桶',color:'#c98a2b',data:()=>oilDays.map(x=>[x.date,x.value]),fmt:v=>fmt(v,2)+' 美元／桶'},
+  brent:{title:'Yahoo 布蘭特期貨 BZ=F（日收盤）',unit:'美元／桶',color:'#c98a2b',data:()=>oilDays.map(x=>[x.date,x.value]),fmt:v=>fmt(v,2)+' 美元／桶'},
   fx:{title:'美元／新台幣（央行收盤）',unit:'新台幣',color:'#7c6bb0',data:()=>fx.map(x=>[x.date,x.value]),fmt:v=>fmt(v,3)},
   margin:{title:'大盤融資每日增減（零軸）',unit:'億元',color:'#b4566e',data:()=>marginDays.slice(1).map((x,i)=>[x.date,x.value-marginDays[i].value]),fmt:v=>signNum(v)+' 億元',bars:true}
 };
@@ -64,8 +64,8 @@ const trendPanel=document.createElement('div');trendPanel.className='factor-tren
 $('market').querySelector('.factor-rail-nav').after(trendPanel);
 const tileFor={index:'indexScore',volume:'volumeScore',brent:'brentScore',fx:'fxScore',margin:'mktMarginScore'};
 // The oil card says plainly what it measures.
-$('brentScore').closest('.factor').querySelector('h4').textContent='布蘭特原油 · 現貨';
-{const note=document.createElement('p');note.className='factor-note';note.textContent='EIA 布蘭特現貨（經 FinMind）· 日資料，EIA 約每週三公布前一週，落後約一週';$('brentScore').before(note);$('brentMeta').insertAdjacentHTML('afterend','<div class="factor-spark" id="oilSpark"></div><p class="small oil-future" id="oilFutureMeta">盤中期貨參考：等待 Yahoo 報價</p>')}
+$('brentScore').closest('.factor').querySelector('h4').textContent='布蘭特原油 · 期貨 BZ=F';
+{const note=document.createElement('p');note.className='factor-note';note.textContent='Yahoo Finance BZ=F 近月連續合約 · 每日收盤（美元／桶），延遲行情；換月時價格可能跳動';$('brentScore').before(note);$('brentMeta').insertAdjacentHTML('afterend','<div class="factor-spark" id="oilSpark"></div><p class="small oil-future" id="oilFutureMeta">即時報價：等待 Yahoo BZ=F</p>')}
 for(const [key,id] of Object.entries(tileFor)){
   const tile=$(id).closest('.factor');tile.dataset.trend=key;tile.tabIndex=0;tile.setAttribute('role','button');tile.setAttribute('aria-expanded','false');
   tile.setAttribute('aria-label',FACTOR_TRENDS[key].title+'：查看趨勢圖');
@@ -101,6 +101,6 @@ function renderFactorTrend(){
 }
 let factorWidth=0;window.addEventListener('resize',()=>{const w=trendPanel.clientWidth;if(factorTrendKey&&Math.abs(w-factorWidth)>40){factorWidth=w;clearTimeout(window.__factorResize);window.__factorResize=setTimeout(renderFactorTrend,150)}});
 // Keep an open chart current when the window, Brent or FX data change.
-const ftApplyLive=applyLive;applyLive=function(){ftApplyLive();if(live?.oil?.unit==='USD/barrel'&&live.oil.days?.length)oilDays=mergeDays(oilDays,live.oil.days);computeBrent();const q=live?.oilFuture;$('oilFutureMeta').textContent=q?`Yahoo 期貨 BZ=F ${fmt(q.price,2)} 美元 · ${new Date(q.time).toLocaleString('zh-TW',{timeZone:'Asia/Taipei',hour12:false})}（延遲行情；5 分鐘檢查）`:'盤中期貨參考暫不可用；現貨日資料照常計分';if(factorTrendKey)renderFactorTrend();updateWeights()};
+const ftApplyLive=applyLive;applyLive=function(){ftApplyLive();if(live?.oil?.unit==='USD/barrel'&&live.oil.days?.length)oilDays=mergeDays(oilDays,live.oil.days);computeBrent();const q=live?.oilFuture;{const chg=q&&q.previousClose>0?q.price/q.previousClose-1:null,meta=$('oilFutureMeta');meta.innerHTML=q?`即時 ${fmt(q.price,2)} 美元${chg==null?'':`（較前一日收盤 <span class="${chg>0?'up':chg<0?'down':''}">${chg>0?'+':''}${fmt(chg*100,2)}%</span>）`} · ${new Date(q.time).toLocaleString('zh-TW',{timeZone:'Asia/Taipei',hour12:false})}（延遲行情；5 分鐘檢查；分數以最近收盤計算）`:'即時報價暫不可用；分數以最近收盤計算'}if(factorTrendKey)renderFactorTrend();updateWeights()};
 $('window').addEventListener('change',()=>setTimeout(()=>{if(factorTrendKey)renderFactorTrend()},0));
 loadMktMargin();loadOil();

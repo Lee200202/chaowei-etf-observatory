@@ -33,3 +33,9 @@ HiStock圖的 `loadChart(...)` 內 `SumMoney` 是億元淨額，`Price` 是加�
 ## C7 2026-10-29 即時與日結分離
 
 首頁 Matrix 與詳情共用四分鐘富果快取／同筆請求；每卡標報價日期時間，歷史線仍為確認日K。GAS盤中同時核對觀測與寫入時間，任一超六分鐘改直接讀交易所；盤後觀測必須至少13:30，不能無條件接受13:10。回到前景立即核對。今日估值只是既有部位按最新價重估，不含今日委託、入金或配息，不回寫正式回測。舊歷史區間不顯示今日估值，疑似分割價基不合則停用。原油快照變更事件應呼叫loadOil，不得錯走BRF。test-live-refresh、test-store納入CI；正式時間與資料日分列。
+
+## 2026-11-06 變更
+
+原油改用 Yahoo Finance BZ=F（ICE 布蘭特近月連續合約）每日收盤，美元／桶：CI `scripts/update-oil-spot.mjs`（解析在 `scripts/yahoo-brent.mjs`，日期取紐約時間午夜那根日線，未完成的當日 bar 不收）首次以 10 年取代，之後每天重讀 3 個月覆蓋修正值；GAS `oilSpot_` 讀 1 個月日線供頁面補齊，`oilFuture_` 仍給即時價（只參考、不計分）。舊 FinMind／EIA 現貨歷史封存於 `pages-data/oil-spot-finmind.json`，不與期貨混用。Yahoo 偶有缺日（例 2026-10-31），照實保留空缺。
+
+市場刻度卡片最下方新增「大盤與融資，同一段區間」（`worker/range-compare-core.js`＋`worker/market-compare.js`）：加權指數收盤與上市融資金額只比對共同交易日；在任一圖按住起點往右拖，起點固定在左，只點一下則算到最新；預設「指數高點至最新」，另有「高點至低點」與起訖滑桿。每列附「區間內最高點至終點」（截圖 B 的算法）。不可放在 `factorRail` 緊鄰之後——`market-layout.js` 會在全覽模式隱藏那個位置（原輪播進度條）。測試 `scripts/test-range-compare.mjs`。

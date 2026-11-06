@@ -1,9 +1,16 @@
+// Brent for the market card: Yahoo Finance BZ=F daily closes (front-month futures, USD/barrel).
+// Old days are kept; the last three months are re-read so revised closes replace provisional ones.
+// The earlier FinMind/EIA spot history is a different instrument and stays archived in oil-spot-finmind.json.
 import{readFile,writeFile}from'node:fs/promises';
-const file=new URL('../pages-data/oil-spot.json',import.meta.url);let old={days:[]};try{old=JSON.parse(await readFile(file,'utf8'))}catch{}
-const start=old.latest?new Date(Date.parse(old.latest)-30*86400000).toISOString().slice(0,10):'2016-01-01';
-const u=new URL('https://api.finmindtrade.com/api/v4/data');u.search=new URLSearchParams({dataset:'CrudeOilPrices',data_id:'Brent',start_date:start});
-const token=process.env.FINMIND_API_TOKEN,headers=token?{Authorization:'Bearer '+token}:{};
-const r=await fetch(u,{headers,signal:AbortSignal.timeout(45000)}),d=await r.json();if(!r.ok||d.status!==200||!Array.isArray(d.data))throw Error('FinMind Brent: '+r.status+' '+d.msg);
-const byDate=new Map(old.days.map(x=>[x.date,x]));for(const x of d.data){if(/^\d{4}-\d{2}-\d{2}$/.test(x.date)&&x.name==='Brent'&&Number.isFinite(Number(x.price))&&Number(x.price)>0)byDate.set(x.date,{date:x.date,value:Number(x.price)})}
-const days=[...byDate.values()].sort((a,b)=>a.date.localeCompare(b.date));if(days.length<360)throw Error('Brent spot history too short');
-await writeFile(file,JSON.stringify({source:'FinMind CrudeOilPrices Brent',sourceUrl:'https://finmind.github.io/tutor/Materials/',unit:'USD/barrel',frequency:'daily',notice:'現貨日資料，通常延遲數個交易日；非即時期貨',latest:days.at(-1).date,days})+'\n');console.log(`FinMind Brent spot: ${days.length} days, ${days[0].date} through ${days.at(-1).date}, ${days.at(-1).value} USD/barrel`);
+import{YAHOO_BRENT_URL,parseYahooDaily}from'./yahoo-brent.mjs';
+const SOURCE='Yahoo Finance BZ=F',file=new URL('../pages-data/oil-spot.json',import.meta.url);
+let old={days:[]};try{old=JSON.parse(await readFile(file,'utf8'))}catch{}
+const fresh=old.source!==SOURCE;
+const r=await fetch(YAHOO_BRENT_URL(fresh?'10y':'3mo'),{headers:{'User-Agent':'Mozilla/5.0 (compatible; ChaoweiResearch/1.0)'},signal:AbortSignal.timeout(45000)});
+if(!r.ok)throw Error('Yahoo BZ=F HTTP '+r.status);
+const incoming=parseYahooDaily(await r.json());if(!incoming.length)throw Error('Yahoo BZ=F 沒有完成的日收盤');
+const byDate=new Map((fresh?[]:old.days).map(x=>[x.date,x]));for(const x of incoming)byDate.set(x.date,x);
+const days=[...byDate.values()].sort((a,b)=>a.date.localeCompare(b.date));if(days.length<360)throw Error('Brent history too short');
+await writeFile(file,JSON.stringify({source:SOURCE,sourceUrl:'https://finance.yahoo.com/quote/BZ%3DF/',symbol:'BZ=F',unit:'USD/barrel',frequency:'daily',
+  notice:'ICE 布蘭特近月連續合約每日收盤（Yahoo 延遲行情）；換月時價格可能跳動，非現貨',latest:days.at(-1).date,days})+'\n');
+console.log(`Yahoo BZ=F: ${days.length} days, ${days[0].date} through ${days.at(-1).date}, ${days.at(-1).value} USD/barrel${fresh?' (replaced FinMind spot history)':''}`);

@@ -108,7 +108,7 @@ function getLiveMarket(){
   }
   if(!out.brent)try{out.brent=brfNear_()}catch(err){out.errors.push('FinMind BRF：'+err.message)}
   if(!out.fx)try{out.fx=cbcFx_()}catch(err){out.errors.push('央行：'+err.message)}
-  try{out.oil=oilSpot_()}catch(err){out.errors.push('FinMind 原油：'+err.message)}
+  try{out.oil=oilSpot_()}catch(err){out.errors.push('Yahoo 布蘭特日線：'+err.message)}
   try{out.oilFuture=oilFuture_()}catch(err){out.errors.push('Yahoo 原油期貨：'+err.message)}
   cache.put('live-v5',JSON.stringify(out),240);
   return out;

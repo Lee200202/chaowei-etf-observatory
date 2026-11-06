@@ -4,7 +4,7 @@ const IndicatorDirection=(()=>{
     etf:{name:'ETF 價格',modes:[['low_buy','價格越低分數越高'],['high_buy','價格越高分數越高']],default:'low_buy'},
     index:{name:'大盤價格',modes:[['low_buy','指數越低分數越高'],['high_buy','指數越高分數越高']],default:'low_buy'},
     volume:{name:'大盤量能',modes:[['low_buy','量縮分數越高'],['high_buy','量增分數越高'],['smart_pv','價量配合（實驗規則）']],default:'low_buy'},
-    oil:{name:'布蘭特現貨',modes:[['low_buy','油價越低分數越高'],['high_buy','油價越高分數越高']],default:'low_buy'},
+    oil:{name:'布蘭特原油',modes:[['low_buy','油價越低分數越高'],['high_buy','油價越高分數越高']],default:'low_buy'},
     fx:{name:'美元／新台幣',modes:[['twd_strong_buy','匯率低／台幣升分數越高'],['twd_weak_buy','匯率高／台幣貶分數越高']],default:'twd_strong_buy'},
     margin:{name:'大盤融資增減',modes:[['decrease_buy','融資減少分數越高'],['increase_buy','融資增加分數越高']],default:'decrease_buy'},
     bank:{name:'全市場官股',modes:[['buy_follow','官股買超分數越高'],['sell_follow','官股賣超分數越高']],default:'buy_follow'}

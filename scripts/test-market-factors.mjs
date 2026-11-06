@@ -11,7 +11,7 @@ assert.ok(Math.abs(score.cdf(1)-.841344746)<1e-6);assert.ok(Math.abs(score.cdf(2
 const banks=JSON.parse(await readFile(new URL('../pages-data/history/histock-bank.json',import.meta.url),'utf8'));
 for(const[d,a,i]of[['2026-04-27',53.6989,39616.6],['2026-10-22',203.428,46041.4]])assert.deepEqual(banks.rows.find(r=>r[0]===d),[d,a,i]);
 assert.equal(new Set(banks.rows.map(r=>r[0])).size,banks.rows.length);
-const oil=JSON.parse(await readFile(new URL('../pages-data/oil-spot.json',import.meta.url),'utf8'));assert.equal(oil.unit,'USD/barrel');assert.ok(oil.days.length>2400);assert.equal(oil.days.find(r=>r.date==='2026-10-20').value,115.22);
+const oil=JSON.parse(await readFile(new URL('../pages-data/oil-spot.json',import.meta.url),'utf8'));assert.equal(oil.unit,'USD/barrel');assert.equal(oil.source,'Yahoo Finance BZ=F');assert.ok(oil.days.length>2400);assert.ok(oil.days.every((r,i)=>r.value>0&&(!i||r.date>oil.days[i-1].date)),'positive closes in date order');
 const html=await readFile(new URL('../docs/index.html',import.meta.url),'utf8');for(const m of html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g))new vm.Script(m[1]);
 const computedOil=score.evaluate(oil.days.map(d=>d.value));
 console.log(`Market factors passed: exclusion of latest observation, 101/105/99 direction, zero-centred margin, bank direction, normal CDF, missing/flat data and HiStock fixtures. Brent latest score ${computedOil.core.toFixed(4)}, mean ${computedOil.mean.toFixed(4)}, sd ${computedOil.sd.toFixed(4)}.`);

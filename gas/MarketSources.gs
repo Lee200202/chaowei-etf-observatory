@@ -1,12 +1,22 @@
 // Market-wide series. Tokens stay in Script Properties; only timestamps and values leave this backend.
+// Brent daily closes from Yahoo Finance BZ=F (front-month futures, USD/barrel). A daily bar is stamped at
+// midnight New York time; the bar still trading has no close and is left out. The page merges these recent days
+// into the committed history, so a missed CI run is filled from here.
 function oilSpot_(){
-  const cache=CacheService.getScriptCache(),hit=cache.get('oil-spot-v1');if(hit)return JSON.parse(hit);
-  const since=new Date(Date.now()-35*86400000).toISOString().slice(0,10),token=String(storeProps_().getProperty('FINMIND_API_TOKEN')||'').trim();
-  const r=UrlFetchApp.fetch('https://api.finmindtrade.com/api/v4/data?dataset=CrudeOilPrices&data_id=Brent&start_date='+since,{headers:token?{Authorization:'Bearer '+token}:{},muteHttpExceptions:true});
-  const d=JSON.parse(r.getContentText('UTF-8'));if(r.getResponseCode()!==200||d.status!==200||!Array.isArray(d.data))throw Error('FinMind 原油 HTTP '+r.getResponseCode()+'：'+String(d.msg||'').slice(0,80));
-  const days=d.data.filter(x=>x.name==='Brent'&&/^\d{4}-\d{2}-\d{2}$/.test(x.date)&&Number(x.price)>0).map(x=>({date:x.date,value:Number(x.price)})).sort((a,b)=>a.date.localeCompare(b.date));
-  if(!days.length)throw Error('FinMind Brent 沒有可用資料');
-  const out={days,latest:days[days.length-1].date,source:'FinMind CrudeOilPrices Brent',unit:'USD/barrel',frequency:'daily'};cache.put('oil-spot-v1',JSON.stringify(out),240);return out;
+  const cache=CacheService.getScriptCache(),hit=cache.get('oil-yahoo-daily-v1');if(hit)return JSON.parse(hit);
+  const r=UrlFetchApp.fetch('https://query1.finance.yahoo.com/v8/finance/chart/BZ%3DF?interval=1d&range=1mo',{muteHttpExceptions:true});
+  if(r.getResponseCode()!==200)throw Error('Yahoo BZ=F 日線 HTTP '+r.getResponseCode());
+  const d=JSON.parse(r.getContentText('UTF-8')),res=d.chart&&d.chart.result&&d.chart.result[0],m=res&&res.meta;
+  if(!m||m.symbol!=='BZ=F'||m.currency!=='USD')throw Error('Yahoo BZ=F 日線格式異常');
+  const t=res.timestamp||[],c=(res.indicators&&res.indicators.quote&&res.indicators.quote[0]&&res.indicators.quote[0].close)||[],days=[],seen={};
+  for(let i=0;i<t.length;i++){
+    const v=Number(c[i]);if(c[i]==null||!(v>0))continue;
+    const at=new Date(t[i]*1000);if(Utilities.formatDate(at,'America/New_York','HH:mm')!=='00:00')continue;
+    const date=Utilities.formatDate(at,'America/New_York','yyyy-MM-dd');if(seen[date])continue;seen[date]=true;
+    days.push({date,value:Math.round(v*100)/100});
+  }
+  if(!days.length)throw Error('Yahoo BZ=F 沒有完成的日收盤');days.sort((x,y)=>x.date.localeCompare(y.date));
+  const out={days,latest:days[days.length-1].date,source:'Yahoo Finance BZ=F',unit:'USD/barrel',frequency:'daily'};cache.put('oil-yahoo-daily-v1',JSON.stringify(out),240);return out;
 }
 function oilFuture_(){
   const cache=CacheService.getScriptCache(),hit=cache.get('oil-future-v1');if(hit)return JSON.parse(hit);

@@ -470,7 +470,7 @@ function renderLiveMeta(){
   const parts=[];
   if(live?.intraday)parts.push('大盤 '+live.intraday.date+' '+live.intraday.time.slice(0,5));
   else if(market.at(-1)?.date)parts.push('台股 '+shortDate(market.at(-1).date));
-  if(live?.oil?.unit==='USD/barrel')parts.push('原油現貨 '+shortDate(live.oil.latest));
+  if(live?.oil?.unit==='USD/barrel')parts.push('原油 BZ=F '+shortDate(live.oil.latest));
   if(live?.fx)parts.push('匯率 '+shortDate(live.fx.latest));
   if(live?.errors?.length)parts.push('部分來源暫不可用：'+live.errors.join('；'));
   $('liveMeta').textContent=parts.join(' · ')||'休市沿用最近收盤；等待下次檢查';
