@@ -1,6 +1,6 @@
 {
   "source": "https://www.twse.com.tw/zh/ETFortune/ajaxProductsResult",
-  "updated": "2026-11-10",
+  "updated": "2026-11-11",
   "etfs": [
     {
       "code": "00400A",
@@ -99,6 +99,14 @@
       "market": "TWSE"
     },
     {
+      "code": "00413A",
+      "name": "主動玉山關鍵科技",
+      "type": "active",
+      "note": "主動管理",
+      "listingDate": "2026-11-11",
+      "market": "TWSE"
+    },
+    {
       "code": "00415A",
       "name": "主動群益核心50",
       "type": "active",
@@ -112,6 +120,14 @@
       "type": "active",
       "note": "主動管理",
       "listingDate": "2026-11-03",
+      "market": "TWSE"
+    },
+    {
+      "code": "00418A",
+      "name": "主動復華台灣新星",
+      "type": "active",
+      "note": "主動管理",
+      "listingDate": "2026-11-11",
       "market": "TWSE"
     },
     {
