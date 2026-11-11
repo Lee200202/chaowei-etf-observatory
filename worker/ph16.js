@@ -146,7 +146,8 @@
     if (factorTrendKey === 'bank') renderFactorTrend();
   };
   loadVix();
-  setInterval(() => { if (!document.hidden && document.body.dataset.page === 'market') loadVix(); }, 30*60000);
+  // Same five-minute cadence as the other market data; the VIX also feeds the ETF page's weighted score.
+  setInterval(() => { if (!document.hidden) loadVix(); }, 5*60000);
 })();
 
 /* Use the current catalogue and daily radar for typeahead, and the shared picker to switch ETF. */
