@@ -64,7 +64,7 @@
       (inA?`<line x1="${xa}" x2="${xa}" y1="${PAD.t}" y2="${PAD.t+ph}" class="rc-edge${picking!=null?' locked':''}"/><circle cx="${xa}" cy="${ya}" r="5.5" fill="var(--paper)" stroke="${s.line}" stroke-width="2.4"/>`:'')+
       (inB?`<line x1="${xb}" x2="${xb}" y1="${PAD.t}" y2="${PAD.t+ph}" class="rc-edge${picking!=null?' preview':''}"/><circle cx="${xb}" cy="${yb}" r="5.5" fill="${tone}" stroke="var(--paper)" stroke-width="2"/>`:'')+
       values(s,c,{w,pw,ph,xa,xb,ya,yb,tone,hiI,loI,inA,inB,X})+
-      (sel.b<from?`<text x="${PAD.l+2}" y="${PAD.t+12}" class="rc-off">◀ 選取區間 ${ymd(c.from)}–${ymd(c.to)}</text>`:sel.a<from?`<text x="${PAD.l+2}" y="${PAD.t+12}" class="rc-off">◀ 起點 ${ymd(c.from)}</text>`:'')+(sel.a>to?`<text x="${PAD.l+pw-2}" y="${PAD.t+ph-6}" text-anchor="end" class="rc-off">選取區間 ${ymd(c.from)}–${ymd(c.to)} ▶</text>`:sel.b>to?`<text x="${PAD.l+pw-2}" y="${PAD.t+ph-6}" text-anchor="end" class="rc-off">終點 ${ymd(c.to)} ▶</text>`:'')+'</svg>';
+      ''+'</svg>';
   }
   // Values on the chart: start above its point, end beside its point (in the right gutter when at the right edge),
   // and the change beside the vertical drop line (on a narrow chart, in the strip above the plot). Text carries a paper halo so it stays readable over the lines.
@@ -98,7 +98,7 @@
     lastPlotKey=key;
     for(const [k,s] of SERIES.entries()){const p=plots[s.key],w=Math.max(260,Math.round(p.host.clientWidth||charts.clientWidth/2||520)),c=cs[k],v=vp[s.key];
       p.host.innerHTML=svgFor(s,w,rise);p.hit.style.left=PAD.l+'px';p.hit.style.right=PAD.r+'px';
-      p.span.textContent=`${ymd(view[v.from].date)} – ${ymd(view[v.to].date)}`;
+      const where=sel.b<v.from?'◀ 選取區間在左側':sel.a>v.to?'選取區間在右側 ▶':sel.a<v.from?'◀ 起點在左側':sel.b>v.to?'終點在右側 ▶':'';p.span.textContent=`${ymd(view[v.from].date)} – ${ymd(view[v.to].date)}`+(where?' · '+where:'');
       p.ends.innerHTML=`<span>起 ${md(c.from)}　${num(c.start,s)}</span><span class="${c.diff>0?'up':c.diff<0?'down':''}">終 ${md(c.to)}　${num(c.end,s)}</span>`}
     const [ia,ib]=sec.querySelectorAll('[data-rc-end]');for(const input of [ia,ib]){input.max=String(view.length-1)}ia.value=String(sel.a);ib.value=String(sel.b);
     ia.nextElementSibling.textContent=view[sel.a].date;ib.nextElementSibling.textContent=view[sel.b].date;lastWidth=charts.clientWidth;
