@@ -954,6 +954,7 @@ function renderLiveMeta(){
   else if(live?.oil?.unit==='USD/barrel')parts.push('原油 BZ=F 收盤 '+shortDate(live.oil.latest));
   if(live?.fxQuote?.time)parts.push('匯率 '+new Date(live.fxQuote.time).toLocaleString('zh-TW',{timeZone:'Asia/Taipei',hour12:false})+' 延遲');
   else if(live?.fx)parts.push('央行匯率 '+shortDate(live.fx.latest));
+  {const v=typeof vixLatest==='function'?vixLatest():null;if(v?.intraday)parts.push('VIX 盤中 '+new Date(v.time).toLocaleString('zh-TW',{timeZone:'Asia/Taipei',hour12:false})+' 延遲');else if(v)parts.push('VIX 收盤 '+shortDate(v.date)+(v.provisional?' 暫定':''))}
   if(live?.errors?.length)parts.push('部分來源暫不可用：'+live.errors.join('；'));
   $('liveMeta').textContent=parts.join(' · ')||'休市沿用最近收盤；等待下次檢查';
 }
@@ -2968,6 +2969,13 @@ const MarketScoring=(()=>{
 
 // Market factors have their own reference window, independent of the selected ETF's price window.
 let bankDays=[],bankPosition=null,vixDays=[];
+// Latest VIX for scoring: the delayed Yahoo quote while its session is open and fresh (refreshed every five minutes
+// with the other live factors), otherwise the last daily close (Cboe, or a finished Yahoo session until Cboe arrives).
+function vixLatest(){
+  const d=vixDays.at(-1),q=typeof live!=='undefined'?live?.vixQuote:null,at=Date.parse(q?.time),end=Date.parse(q?.endTime),now=Date.now();
+  if(q?.symbol==='^VIX'&&q.price>0&&/^\d{4}-\d{2}-\d{2}$/.test(q.date||'')&&(!d||q.date>d.date)&&Number.isFinite(at)&&now<end&&now-at<45*60000)return{date:q.date,value:q.price,time:q.time,intraday:true};
+  return d||null;
+}
 settings.marketWindow=Math.max(20,Math.min(2400,Math.round(Number(settings.marketWindow)||120)));
 settings.marketMethod=['mean','normal'].includes(settings.marketMethod)?settings.marketMethod:'normal';
 settings.marketSpan=Math.max(1,Math.min(200,Number(settings.marketSpan)||20));
@@ -3464,7 +3472,7 @@ function directionScore(key){
     const p=range?(last.index-range.low)/(range.high-range.low):null;
     return DM.score(key,null,settings.factorModes.volume,{rank:marketPosition.volumeScore/5,pricePosition:p});
   }
-  const base={etf:position?.core,index:marketPosition?.index?.core,oil:brentPosition?.core,fx:fxPosition?(settings.fxDirection==='high'?5-fxPosition.core:fxPosition.core):null,margin:mktMarginPosition?.core,bank:bankPosition?.core,vix:DM.vixScore(vixDays.at(-1)?.value)}[key];
+  const base={etf:position?.core,index:marketPosition?.index?.core,oil:brentPosition?.core,fx:fxPosition?(settings.fxDirection==='high'?5-fxPosition.core:fxPosition.core):null,margin:mktMarginPosition?.core,bank:bankPosition?.core,vix:DM.vixScore(vixLatest()?.value)}[key];
   return DM.score(key,base,settings.factorModes[key]);
 }
 const directionSelects=[];
@@ -4436,7 +4444,7 @@ function tideTail(x,y,color){
   const time=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Taipei',hour:'2-digit',minute:'2-digit',hour12:false}).format(at);
   return [...rows.filter(row=>row.date<date),{date,time,value:quote.price,quote:true}];
  }
- const factorDefs=[['indexScore',()=>marketDisplaySeries('index'),v=>fmt(v,2)+' 點'],['volumeScore',()=>marketDisplaySeries('volume'),v=>fmt(v,2)+' 億股'],['brentScore',()=>marketQuotedSeries(oilDays,live?.oilFuture),v=>fmt(v,2)+' 美元／桶'],['fxScore',()=>marketQuotedSeries(fx,live?.fxQuote),v=>fmt(v,3)+' 新台幣／美元'],['mktMarginScore',()=>marginDays.slice(1).map((x,i)=>({date:x.date,value:x.value-marginDays[i].value})),v=>signNum(v,1)+' 億元'],['bankScore',()=>bankDays,v=>signNum(v,2)+' 億元'],['vixScore',()=>vixDays,v=>fmt(v,2)+' 點']];
+ const factorDefs=[['indexScore',()=>marketDisplaySeries('index'),v=>fmt(v,2)+' 點'],['volumeScore',()=>marketDisplaySeries('volume'),v=>fmt(v,2)+' 億股'],['brentScore',()=>marketQuotedSeries(oilDays,live?.oilFuture),v=>fmt(v,2)+' 美元／桶'],['fxScore',()=>marketQuotedSeries(fx,live?.fxQuote),v=>fmt(v,3)+' 新台幣／美元'],['mktMarginScore',()=>marginDays.slice(1).map((x,i)=>({date:x.date,value:x.value-marginDays[i].value})),v=>signNum(v,1)+' 億元'],['bankScore',()=>bankDays,v=>signNum(v,2)+' 億元'],['vixScore',()=>{const l=vixLatest();return l?.intraday?[...vixDays,{date:l.date,value:l.value,time:l.time}]:vixDays},v=>fmt(v,2)+' 點']];
  function paintFactors(){
   let available=0;
   const overview=$('rdFactorBars'),said=[];
@@ -4809,7 +4817,7 @@ const QuantChat=(()=>{
   function labelLatest(){const last=vixDays.at(-1);if(last)vixDate.textContent=fmt(last.value,2)+' · '+last.date+' 收盤'+(last.provisional?'（Yahoo 延遲，待 Cboe 確認）':'（Cboe）')}
   const previousLive=applyLive;
   applyLive=function(...args){const result=previousLive(...args);
-    if(absorbSession()){refreshDirectionViews();updateWeights();document.dispatchEvent(new Event('vix-updated'));if(factorTrendKey==='vix')renderFactorTrend()}
+    const absorbed=absorbSession();refreshDirectionViews();updateWeights();document.dispatchEvent(new Event('vix-updated'));if(absorbed&&factorTrendKey==='vix')renderFactorTrend();
     labelLatest();renderVixSession();return result};
   const previousDirectionRefresh=refreshDirectionViews;
   refreshDirectionViews=function(){previousDirectionRefresh();renderVixSession()};

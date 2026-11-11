@@ -1,5 +1,12 @@
 // Market factors have their own reference window, independent of the selected ETF's price window.
 let bankDays=[],bankPosition=null,vixDays=[];
+// Latest VIX for scoring: the delayed Yahoo quote while its session is open and fresh (refreshed every five minutes
+// with the other live factors), otherwise the last daily close (Cboe, or a finished Yahoo session until Cboe arrives).
+function vixLatest(){
+  const d=vixDays.at(-1),q=typeof live!=='undefined'?live?.vixQuote:null,at=Date.parse(q?.time),end=Date.parse(q?.endTime),now=Date.now();
+  if(q?.symbol==='^VIX'&&q.price>0&&/^\d{4}-\d{2}-\d{2}$/.test(q.date||'')&&(!d||q.date>d.date)&&Number.isFinite(at)&&now<end&&now-at<45*60000)return{date:q.date,value:q.price,time:q.time,intraday:true};
+  return d||null;
+}
 settings.marketWindow=Math.max(20,Math.min(2400,Math.round(Number(settings.marketWindow)||120)));
 settings.marketMethod=['mean','normal'].includes(settings.marketMethod)?settings.marketMethod:'normal';
 settings.marketSpan=Math.max(1,Math.min(200,Number(settings.marketSpan)||20));

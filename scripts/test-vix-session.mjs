@@ -15,6 +15,14 @@ o=make([...days,{date:'2026-11-10',value:19.46}],{...q,price:19.5},Date.parse('2
 o=make(days,{...q,date:'2026-11-06'},Date.parse('2026-11-11T03:00:00Z'));assert.equal(o.r,false);
 // Cboe's file merged later replaces the provisional row.
 const merged=mergeDays(make(days,q,Date.parse('2026-11-11T03:00:00Z')).vixDays,[{date:'2026-11-10',value:19.46}]);assert.equal(merged.at(-1).provisional,undefined);
+// Scoring value: the live quote while its session is open and under 45 minutes old, otherwise the last daily close.
+const cfg=fs.readFileSync('worker/market-factor-config.js','utf8').replace(/\r\n/g,'\n'),k=cfg.indexOf('function vixLatest(){'),e=cfg.indexOf('\n}\n',k)+3;
+const latest=(vixDays,q,now)=>{const D=class extends Date{static now(){return now}};D.parse=Date.parse;return new Function('vixDays','live','Date',cfg.slice(k,e)+';return vixLatest()')(vixDays,{vixQuote:q},D)};
+const open={symbol:'^VIX',date:'2026-11-11',price:21.3,time:'2026-11-11T15:00:00Z',endTime:'2026-11-11T21:15:00Z'};
+assert.deepEqual(latest(days,open,Date.parse('2026-11-11T15:04:00Z')),{date:'2026-11-11',value:21.3,time:open.time,intraday:true});
+assert.equal(latest(days,open,Date.parse('2026-11-11T21:30:00Z')).date,'2026-11-09','after the close the daily row is used');
+assert.equal(latest(days,open,Date.parse('2026-11-11T16:00:00Z')).date,'2026-11-09','a quote older than 45 minutes is not used');
+assert.equal(latest([],null,Date.now()),null);
 // CI runs again after the US close.
 assert.match(fs.readFileSync('.github/workflows/deploy-pages.yml','utf8'),/cron: '30 22 \* \* 1-5'/);
-console.log('PASS VIX session: finished session added as provisional close, open or older sessions ignored, Cboe replaces it, post-close CI schedule present.');
+console.log('PASS VIX session: live quote scores while the session is open and fresh, finished session added as provisional close, open or older sessions ignored, Cboe replaces it, post-close CI schedule present.');

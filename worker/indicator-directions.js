@@ -16,7 +16,7 @@ function directionScore(key){
     const p=range?(last.index-range.low)/(range.high-range.low):null;
     return DM.score(key,null,settings.factorModes.volume,{rank:marketPosition.volumeScore/5,pricePosition:p});
   }
-  const base={etf:position?.core,index:marketPosition?.index?.core,oil:brentPosition?.core,fx:fxPosition?(settings.fxDirection==='high'?5-fxPosition.core:fxPosition.core):null,margin:mktMarginPosition?.core,bank:bankPosition?.core,vix:DM.vixScore(vixDays.at(-1)?.value)}[key];
+  const base={etf:position?.core,index:marketPosition?.index?.core,oil:brentPosition?.core,fx:fxPosition?(settings.fxDirection==='high'?5-fxPosition.core:fxPosition.core):null,margin:mktMarginPosition?.core,bank:bankPosition?.core,vix:DM.vixScore(vixLatest()?.value)}[key];
   return DM.score(key,base,settings.factorModes[key]);
 }
 const directionSelects=[];

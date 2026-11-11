@@ -74,7 +74,7 @@
   const time=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Taipei',hour:'2-digit',minute:'2-digit',hour12:false}).format(at);
   return [...rows.filter(row=>row.date<date),{date,time,value:quote.price,quote:true}];
  }
- const factorDefs=[['indexScore',()=>marketDisplaySeries('index'),v=>fmt(v,2)+' 點'],['volumeScore',()=>marketDisplaySeries('volume'),v=>fmt(v,2)+' 億股'],['brentScore',()=>marketQuotedSeries(oilDays,live?.oilFuture),v=>fmt(v,2)+' 美元／桶'],['fxScore',()=>marketQuotedSeries(fx,live?.fxQuote),v=>fmt(v,3)+' 新台幣／美元'],['mktMarginScore',()=>marginDays.slice(1).map((x,i)=>({date:x.date,value:x.value-marginDays[i].value})),v=>signNum(v,1)+' 億元'],['bankScore',()=>bankDays,v=>signNum(v,2)+' 億元'],['vixScore',()=>vixDays,v=>fmt(v,2)+' 點']];
+ const factorDefs=[['indexScore',()=>marketDisplaySeries('index'),v=>fmt(v,2)+' 點'],['volumeScore',()=>marketDisplaySeries('volume'),v=>fmt(v,2)+' 億股'],['brentScore',()=>marketQuotedSeries(oilDays,live?.oilFuture),v=>fmt(v,2)+' 美元／桶'],['fxScore',()=>marketQuotedSeries(fx,live?.fxQuote),v=>fmt(v,3)+' 新台幣／美元'],['mktMarginScore',()=>marginDays.slice(1).map((x,i)=>({date:x.date,value:x.value-marginDays[i].value})),v=>signNum(v,1)+' 億元'],['bankScore',()=>bankDays,v=>signNum(v,2)+' 億元'],['vixScore',()=>{const l=vixLatest();return l?.intraday?[...vixDays,{date:l.date,value:l.value,time:l.time}]:vixDays},v=>fmt(v,2)+' 點']];
  function paintFactors(){
   let available=0;
   const overview=$('rdFactorBars'),said=[];

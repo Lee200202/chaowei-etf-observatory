@@ -53,7 +53,7 @@
   function labelLatest(){const last=vixDays.at(-1);if(last)vixDate.textContent=fmt(last.value,2)+' · '+last.date+' 收盤'+(last.provisional?'（Yahoo 延遲，待 Cboe 確認）':'（Cboe）')}
   const previousLive=applyLive;
   applyLive=function(...args){const result=previousLive(...args);
-    if(absorbSession()){refreshDirectionViews();updateWeights();document.dispatchEvent(new Event('vix-updated'));if(factorTrendKey==='vix')renderFactorTrend()}
+    const absorbed=absorbSession();refreshDirectionViews();updateWeights();document.dispatchEvent(new Event('vix-updated'));if(absorbed&&factorTrendKey==='vix')renderFactorTrend();
     labelLatest();renderVixSession();return result};
   const previousDirectionRefresh=refreshDirectionViews;
   refreshDirectionViews=function(){previousDirectionRefresh();renderVixSession()};

@@ -488,6 +488,7 @@ function renderLiveMeta(){
   else if(live?.oil?.unit==='USD/barrel')parts.push('原油 BZ=F 收盤 '+shortDate(live.oil.latest));
   if(live?.fxQuote?.time)parts.push('匯率 '+new Date(live.fxQuote.time).toLocaleString('zh-TW',{timeZone:'Asia/Taipei',hour12:false})+' 延遲');
   else if(live?.fx)parts.push('央行匯率 '+shortDate(live.fx.latest));
+  {const v=typeof vixLatest==='function'?vixLatest():null;if(v?.intraday)parts.push('VIX 盤中 '+new Date(v.time).toLocaleString('zh-TW',{timeZone:'Asia/Taipei',hour12:false})+' 延遲');else if(v)parts.push('VIX 收盤 '+shortDate(v.date)+(v.provisional?' 暫定':''))}
   if(live?.errors?.length)parts.push('部分來源暫不可用：'+live.errors.join('；'));
   $('liveMeta').textContent=parts.join(' · ')||'休市沿用最近收盤；等待下次檢查';
 }
