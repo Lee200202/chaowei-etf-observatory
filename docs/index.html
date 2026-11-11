@@ -968,6 +968,30 @@ body.subtraction-site #top .osc-pane .osc-chart{height:230px}
   #technicalGuide dd{margin-bottom:10px}
   .source-table th,.source-table td{padding:7px 4px}
 }
+
+/* Medium screens (split windows, small laptops) keep the uneven card rhythm instead of two equal columns:
+   a 10-column grid with 6/4, 4/6, 5/5 rows, a full-width closer, varied heights and small vertical offsets. */
+@media(min-width:720px) and (max-width:999px){
+ body.subtraction-site #top #matrixCards,body.subtraction-site #top #factorRail{
+   grid-template-columns:repeat(10,minmax(0,1fr)) !important;align-items:start;
+ }
+ body.subtraction-site #top #matrixCards>.matrix-card:nth-child(n),
+ body.subtraction-site #top #factorRail>.factor:nth-child(n){
+   grid-column:span var(--tide-span,5);min-height:var(--tide-height,250px);margin-top:var(--tide-offset,0px);
+   border-radius:var(--tide-radius,22px);padding:var(--tide-pad,18px);
+ }
+ :is(#matrixCards,#factorRail)>:nth-child(7n+1){--tide-span:6;--tide-height:300px;--tide-pad:23px;--tide-radius:26px 46px 24px 24px;--tide-chart-height:100px}
+ :is(#matrixCards,#factorRail)>:nth-child(7n+2){--tide-span:4;--tide-height:236px;--tide-offset:26px;--tide-chart-height:62px}
+ :is(#matrixCards,#factorRail)>:nth-child(7n+3){--tide-span:4;--tide-height:236px;--tide-offset:-10px;--tide-chart-height:64px}
+ :is(#matrixCards,#factorRail)>:nth-child(7n+4){--tide-span:6;--tide-height:280px;--tide-pad:21px;--tide-radius:22px 22px 44px 22px;--tide-chart-height:92px}
+ :is(#matrixCards,#factorRail)>:nth-child(7n+5){--tide-span:5;--tide-height:258px;--tide-chart-height:80px}
+ :is(#matrixCards,#factorRail)>:nth-child(7n+6){--tide-span:5;--tide-height:246px;--tide-offset:16px;--tide-chart-height:72px}
+ :is(#matrixCards,#factorRail)>:nth-child(7n+7){--tide-span:10;--tide-height:250px;--tide-chart-height:84px}
+ :is(#matrixCards,#factorRail)>:is(:nth-child(7n+1),:nth-child(7n+3),:nth-child(7n+5)):last-child{--tide-span:10}
+ body.subtraction-site #top :is(#matrixCards,#factorRail)>:nth-child(7n+1) :is(.matrix-price,.factor-value){font-size:calc((1.75rem) * var(--text-scale,1))}
+ body.subtraction-site #top :is(#matrixCards,#factorRail)>:nth-child(7n+4) :is(.matrix-price,.factor-value){font-size:calc((1.55rem) * var(--text-scale,1))}
+ body.subtraction-site #top :is(#matrixCards,#factorRail) svg.lookback-plot{height:calc(var(--tide-chart-height,80px) + 48px)}
+}
 </style>
 </head>
 <body>
