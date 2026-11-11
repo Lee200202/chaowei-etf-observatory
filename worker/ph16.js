@@ -29,7 +29,7 @@
     const q=live?.vixQuote, daily=vixDays.at(-1);
     const at=Date.parse(q?.time), now=Date.now();
     const usable=q?.symbol==='^VIX'&&q.open>0&&q.price>0&&Number.isFinite(at)&&now-at<72*3600000&&at<=now+60000;
-    vixSession.hidden=!usable;
+    vixSession.hidden=!usable||vixDays.at(-1)?.date===q?.date&&Date.now()>=Date.parse(q?.endTime);
     sessionDetail.hidden=!usable||factorTrendKey!=='vix';
     if(!usable)return;
     const localTime=new Intl.DateTimeFormat('en-GB',{timeZone:'America/New_York',hour:'2-digit',minute:'2-digit'});
@@ -42,8 +42,19 @@
     vixSession.textContent='起始 '+fmt(q.open,2)+' → '+(provisional?'盤中 ':'末筆 ')+fmt(q.price,2)+(provisional?' · 試算 '+fmt(score,1)+'／5':'')+' · 延遲';
     vixSession.title=sessionDetail.textContent;
   }
+  // Cboe's file arrives after the next CI run, so a finished Yahoo session (its last print is the 16:15 close) is
+  // used as that day's provisional close. The Cboe value replaces it when loadVix merges the file.
+  function absorbSession(){
+    const q=live?.vixQuote,daily=vixDays.at(-1),end=Date.parse(q?.endTime),at=Date.parse(q?.time);
+    if(q?.symbol!=='^VIX'||!(q.price>0)||!/^\d{4}-\d{2}-\d{2}$/.test(q.date||'')||!Number.isFinite(end)||Date.now()<end||!(at>=end-60000))return false;
+    if(daily&&q.date<daily.date)return false;if(daily&&q.date===daily.date&&(!daily.provisional||daily.value===q.price))return false;
+    vixDays=mergeDays(vixDays,[{date:q.date,value:Math.round(q.price*100)/100,provisional:true}]);return true;
+  }
+  function labelLatest(){const last=vixDays.at(-1);if(last)vixDate.textContent=fmt(last.value,2)+' · '+last.date+' 收盤'+(last.provisional?'（Yahoo 延遲，待 Cboe 確認）':'（Cboe）')}
   const previousLive=applyLive;
-  applyLive=function(...args){const result=previousLive(...args);renderVixSession();return result};
+  applyLive=function(...args){const result=previousLive(...args);
+    if(absorbSession()){refreshDirectionViews();updateWeights();document.dispatchEvent(new Event('vix-updated'));if(factorTrendKey==='vix')renderFactorTrend()}
+    labelLatest();renderVixSession();return result};
   const previousDirectionRefresh=refreshDirectionViews;
   refreshDirectionViews=function(){previousDirectionRefresh();renderVixSession()};
   async function loadVix() {
@@ -54,6 +65,7 @@
       vixDays = mergeDays(vixDays, data.days.filter(row => /^\d{4}-\d{2}-\d{2}$/.test(row.date) && row.value > 0));
       const last = vixDays.at(-1);
       if (!last) return;
+      absorbSession();labelLatest();
       refreshDirectionViews();
       updateWeights();
       document.dispatchEvent(new Event('vix-updated'));

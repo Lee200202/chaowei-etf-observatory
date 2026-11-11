@@ -10,6 +10,8 @@ on:
   schedule:
     # 18:30 Asia/Taipei, after the Taiwan market close.
     - cron: '30 10 * * 1-5'
+    # 06:30 Asia/Taipei, after the US close: Cboe VIX and Yahoo BZ=F daily closes for the session just ended.
+    - cron: '30 22 * * 1-5'
 
 permissions:
   contents: write

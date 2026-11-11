@@ -131,3 +131,10 @@ body.editorial-site .to-top{display:none!important}
 .rc-cross span{position:absolute;top:-24px;left:6px;white-space:nowrap;font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:1px 7px}.rc-cross span.flip{left:auto;right:6px}
 .rc-edge.locked{stroke:var(--ink);stroke-opacity:.9;stroke-width:2.2}.rc-edge.preview{stroke-dasharray:4 3;stroke-opacity:.7}
 .rc-hint{min-height:1.4em;margin:6px 0 0;color:var(--ink);font-weight:700}.range-compare.rc-picking .rc-hit{cursor:col-resize}
+/* Range compare: per-chart zoom controls, visible span and off-screen endpoint hints. */
+.rc-figure figcaption{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}.rc-figure figcaption b{margin-right:auto}
+.rc-span{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.rc-zoom{display:inline-flex;gap:4px}.rc-zoom button{min-width:34px;height:30px;padding:0 9px;border:1px solid var(--line);border-radius:999px;background:var(--paper);color:var(--ink);font-weight:700;font-size:13px;cursor:pointer}.rc-zoom button:hover{border-color:var(--ink)}
+.rc-off{font-size:11px;font-weight:700;fill:var(--muted)}
+.rc-hit.panning{cursor:grabbing}
+@media(max-width:760px){.rc-span{order:3;flex-basis:100%}}
