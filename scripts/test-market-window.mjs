@@ -24,7 +24,7 @@ assert.ok(direction.vixScore(31)>4);
 assert.equal(direction.vixScore(40),5);
 assert.equal(direction.score('vix',4,'calm_buy'),1);
 assert.equal(direction.normalize({}).vix,'fear_buy');
-const {renderLookbackTrend,lookbackGauge}=new Function('fmt',read('worker/lookback-trends.js')+';return {renderLookbackTrend,lookbackGauge}')(String);
+const {renderLookbackTrend,lookbackGauge}=new Function('fmt','ChartReadouts',read('worker/lookback-trends.js')+';return {renderLookbackTrend,lookbackGauge}')(String,{registerMini(){}});
 const values=rows.map(row=>[row.date,row.index]);
 for(const n of [30,60,120,240,600])assert.match(renderLookbackTrend(values,n,String),new RegExp('data-points="'+n+'"'));
 assert.match(renderLookbackTrend(values.slice(-5),30,String),/近 5 筆（可用資料）/);

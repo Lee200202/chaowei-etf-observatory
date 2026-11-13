@@ -10,9 +10,10 @@ function renderLookbackTrend(rows,count,format,context=''){
   const x=i=>6+288*i/(values.length-1),y=v=>span?8+72*(high-v)/span:44;
   const points=values.flatMap((v,i)=>i%stride===0||i===lo||i===hi||i===values.length-1?[x(i).toFixed(2)+','+y(v).toFixed(2)]:[]).join(' ');
   const color=last>first?'#f43f5e':last<first?'#10b981':'#8293ad',id='lookbackFill'+(++lookbackPlotId);
+  ChartReadouts.registerMini(id,{rows:data,format});
   const range=data[0][0]+' 至 '+data.at(-1)[0];
   const point=(i,color,label)=>'<circle cx="'+x(i)+'" cy="'+y(values[i])+'" r="4" fill="'+color+'"><title>'+label+' '+data[i][0]+' '+format(values[i])+'</title></circle>';
-  return '<svg data-tide-plot class="lookback-plot" viewBox="0 0 300 90" preserveAspectRatio="none" role="img" data-points="'+data.length+'" aria-label="近 '+data.length+' 筆走勢，'+range+'，最高 '+format(high)+'，最低 '+format(low)+'，均值 '+format(mean)+'">'+
+  return '<svg data-tide-plot class="lookback-plot" data-readout-key="'+id+'" viewBox="0 0 300 90" preserveAspectRatio="none" role="img" data-points="'+data.length+'" aria-label="近 '+data.length+' 筆走勢，'+range+'，最高 '+format(high)+'，最低 '+format(low)+'，均值 '+format(mean)+'">'+
     '<defs><linearGradient id="'+id+'" x2="0" y2="1"><stop stop-color="'+color+'" stop-opacity=".32"/><stop offset="100%" stop-color="'+color+'" stop-opacity="0"/></linearGradient></defs>'+
     '<line x1="6" x2="294" y1="'+y(mean)+'" y2="'+y(mean)+'" stroke="var(--muted)" stroke-dasharray="4 4" vector-effect="non-scaling-stroke"><title>區間均值 '+format(mean)+'</title></line>'+
     '<g data-tide-base="85"><polygon points="6,85 '+points+' 294,85" fill="url(#'+id+')"/>'+

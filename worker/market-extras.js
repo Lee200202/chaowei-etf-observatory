@@ -83,11 +83,12 @@ function renderFactorTrend(){
   const all=def.data().filter(x=>Number.isFinite(x[1]));trendPanel.replaceChildren();
   const head=document.createElement('div');head.className='factor-trend-head';
   head.innerHTML=`<div class="segment" role="group" aria-label="趨勢期間">${FACTOR_RANGES.map(([id,label])=>`<button type="button" data-frange="${id}" class="${id===range?'active':''}" aria-pressed="${id===range}">${label}</button>`).join('')}</div><button class="pill mini" type="button" data-fclose>收合</button>`;
-  head.addEventListener('click',e=>{const b=e.target.closest('[data-frange]');if(b){settings.factorRange=b.dataset.frange;save();renderFactorTrend()}if(e.target.closest('[data-fclose]'))openFactorTrend(key)});
+  head.addEventListener('click',e=>{const b=e.target.closest('[data-frange]');if(b){settings.factorRange=b.dataset.frange;save();renderFactorTrend();if(key==='bank')renderBankTrend()}if(e.target.closest('[data-fclose]'))openFactorTrend(key)});
   trendPanel.append(head);
   if(all.length<2){const p=document.createElement('p');p.className='small';p.textContent='資料讀取中或暫不可用。';trendPanel.append(p);return}
   const months=FACTOR_RANGES.find(r=>r[0]===range)[2];let rows=all;
   if(range==='ref'){rows=all.slice(-marketN())}else if(months<0){rows=all.slice(months)}else if(months){const d=new Date(all.at(-1)[0]+'T00:00:00Z');d.setUTCMonth(d.getUTCMonth()-months);const from=d.toISOString().slice(0,10);rows=all.filter(x=>x[0]>=from)}
+  if(key==='bank')rows=bankVisibleDays().map(row=>[row.date,row.value]);
   const mean=rows.reduce((total,row)=>total+row[1],0)/rows.length;
   const bands=key==='bank'?[]:key==='margin'?[{value:0,label:'零軸'}]:[{value:mean,label:'區間均值'}];
   const gauge=$('factorRail').querySelector('[data-trend="'+key+'"] .lookback-gauge');
@@ -97,8 +98,8 @@ function renderFactorTrend(){
     rows=rows.map(([date,value])=>[date,net+=value]);
   }
   const first=rows[0][1],last=rows.at(-1)[1];
-  trendPanel.append(chipChart({title:def.title,unit:def.unit,width:Math.max(280,Math.round(trendPanel.clientWidth||600)),height:innerWidth<600?315:420,dates:rows.map(x=>x[0]),kind:def.bars?'stack':'area',
-    series:def.bars?[{name:'增加',color:RISE,data:rows.map(x=>Math.max(0,x[1]))},{name:'減少',color:FALL,data:rows.map(x=>Math.min(0,x[1]))}]:[{name:def.title,color:def.color,data:rows.map(x=>x[1])}],bands,format:def.fmt,
+  trendPanel.append(chipChart({title:def.title,unit:def.unit,domain:key==='bank'?'cumulative':key==='margin'?'margin':null,syncGroup:key==='bank'?'bank':null,width:Math.max(280,Math.round(trendPanel.clientWidth||600)),height:innerWidth<600?315:420,dates:rows.map(x=>x[0]),kind:def.bars?'stack':'area',
+    series:def.bars?[{name:'每日增減',color:RISE,colorBySign:true,data:rows.map(x=>x[1])}]:[{name:def.title,color:def.color,data:rows.map(x=>x[1])}],bands,format:def.fmt,
     right:def.right?(()=>{const r=def.right();return{name:r.name,color:r.color,data:rows.map(x=>r.byDate.get(x[0])??null)}})():undefined,
     note:def.bars?'零軸為基準':key==='bank'?'從所選區間首日累計':`區間 ${last>=first?'+':''}${fmt((last/first-1)*100,1)}%`}));
 

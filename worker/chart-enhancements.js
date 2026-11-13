@@ -275,6 +275,8 @@ function buildCharts(){
   main.priceScale('right').applyOptions({scaleMargins:{top:.05,bottom:.05}});
   vol.priceScale('right').applyOptions({scaleMargins:{top:.12,bottom:0}});
   lwc={L,main,vol,oscCharts,s,guides:[],syncing:false,data:[],tech:null};
+  ChartReadouts.candles($('chart'),main,()=>lwc?.data||[]);
+  ChartReadouts.native($('volChart'),vol,date=>{const b=lwc.data.find(b=>b.date===date);return b?[{label:'成交量',value:fmt(b.volume/1000,1)+' 張'}]:[]});
   $('chart').dataset.axisFontSize=String(main.options().layout.fontSize);
   // Keep the volume and indicator panes aligned bar-for-bar with the price pane.
   const panes=[main,vol,macd,rsi,kd];
@@ -283,11 +285,11 @@ function buildCharts(){
     for(const to of visiblePanes())if(to!==from)to.timeScale().setVisibleLogicalRange(r);
     lwc.syncing=false;
   });
-  main.subscribeCrosshairMove(p=>{updateLegend(p?.logical);showTip(p)});
+  main.subscribeCrosshairMove(p=>updateLegend(p?.logical));
   main.subscribeClick(p=>window.chaoweiPins?.onChartClick(p));
   let waveMarkerFrame=0;
   main.timeScale().subscribeVisibleLogicalRangeChange(()=>{if(waveMarkerFrame)return;waveMarkerFrame=requestAnimationFrame(()=>{waveMarkerFrame=0;window.chaoweiWave?.refreshMarkers()})});
-  vol.subscribeCrosshairMove(p=>{updateLegend(p?.logical);showTip(p&&p.point?{...p,point:{x:p.point.x,y:$('chart').clientHeight-10}}:p)});
+  vol.subscribeCrosshairMove(p=>updateLegend(p?.logical));
   for(const k of OSC_KEYS)oscCharts[k].subscribeCrosshairMove(p=>updateLegend(p?.logical));
   return lwc;
 }
@@ -366,19 +368,6 @@ function updateLegend(logical){
   if(oscOn('macd'))$('legendMacd').innerHTML=item('MACD','')+item('DIF',fmt(t.dif[i],3),COLORS.dif)+item('DEA',fmt(t.dea[i],3),COLORS.dea)+item('柱',fmt(t.hist[i],3));
   if(oscOn('rsi'))$('legendRsi').innerHTML=item('RSI'+settings.ind.rsi,fmt(t.rsi[i],1),COLORS.rsi);
   if(oscOn('kd'))$('legendKd').innerHTML=item('KD','')+item('K'+settings.ind.kd,fmt(t.k[i],1),COLORS.k)+item('D'+settings.ind.kd,fmt(t.d[i],1),COLORS.d);
-}
-// Floating box at the cursor: the day's five price figures (open, high, low, close, change) and volume.
-function showTip(p){
-  const tip=$('chartTip'),box=$('chart');
-  if(!lwc||!p||!p.point||!Number.isFinite(p.logical)||p.point.x<0||p.point.y<0){tip.classList.add('hidden');return}
-  const all=lwc.data,i=Math.round(p.logical);if(i<0||i>=all.length){tip.classList.add('hidden');return}
-  const b=all[i],prev=all[i-1],chg=prev?b.close-prev.close:null,pct=prev?chg/prev.close*100:null,cls=chg>0?'up':chg<0?'down':'';
-  const sign=v=>v>0?'+':'';
-  tip.innerHTML=`<b>${b.date}${interval==='D'?'':` 起${ivName()} K`}</b><dl><dt>開盤</dt><dd>${fmt(b.open,2)}</dd><dt>最高</dt><dd>${fmt(b.high,2)}</dd><dt>最低</dt><dd>${fmt(b.low,2)}</dd><dt>收盤</dt><dd class="${cls}">${fmt(b.close,2)}</dd><dt>漲跌</dt><dd class="${cls}">${chg==null?'—':`${sign(chg)}${fmt(chg,2)}（${sign(chg)}${fmt(pct,2)}%）`}</dd><dt>成交量${volumeAdjusted()?'（換算）':''}</dt><dd>${lots(b.volume)}</dd></dl>`;
-  tip.classList.remove('hidden');
-  const w=tip.offsetWidth,h=tip.offsetHeight,W=box.clientWidth,H=box.clientHeight;
-  let x=p.point.x+16;if(x+w>W-60)x=p.point.x-w-16;
-  tip.style.left=Math.max(4,x)+'px';tip.style.top=Math.max(4,Math.min(H-h-4,p.point.y-h/2))+'px';
 }
 function lastCross(a,b){for(let i=a.length-1;i>0;i--){if(a[i]==null||b[i]==null||a[i-1]==null||b[i-1]==null)return null;const now=a[i]-b[i],before=a[i-1]-b[i-1];if(now>=0&&before<0)return{up:true,ago:a.length-1-i};if(now<0&&before>=0)return{up:false,ago:a.length-1-i}}return null}
 function renderTechRead(all,t){

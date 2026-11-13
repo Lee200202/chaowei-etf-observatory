@@ -73,7 +73,7 @@ function chipReading(date,preview=false){
   const node=$('chipContents'),grid=node.querySelector('.chip-grid');if(!grid)return;const obs=chipObservation(chipRows,date),row=obs?.row;
   const caption=node.querySelector('.chip-inspect-date');if(caption)caption.textContent=date+' · '+(preview?'圖表預覽；權重日期維持 '+$('chipDate').value:'選定資料日');
   grid.classList.add('rd-flow-chart');grid.dataset.date=date;grid.replaceChildren();const max=Math.max(1,...(obs?.values||[]).filter(Number.isFinite).map(Math.abs));
-  ['外陸資','投信','自營商','合計'].forEach((label,i)=>{const value=obs?.values[i],item=document.createElement('div');item.className='rd-flow-row';item.innerHTML='<span></span><div class="rd-flow-axis"><i></i></div><b></b>';item.firstChild.textContent=label;item.lastChild.textContent=Number.isFinite(value)?(value>0?'+':'')+fmt(value,1)+' 張':'未取得此日資料';item.lastChild.className=value>0?'up':value<0?'down':'';const bar=item.querySelector('i'),w=Number.isFinite(value)?Math.abs(value)/max*48:0;bar.style.width=w+'%';bar.style.left=(value>=0?50:50-w)+'%';bar.className=value>0?'rd-positive':'rd-negative';grid.append(item)});
+  ['外陸資','投信','自營商','合計'].forEach((label,i)=>{const value=obs?.values[i],item=document.createElement('div');item.className='rd-flow-row';item.innerHTML='<span></span><div class="rd-flow-axis"><i></i></div><b></b>';item.firstChild.textContent=label;item.lastChild.textContent=MarketReadout.state(value,'flow','張',1).label;item.lastChild.className=value>0?'up':value<0?'down':'';const bar=item.querySelector('i'),w=Number.isFinite(value)?Math.abs(value)/max*48:0;bar.style.width=w+'%';bar.style.left=(value>=0?50:50-w)+'%';bar.className=value>0?'rd-positive':'rd-negative';grid.append(item)});
   grid.setAttribute('role','img');grid.setAttribute('aria-label',date+' 三大法人每日買賣超，左賣超右買超，單位張');
   const heading=node.querySelector('.chip-summary');if(heading){heading.querySelector('strong').textContent=sharesToLots(row?.[5]);heading.querySelector('small').textContent=row?.[5]!=null&&row?.[6]>0?'約占已發行單位 '+fmt(row[5]/row[6]*100,2)+'%':'未取得此日持有資料'}
   const foot=node.querySelector('.chip-cumulative');if(foot){const past=chipRows.filter(r=>r[0]<=date).slice(-20);foot.textContent=obs?'近 '+past.length+' 個已取得交易日：外陸資累計 '+sharesToLots(past.reduce((v,r)=>v+r[1],0))+'。':'此日尚無已取得法人資料，不沿用其他日期的值。'}
@@ -110,7 +110,7 @@ function renderChip(){
   const lots=v=>Number.isFinite(v)?v/1000:null;
   node.append(chipChart({title:'三大法人每日買賣超',unit:'張',width,dates:history.map(r=>r[0]),kind:'stack',
     series:[{name:'外陸資',color:'#d74640',data:history.map(r=>lots(r[1]))},{name:'投信',color:'#18a49b',data:history.map(r=>lots(r[2]))},{name:'自營商',color:'#e3a052',data:history.map(r=>lots(r[3]))}],
-    line:{name:'合計',color:'var(--ink)',data:history.map(r=>lots(r[4]))},format:v=>fmt(v,1)+' 張',onInspect:(d,source)=>chipReading(source==='restore'?day:d,source!=='restore'&&d!==day)}));
+    line:{name:'合計',color:'var(--ink)',data:history.map(r=>lots(r[4]))},domain:'flow',format:v=>fmt(v,1)+' 張',onInspect:(d,source)=>chipReading(source==='restore'?day:d,source!=='restore'&&d!==day)}));
   // 融資: balance as an area, the ETF close (split-adjusted) as a dashed line on its own right-hand scale.
   const closeBy=new Map(bars.map(b=>[b.date,b.close])),margin=history.map(r=>Number.isFinite(r[7])?r[7]:null);
   const firstM=margin.find(Number.isFinite),lastM=[...margin].reverse().find(Number.isFinite);
@@ -123,7 +123,7 @@ function renderChip(){
 /* Small SVG trend chart drawn at the card's real pixel width, so labels stay legible on phones.
    kind 'stack': series stacked above/below zero plus an optional total line; kind 'area': one filled line
    plus an optional dashed comparison line on its own right-hand scale. Hover or tap shows that day. */
-function chipChart({title,unit,width,dates,kind,series,line,right,note,bands=[],format,periodLabel='個交易日',onInspect,height}){
+function chipChart({title,unit,width,dates,kind,series,line,right,note,bands=[],format,periodLabel='個交易日',onInspect,height,domain,syncGroup}){
   const NS='http://www.w3.org/2000/svg',wrap=document.createElement('div');wrap.className='chip-trend';
   const head=document.createElement('div');head.className='chip-trend-head';head.innerHTML=`<strong></strong><span></span>`;
   head.querySelector('strong').textContent=title;head.querySelector('span').textContent=`${dates[0]||'—'} 至 ${dates.at(-1)||'—'} · 單位：${unit}${note?' · '+note:''}`;wrap.append(head);
@@ -136,7 +136,7 @@ function chipChart({title,unit,width,dates,kind,series,line,right,note,bands=[],
   const span=hi-lo||1,y=v=>T+(hi-v)/span*(H-T-B),x=i=>L+step*(i+0.5);
   const svg=document.createElementNS(NS,'svg');svg.setAttribute('viewBox',`0 0 ${W} ${H}`);svg.setAttribute('width',W);svg.setAttribute('height',H);svg.setAttribute('role','img');svg.setAttribute('aria-label',`${title}，${dates.length} ${periodLabel}`);
   const el=(tag,attrs,parent=svg)=>{const e=document.createElementNS(NS,tag);for(const [k,v] of Object.entries(attrs))e.setAttribute(k,String(v));parent.append(e);return e};
-  const plot=el('g',{'data-tide-base':H-B});
+  const plot=el('g',{'data-tide-base':H-B}),barNodes=dates.map(()=>[]);
   const short=v=>Math.abs(v)>=10000?fmt(v/10000,1)+'萬':fmt(v,Math.abs(v)>=100?0:Math.abs(v)>=10?1:2);
   // Gridlines with labels: top, middle, bottom (and zero for stacked bars).
   const ticks=kind==='stack'?[hi,0,lo].filter((v,i,a)=>a.indexOf(v)===i):[hi,(hi+lo)/2,lo];
@@ -144,7 +144,7 @@ function chipChart({title,unit,width,dates,kind,series,line,right,note,bands=[],
   const drawn=[];for(const v of kind==='stack'?[0,hi,lo]:ticks){if(!ticks.includes(v))continue;el('line',{x1:L,x2:W-R,y1:y(v),y2:y(v),stroke:'var(--line)','stroke-dasharray':v===0?'':'3 4'});if(drawn.some(d=>Math.abs(d-y(v))<14))continue;drawn.push(y(v));const t=el('text',{x:L-6,y:y(v)+4,'text-anchor':'end',class:'chip-axis'});t.textContent=short(v)}
   if(kind==='stack'){
     const bw=Math.max(2,Math.min(18,step*0.68));
-    dates.forEach((_,i)=>{let p=0,q=0;for(const s of series){const v=s.data[i];if(!Number.isFinite(v)||!v)continue;const from=v>0?p:q,to=from+v;el('rect',{x:x(i)-bw/2,y:y(Math.max(from,to)),width:bw,height:Math.max(1,Math.abs(y(from)-y(to))),fill:s.color,rx:Math.min(2,bw/3)});if(v>0)p=to;else q=to}});
+    dates.forEach((_,i)=>{let p=0,q=0;for(const s of series){const v=s.data[i];if(!Number.isFinite(v)||!v)continue;const from=v>0?p:q,to=from+v;barNodes[i].push(el('rect',{x:x(i)-bw/2,y:y(Math.max(from,to)),width:bw,height:Math.max(1,Math.abs(y(from)-y(to))),fill:s.colorBySign?(v>0?'#f43f5e':'#10b981'):s.color,rx:Math.min(2,bw/3)}));if(v>0)p=to;else q=to}});
     if(line){const pts=line.data.map((v,i)=>Number.isFinite(v)?`${x(i)},${y(v)}`:null).filter(Boolean);if(pts.length>1)el('polyline',{points:pts.join(' '),fill:'none',stroke:line.color,'stroke-width':1.6,'stroke-linejoin':'round',opacity:.75},plot);
       if(n<=60)line.data.forEach((v,i)=>{if(Number.isFinite(v))el('circle',{cx:x(i),cy:y(v),r:2.2,fill:line.color},plot)})}
   }else{
@@ -171,14 +171,20 @@ function chipChart({title,unit,width,dates,kind,series,line,right,note,bands=[],
     t.textContent=!shown||m===1?dates[i].slice(0,4)+'/'+m:m+'月';shown++});
   const guide=el('line',{x1:0,x2:0,y1:T,y2:H-B,stroke:'var(--muted)','stroke-width':1,opacity:0});
   wrap.append(svg);
-  const legend=document.createElement('p');legend.className='chip-legend';
-  legend.innerHTML=[...series.map(s=>`<span style="color:${s.color}"> ${s.name}</span>`),line?`<span>━ ${line.name}</span>`:'',right?`<span style="color:${right.color}">┅ ${right.name}（右軸）</span>`:''].join('');wrap.append(legend);
-  const tip=document.createElement('p');tip.className='chip-tip';tip.setAttribute('aria-live','polite');wrap.append(tip);
-  const signed=v=>Number.isFinite(v)?(v>0?'+':'')+fmt(v,0):'—';
-  let inspected=n-1,pinned=false;svg.setAttribute('tabindex','0');const show=(i,source='initial')=>{inspected=i;tip.textContent=`${dates[i]}　`+[...series.map(s=>`${s.name} ${Number.isFinite(s.data[i])?valueText(s.data[i]):'—'}`),line?`${line.name} ${valueText(line.data[i])}`:'',right&&Number.isFinite(right.data[i])?`${right.name} ${fmt(right.data[i],2)}`:''].filter(Boolean).join(' · ');guide.setAttribute('x1',x(i));guide.setAttribute('x2',x(i));guide.setAttribute('opacity',.45);if(source!=='initial')onInspect?.(dates[i],source)};
-  const pick=e=>{const r=svg.getBoundingClientRect(),px=(e.clientX-r.left)*W/r.width;show(Math.max(0,Math.min(n-1,Math.floor((px-L)/step))),e.type==='pointerdown'?'select':'hover')};
-  svg.addEventListener('pointermove',pick);svg.addEventListener('pointerdown',e=>{pinned=e.pointerType==='touch';pick(e)});svg.addEventListener('pointerleave',()=>{if(!pinned){guide.setAttribute('opacity',0);show(n-1,'restore')}});svg.addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight','Home','End','Escape'].includes(e.key)){e.preventDefault();if(e.key==='Escape'){pinned=false;show(n-1,'restore')}else{pinned=true;show(e.key==='Home'?0:e.key==='End'?n-1:Math.max(0,Math.min(n-1,inspected+(e.key==='ArrowLeft'?-1:1))),'keyboard')}}});
-  show(n-1);return wrap;
+  if(!domain){
+    const legend=document.createElement('p');legend.className='chip-legend';
+    legend.textContent=[...series.map(s=>s.name),line?.name,right?right.name+'（右軸）':''].filter(Boolean).join(' · ');wrap.append(legend);
+  }
+  ChartReadouts.svg({host:wrap,plot:svg,dates,x,height:H-B,bars:barNodes,group:syncGroup,onInspect,read:i=>{
+    const rows=series.map(s=>{
+      const value=s.data[i],state=domain?MarketReadout.state(value,domain,unit,unit==='張'?1:2):null;
+      return{label:series.length>1?s.name:domain?'':s.name,value:state?.label||(Number.isFinite(value)?valueText(value):'未取得資料'),color:state?.color||s.color};
+    });
+    if(line){const state=domain?MarketReadout.state(line.data[i],domain,unit,1):null;rows.push({label:line.name,value:state?.label||valueText(line.data[i]),color:state?.color})}
+    if(right)rows.push({label:right.name,value:Number.isFinite(right.data[i])?fmt(right.data[i],2):'未取得資料',color:right.color});
+    return rows;
+  }});
+  return wrap;
 }
 // Charts are drawn at the card's pixel width; redraw when it changes.
 let chipWidth=0;window.addEventListener('resize',()=>{const w=$('chipContents').clientWidth;if(chipRows.length&&Math.abs(w-chipWidth)>40){chipWidth=w;clearTimeout(window.__chipResize);window.__chipResize=setTimeout(renderChip,150)}});

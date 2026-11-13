@@ -11,4 +11,14 @@
   choices.className='observation-choices';
   scenario.before(choices);choices.append(scenario,custom);
   TideMotion.boot();
+  const roots=[$('matrixCards'),$('factorRail'),document.querySelector('.etf-lookback-plot')].filter(Boolean);
+  for(const root of roots){
+    const bind=()=>ChartReadouts.bindMini(root);
+    new MutationObserver(bind).observe(root,{childList:true,subtree:true});
+    bind();
+    root.addEventListener('click',e=>{
+      const card=e.target.closest('.matrix-card,.factor');
+      if(card&&Date.now()<Number(card.dataset.scrubUntil||0)){e.preventDefault();e.stopImmediatePropagation()}
+    },true);
+  }
 })();

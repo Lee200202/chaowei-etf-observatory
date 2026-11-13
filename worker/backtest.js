@@ -273,6 +273,7 @@ function btCharts_(){
   top.timeScale().subscribeVisibleLogicalRangeChange(r=>{if(r&&Math.abs($('btEquity').clientWidth-width)<2)view={from:r.from,to:r.to}});
   new ResizeObserver(()=>{const w=$('btEquity').clientWidth;if(w<2||Math.abs(w-width)<2)return;
     requestAnimationFrame(()=>requestAnimationFrame(()=>{for(const c of [top,under]){if(view)c.timeScale().setVisibleLogicalRange(view);else c.timeScale().fitContent()}width=$('btEquity').clientWidth}))}).observe($('btEquity'));
+  ChartReadouts.equity($('btEquity'),top,()=>btResult);
   btCharts.resetView=()=>{view=null;width=$('btEquity').clientWidth};
   return btCharts;
 }
@@ -369,7 +370,7 @@ function btRenderTrades(){
   const maxAmount=Math.max(1,...list.map(t=>Math.abs(t.amount))),maxRet=Math.max(0.01,...list.filter(t=>t.ret!=null).map(t=>Math.abs(t.ret))),cls=v=>v>0?'up':v<0?'down':'';
   const rows=list.slice(-400).reverse();
   $('btTradesTitle').textContent='交易明細（'+r.trades.length+' 筆）';
-  $('btTrades').innerHTML=rows.length?`<table><thead><tr><th>日期</th><th>動作</th><th>價格</th><th>股數</th><th>金額</th><th>報酬</th><th>原因</th></tr></thead><tbody>${rows.map(t=>`<tr><td>${t.date}</td><td class="${t.type}">${t.type==='buy'?(t.kind==='dca'?'定投':t.kind==='drip'?'配息再投入':'買進'):'賣出'}</td><td>${fmt(t.price,2)}</td><td>${fmt(t.shares,0)}</td><td class="amount-cell"><span class="bt-bar" style="--w:${Math.abs(t.amount)/maxAmount*100}%"></span><span>${fmt(t.amount,0)}</span></td><td class="${cls(t.ret)}">${t.ret!=null?`<span class="bt-bar" style="--w:${Math.round(Math.abs(t.ret)/maxRet*100)}%"></span>${pctText(t.ret)}`:''}</td><td>${t.reason}</td></tr>`).join('')}</tbody></table>${list.length>400?'<p class="small">只顯示最近 400 筆；完整明細請下載 CSV。</p>':''}`:'<p class="small">沒有符合的交易。</p>';
+  $('btTrades').innerHTML=rows.length?`<table><thead><tr><th>日期</th><th>動作</th><th>價格</th><th>股數</th><th>金額</th><th>報酬</th><th>原因</th></tr></thead><tbody>${rows.map(t=>`<tr><td>${t.date}</td><td class="${t.type}">${t.type==='buy'?(t.kind==='dca'?'定投':t.kind==='drip'?'配息再投入':'買進'):'賣出'}</td><td>${fmt(t.price,2)}</td><td>${fmt(t.shares,0)}</td><td class="amount-cell"><span class="bt-bar" style="--w:${Math.abs(t.amount)/maxAmount*100}%"></span><span>${fmt(t.amount,0)}</span></td><td class="${cls(t.ret)}">${t.ret!=null?`<span class="bt-bar" style="--w:${Math.round(Math.abs(t.ret)/maxRet*100)}%"></span>${MarketReadout.state(t.ret*100,'pnl','%',1).label}`:''}</td><td>${t.reason}</td></tr>`).join('')}</tbody></table>${list.length>400?'<p class="small">只顯示最近 400 筆；完整明細請下載 CSV。</p>':''}`:'<p class="small">沒有符合的交易。</p>';
 }
 /* Q03: the same rules under the other fill model, so the cost of waiting for the next open (plus slippage) is visible.
    T+1 open is the default; the comparison is the ideal same-day close without slippage. */

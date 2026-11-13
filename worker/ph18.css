@@ -142,3 +142,42 @@ body.subtraction-site #top .osc-pane .osc-chart{height:230px}
  body.subtraction-site #top :is(#matrixCards,#factorRail)>:nth-child(7n+4) :is(.matrix-price,.factor-value){font-size:1.55rem}
  body.subtraction-site #top :is(#matrixCards,#factorRail) svg.lookback-plot{height:calc(var(--tide-chart-height,80px) + 48px)}
 }
+
+/* Each chart keeps its reading beside the inspected data and at the top. */
+.readout-host{position:relative;min-width:0}
+.chart-live-readout{
+  position:sticky;top:0;z-index:20;display:flex;flex-wrap:wrap;align-items:baseline;gap:5px 16px;
+  padding:10px 12px;margin-bottom:8px;border:1px solid var(--line);border-radius:14px;
+  background:var(--paper);color:var(--ink);font-size:14px;line-height:1.6;font-variant-numeric:tabular-nums;
+}
+.chart-live-readout strong{font-size:inherit;white-space:nowrap}
+.chart-live-readout span{overflow-wrap:anywhere}
+.chart-floating-readout{
+  position:absolute;z-index:25;pointer-events:none;max-width:280px;padding:12px 14px;
+  border:1px solid var(--line);border-radius:16px;background:var(--paper);color:var(--ink);
+  box-shadow:0 8px 22px #0002;font-size:14px;line-height:1.65;font-variant-numeric:tabular-nums;
+}
+.chart-floating-readout strong,.chart-floating-readout span{display:block;font-size:inherit}
+.native-readout-host>.chart-live-readout{position:absolute;top:6px;left:6px;right:85px;margin:0;pointer-events:none}
+.native-readout-host>.chart-live-readout:empty{display:none}
+.mini-live-readout{position:absolute;top:0;left:0;right:0;pointer-events:none;font-size:13px;padding:7px 9px;gap:3px 8px;margin:0}
+.mini-live-readout[hidden],.chart-floating-readout[hidden]{display:none}
+.readout-crosshair{stroke:var(--ink);stroke-width:1;stroke-dasharray:4 4;pointer-events:none;vector-effect:non-scaling-stroke}
+.readout-active-bar{stroke:var(--ink);stroke-width:2;filter:brightness(1.2)}
+.chip-trend svg,.lookback-plot{touch-action:pan-y;user-select:none}
+.chip-trend svg:focus-visible,.lookback-plot:focus-visible{outline:2px solid var(--teal);outline-offset:3px}
+.quant-launcher{width:auto;min-width:64px;padding:0 16px;border-radius:999px;font-size:14px;font-weight:700}
+.quant-close{width:auto;min-width:60px;font-size:14px}
+@media(min-width:1000px){
+  :is(#matrixCards,#factorRail)>:nth-child(7n+1){--tide-span:8;--tide-height:390px}
+  :is(#matrixCards,#factorRail)>:nth-child(7n+2){--tide-span:4;--tide-height:280px}
+  :is(#matrixCards,#factorRail)>:nth-child(7n+3){--tide-span:5;--tide-height:310px}
+  :is(#matrixCards,#factorRail)>:nth-child(7n+4){--tide-span:7;--tide-height:360px}
+  :is(#matrixCards,#factorRail)>:nth-child(7n+5){--tide-span:3;--tide-height:280px}
+  :is(#matrixCards,#factorRail)>:nth-child(7n+6){--tide-span:6;--tide-height:330px}
+  :is(#matrixCards,#factorRail)>:nth-child(7n+7){--tide-span:3;--tide-height:280px}
+}
+@media(max-width:600px){
+  .chart-live-readout,.chart-floating-readout{font-size:13px}
+  .native-readout-host>.chart-live-readout{right:70px}
+}

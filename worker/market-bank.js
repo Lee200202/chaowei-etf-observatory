@@ -10,15 +10,21 @@ function computeBank(){
 }
 function renderBankTrend(){
   bankPanel.replaceChildren();
-  const range=settings.bankRange,head=document.createElement('div');head.className='factor-trend-head';
-  const options=[['ref','參考筆數'],[20,'20 日'],[60,'60 日'],[120,'120 日'],[0,'全部']];
-  head.innerHTML='<h4>八大官股買賣超 · 全市場</h4><div class="segment" role="group" aria-label="官股趨勢期間">'+options.map(([n,label])=>'<button type="button" data-bank-range="'+n+'" aria-pressed="'+(range===n)+'" class="'+(range===n?'active':'')+'">'+label+'</button>').join('')+'</div>';
-  head.addEventListener('click',e=>{const b=e.target.closest('[data-bank-range]');if(b){settings.bankRange=b.dataset.bankRange==='ref'?'ref':Number(b.dataset.bankRange);save();renderBankTrend()}});
+  const head=document.createElement('div');head.className='factor-trend-head';
+  head.innerHTML='<h4>八大行庫每日淨額</h4><p class="small">與上方累計圖共用日期範圍及游標。</p>';
   bankPanel.append(head);
-  const n=range==='ref'?marketN():range,a=n?bankDays.slice(-n):bankDays;
+  const a=bankVisibleDays();
   if(!a.length){bankPanel.append(document.createTextNode('正在讀取 HiStock 全市場資料…'));return}
-  bankPanel.append(chipChart({title:'HiStock 八大行庫每日淨額',unit:'億元',width:Math.max(280,bankPanel.clientWidth||600),height:innerWidth<600?290:390,dates:a.map(x=>x.date),kind:'stack',series:[{name:'買超',color:RISE,data:a.map(x=>Math.max(0,x.value))},{name:'賣超',color:FALL,data:a.map(x=>Math.min(0,x.value))}],format:v=>signNum(v,2)+' 億元'}));
+  bankPanel.append(chipChart({title:'HiStock 八大行庫每日淨額',unit:'億元',domain:'flow',syncGroup:'bank',width:Math.max(280,bankPanel.clientWidth||600),height:innerWidth<600?290:390,dates:a.map(x=>x.date),kind:'stack',series:[{name:'每日淨額',color:RISE,colorBySign:true,data:a.map(x=>x.value)}],format:v=>signNum(v,2)+' 億元'}));
   const p=document.createElement('p');p.className='small';p.textContent=`HiStock 同一來源，共 ${bankDays.length} 日；正值買超、負值賣超，零軸為中性。平日約 23:15 單次更新，失敗保留原資料。這是全市場公股券商交易淨額，不是 ETF 或政府持有庫存。`;bankPanel.append(p);
+}
+function bankVisibleDays(){
+  const range=FACTOR_RANGES.find(row=>row[0]===settings.factorRange)||FACTOR_RANGES[0],months=range[2];
+  if(range[0]==='ref')return bankDays.slice(-marketN());
+  if(months<0)return bankDays.slice(months);
+  if(!months||!bankDays.length)return bankDays;
+  const d=new Date(bankDays.at(-1).date+'T00:00:00Z');d.setUTCMonth(d.getUTCMonth()-months);
+  return bankDays.filter(row=>row.date>=d.toISOString().slice(0,10));
 }
 async function loadBanks(){
   try{const r=await fetch('/api/bank'),d=await r.json();if(r.ok&&d.rows?.length)bankDays=d.rows.map(x=>({date:x[0],value:x[1],index:x[2]}))}catch{}
