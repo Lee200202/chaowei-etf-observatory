@@ -744,6 +744,11 @@ function buildCharts(){
   lwc={L,main,vol,oscCharts,s,guides:[],syncing:false,data:[],tech:null};
   ChartReadouts.candles($('chart'),main,()=>lwc?.data||[]);
   ChartReadouts.native($('volChart'),vol,date=>{const b=lwc.data.find(b=>b.date===date);return b?[{label:'成交量',value:fmt(b.volume/1000,1)+' 張'}]:[]});
+  for(const k of OSC_KEYS)ChartReadouts.native($('chart'+OSC_ID[k]),oscCharts[k],date=>{
+    const i=lwc.data.findIndex(b=>b.date===date),t=lwc.tech;if(i<0||!t)return[];
+    const fields=k==='macd'?[['DIF',t.dif],['DEA',t.dea],['柱狀',t.hist]]:k==='rsi'?[['RSI',t.rsi]]:[['K',t.k],['D',t.d]];
+    return fields.map(([label,values])=>({label,value:Number.isFinite(values[i])?fmt(values[i],k==='macd'?3:2):'資料不足'}));
+  });
   $('chart').dataset.axisFontSize=String(main.options().layout.fontSize);
   // Keep the volume and indicator panes aligned bar-for-bar with the price pane.
   const panes=[main,vol,macd,rsi,kd];
@@ -2558,6 +2563,10 @@ function btCharts_(){
   new ResizeObserver(()=>{const w=$('btEquity').clientWidth;if(w<2||Math.abs(w-width)<2)return;
     requestAnimationFrame(()=>requestAnimationFrame(()=>{for(const c of [top,under]){if(view)c.timeScale().setVisibleLogicalRange(view);else c.timeScale().fitContent()}width=$('btEquity').clientWidth}))}).observe($('btEquity'));
   ChartReadouts.equity($('btEquity'),top,()=>btResult);
+  ChartReadouts.native($('btUnder'),under,date=>{
+    const r=btResult,i=r?.series.findIndex(p=>p.time===date),p=r?.series[i];if(!p)return[];
+    return[{label:'策略回落',value:fmt(p.dd*100,2)+'%'},{label:'定投回落',value:fmt(r.dca.series[i].dd*100,2)+'%'},{label:'持股比例',value:fmt(p.exposure*100,1)+'%'}];
+  });
   btCharts.resetView=()=>{view=null;width=$('btEquity').clientWidth};
   return btCharts;
 }

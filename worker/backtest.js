@@ -274,6 +274,10 @@ function btCharts_(){
   new ResizeObserver(()=>{const w=$('btEquity').clientWidth;if(w<2||Math.abs(w-width)<2)return;
     requestAnimationFrame(()=>requestAnimationFrame(()=>{for(const c of [top,under]){if(view)c.timeScale().setVisibleLogicalRange(view);else c.timeScale().fitContent()}width=$('btEquity').clientWidth}))}).observe($('btEquity'));
   ChartReadouts.equity($('btEquity'),top,()=>btResult);
+  ChartReadouts.native($('btUnder'),under,date=>{
+    const r=btResult,i=r?.series.findIndex(p=>p.time===date),p=r?.series[i];if(!p)return[];
+    return[{label:'策略回落',value:fmt(p.dd*100,2)+'%'},{label:'定投回落',value:fmt(r.dca.series[i].dd*100,2)+'%'},{label:'持股比例',value:fmt(p.exposure*100,1)+'%'}];
+  });
   btCharts.resetView=()=>{view=null;width=$('btEquity').clientWidth};
   return btCharts;
 }
