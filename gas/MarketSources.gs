@@ -39,22 +39,50 @@ function yahooMarketQuote_(symbol,currency,unit){
 // Yahoo offers delayed five-minute bars. Use an opening bar only if it belongs to
 // the quote's session and is inside its first 15 minutes (including the first published VIX value).
 function yahooVixSession_(row){
-  const meta=row?.meta,period=meta?.currentTradingPeriod?.regular;
+  const meta=row?.meta;
   const last=meta?.regularMarketTime,price=meta?.regularMarketPrice;
+  // Yahoo advances currentTradingPeriod before the first print of the next session.
+  // Match the quote's timestamp against the returned sessions, including yesterday.
+  const periods=[meta?.currentTradingPeriod?.regular].concat((meta?.tradingPeriods||[]).flat());
+  const period=periods.find(p=>p&&last>=p.start&&last<=p.end+60);
   if(meta?.symbol!=='^VIX'||meta.currency!=='USD'||!(price>0)||!(period?.start>0)||
     !(period.end>period.start)||!(last>=period.start&&last<=period.end+60))return null;
   const opens=row.indicators?.quote?.[0]?.open||[],times=row.timestamp||[];
   const first=times.findIndex((time,i)=>time>=period.start&&time<=period.start+900&&time<=last&&opens[i]>0);
-  if(first<0)return null;
   return {symbol:'^VIX',date:Utilities.formatDate(new Date(last*1000),'America/New_York','yyyy-MM-dd'),
-    open:Math.round(opens[first]*100)/100,openTime:new Date(times[first]*1000).toISOString(),
+    open:first<0?null:Math.round(opens[first]*100)/100,openTime:first<0?null:new Date(times[first]*1000).toISOString(),
     price,time:new Date(last*1000).toISOString(),endTime:new Date(period.end*1000).toISOString(),
     delayed:true,source:'Yahoo Finance ^VIX'};
 }
 function vixQuote_(){
-  const response=UrlFetchApp.fetch('https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?range=1d&interval=5m',{muteHttpExceptions:true});
+  const response=UrlFetchApp.fetch('https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?range=5d&interval=5m',{muteHttpExceptions:true});
   if(response.getResponseCode()!==200)throw Error('HTTP '+response.getResponseCode());
   return yahooVixSession_(JSON.parse(response.getContentText('UTF-8')).chart?.result?.[0]);
+}
+function getVixMarket(){
+  const cache=CacheService.getScriptCache(),key='vix-market-v1',hit=cache.get(key);
+  if(hit)return JSON.parse(hit);
+  const out={checkedAt:new Date().toISOString(),quote:null,days:[],errors:[]};
+  try{out.quote=vixQuote_()}catch(e){out.errors.push('Yahoo VIX 報價：'+e.message)}
+  try{
+    const r=UrlFetchApp.fetch('https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?range=1mo&interval=1d',{muteHttpExceptions:true});
+    if(r.getResponseCode()!==200)throw Error('HTTP '+r.getResponseCode());
+    out.days=yahooVixDaily_(JSON.parse(r.getContentText('UTF-8')).chart?.result?.[0],Date.now());
+  }catch(e){out.errors.push('Yahoo VIX 收盤：'+e.message)}
+  if(out.quote||out.days.length)cache.put(key,JSON.stringify(out),240);
+  return out;
+}
+function yahooVixDaily_(row,now){
+  if(row?.meta?.symbol!=='^VIX'||row.meta.currency!=='USD')throw Error('VIX 日線格式異常');
+  const today=Utilities.formatDate(new Date(now),'America/New_York','yyyy-MM-dd');
+  const minute=Utilities.formatDate(new Date(now),'America/New_York','HH:mm');
+  const closes=row.indicators?.quote?.[0]?.close||[],seen={},days=[];
+  (row.timestamp||[]).forEach((t,i)=>{
+    const value=closes[i],date=Utilities.formatDate(new Date(t*1000),'America/New_York','yyyy-MM-dd');
+    if(!Number.isFinite(value)||value<=0||date>today||date===today&&minute<'16:15'||seen[date])return;
+    seen[date]=true;days.push({date,value:Math.round(value*100)/100,provisional:true});
+  });
+  return days.sort((a,b)=>a.date.localeCompare(b.date));
 }
 function getBankHistory(){
   const cache=CacheService.getScriptCache(),hit=cache.get('histock-bank-public-v1');if(hit)return JSON.parse(hit);

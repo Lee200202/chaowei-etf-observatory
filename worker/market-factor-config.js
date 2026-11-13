@@ -4,7 +4,7 @@ let bankDays=[],bankPosition=null,vixDays=[];
 // with the other live factors), otherwise the last daily close (Cboe, or a finished Yahoo session until Cboe arrives).
 function vixLatest(){
   const d=vixDays.at(-1),q=typeof live!=='undefined'?live?.vixQuote:null,at=Date.parse(q?.time),end=Date.parse(q?.endTime),now=Date.now();
-  if(q?.symbol==='^VIX'&&q.price>0&&/^\d{4}-\d{2}-\d{2}$/.test(q.date||'')&&(!d||q.date>d.date)&&Number.isFinite(at)&&now<end&&now-at<45*60000)return{date:q.date,value:q.price,time:q.time,intraday:true};
+  if(q?.symbol==='^VIX'&&q.price>0&&/^\d{4}-\d{2}-\d{2}$/.test(q.date||'')&&(!d||q.date>d.date)&&Number.isFinite(at)&&at<=now+60000&&now<end&&now-at<45*60000)return{date:q.date,value:q.price,time:q.time,intraday:true};
   return d||null;
 }
 settings.marketWindow=Math.max(20,Math.min(2400,Math.round(Number(settings.marketWindow)||120)));

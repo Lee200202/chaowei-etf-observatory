@@ -23,6 +23,15 @@
   makeDirection('vix',vixTile,$('vixScore'));
   const vixDate = vixTile.querySelector('.vix-frequency');
   const vixSession=vixTile.querySelector('.vix-session');
+  const vixStatus=document.createElement('p');vixStatus.id='vixDataStatus';vixStatus.className='small vix-data-status';
+  vixTile.append(vixStatus);
+  let vixCheckedAt=null,vixLoading=false;
+  function vixState(){
+    const last=vixLatest(),old=last&&Date.now()-Date.parse(last.date+'T21:15:00Z')>96*3600000;
+    vixStatus.textContent=last?(old?'資料落後，正在核對 · ':last.intraday?'盤中延遲行情 · ':'最新收盤 · ')+
+      '美東 '+last.date+(vixCheckedAt?' · 檢查 '+new Date(vixCheckedAt).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit',hour12:false}):''):'正在核對 VIX';
+    vixStatus.dataset.date=last?.date||'';vixStatus.dataset.checkedAt=vixCheckedAt||'';vixStatus.dataset.stale=String(!!old);
+  }
   const sessionDetail=document.createElement('p');sessionDetail.className='small vix-session-detail';
   modal.querySelector('.market-dialog-source').after(sessionDetail);
   function renderVixSession() {
@@ -31,7 +40,7 @@
     const usable=q?.symbol==='^VIX'&&q.open>0&&q.price>0&&Number.isFinite(at)&&now-at<72*3600000&&at<=now+60000;
     vixSession.hidden=!usable||vixDays.at(-1)?.date===q?.date&&Date.now()>=Date.parse(q?.endTime);
     sessionDetail.hidden=!usable||factorTrendKey!=='vix';
-    if(!usable)return;
+    if(!usable){sessionDetail.textContent='';vixSession.textContent='';return;}
     const localTime=new Intl.DateTimeFormat('en-GB',{timeZone:'America/New_York',hour:'2-digit',minute:'2-digit'});
     const provisional=!!daily&&q.date>daily.date&&now<Date.parse(q.endTime)&&now-at<45*60000;
     const change=q.price-q.open;
@@ -51,29 +60,41 @@
     vixDays=mergeDays(vixDays,[{date:q.date,value:Math.round(q.price*100)/100,provisional:true}]);return true;
   }
   function labelLatest(){const last=vixDays.at(-1);if(last)vixDate.textContent=fmt(last.value,2)+' · '+last.date+' 收盤'+(last.provisional?'（Yahoo 延遲，待 Cboe 確認）':'（Cboe）')}
+  function acceptVixDays(rows){
+    const valid=(rows||[]).filter(row=>/^\d{4}-\d{2}-\d{2}$/.test(row.date)&&Number.isFinite(row.value)&&row.value>0);
+    // An official close replaces a provisional one, never the other way around.
+    const official=new Set(vixDays.filter(row=>!row.provisional).map(row=>row.date));
+    vixDays=mergeDays(vixDays,valid.filter(row=>!row.provisional||!official.has(row.date)));
+  }
+  function paintVix(){
+    absorbSession();labelLatest();refreshDirectionViews();updateWeights();vixState();
+    document.dispatchEvent(new Event('vix-updated'));
+    if(factorTrendKey==='vix')renderFactorTrend();
+  }
   const previousLive=applyLive;
   applyLive=function(...args){const result=previousLive(...args);
-    const absorbed=absorbSession();refreshDirectionViews();updateWeights();document.dispatchEvent(new Event('vix-updated'));if(absorbed&&factorTrendKey==='vix')renderFactorTrend();
-    labelLatest();renderVixSession();return result};
+    acceptVixDays(live?.vixDays);if(live?.vixCheckedAt)vixCheckedAt=live.vixCheckedAt;
+    paintVix();renderVixSession();return result};
   const previousDirectionRefresh=refreshDirectionViews;
   refreshDirectionViews=function(){previousDirectionRefresh();renderVixSession()};
+  async function loadVixSnapshot(){
+    const response=await fetch('/api/vix'),data=await response.json();
+    if(!response.ok||!Array.isArray(data.days)||!data.days.length)throw Error('無 VIX 日資料');
+    acceptVixDays(data.days);paintVix();
+  }
   async function loadVix() {
-    try {
-      const response = await fetch('/api/vix');
-      const data = await response.json();
-      if (!response.ok || !Array.isArray(data.days) || !data.days.length) throw Error('無 VIX 日資料');
-      vixDays = mergeDays(vixDays, data.days.filter(row => /^\d{4}-\d{2}-\d{2}$/.test(row.date) && row.value > 0));
-      const last = vixDays.at(-1);
-      if (!last) return;
-      absorbSession();labelLatest();
-      refreshDirectionViews();
-      updateWeights();
-      document.dispatchEvent(new Event('vix-updated'));
-      if (factorTrendKey === 'vix') renderFactorTrend();
-    } catch {
-      document.dispatchEvent(new Event('vix-updated'));
-      if (!vixDays.length) vixDate.textContent = 'Cboe 日資料暫不可用';
-    }
+    if(vixLoading)return;
+    vixLoading=true;
+    const snapshot=loadVixSnapshot();
+    const current=(async()=>{
+      if(!window.CHAOWEI_VIX)return;
+      const data=await window.CHAOWEI_VIX();if(data.error)throw Error(data.error);
+      if(data.quote){live=live||{};live.vixQuote=data.quote;}
+      acceptVixDays(data.days);if(data.quote||data.days?.length)vixCheckedAt=data.checkedAt;
+      paintVix();renderVixSession();
+    })();
+    await Promise.allSettled([snapshot,current]);vixLoading=false;vixState();
+    if(!vixDays.length)vixDate.textContent='VIX 資料暫不可用，五分鐘後重新核對';
   }
   FACTOR_TRENDS.vix = {title:'恐慌指數 VIX', unit:'點', color:'#8563af', data:()=>vixDays.map(row=>[row.date,row.value]), fmt:value=>fmt(value,2)+' 點'};
   FACTOR_TRENDS.bank = {title:'八大官股 · 區間累計淨額', unit:'億元', color:'#16867d', data:()=>bankDays.map(row=>[row.date,row.value]), fmt:value=>fmt(value,2)+' 億元'};
@@ -148,6 +169,9 @@
   loadVix();
   // Same five-minute cadence as the other market data; the VIX also feeds the ETF page's weighted score.
   setInterval(() => { if (!document.hidden) loadVix(); }, 5*60000);
+  window.addEventListener('chaowei-snapshot-updated',e=>{if(e.detail.path==='data/vix.json')loadVixSnapshot().catch(()=>{})});
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadVix()});
+  window.addEventListener('pageshow',()=>loadVix());
 })();
 
 /* Use the current catalogue and daily radar for typeahead, and the shared picker to switch ETF. */

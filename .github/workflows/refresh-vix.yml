@@ -1,0 +1,46 @@
+name: Refresh and verify VIX
+
+on:
+  schedule:
+    # A lightweight independent refresh also covers weekends and delayed US closes.
+    - cron: '7 */4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Fetch official VIX and reject stale data
+        run: |
+          node scripts/update-vix.mjs
+          cp pages-data/vix.json docs/data/vix.json
+      - name: Save the verified series
+        run: |
+          git add pages-data/vix.json docs/data/vix.json
+          if git diff --cached --quiet; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Refresh verified Cboe VIX history'
+          git push
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+      - id: deployment
+        uses: actions/deploy-pages@v4

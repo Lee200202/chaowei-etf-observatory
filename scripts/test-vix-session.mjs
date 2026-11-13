@@ -23,6 +23,16 @@ assert.deepEqual(latest(days,open,Date.parse('2026-11-11T15:04:00Z')),{date:'202
 assert.equal(latest(days,open,Date.parse('2026-11-11T21:30:00Z')).date,'2026-11-09','after the close the daily row is used');
 assert.equal(latest(days,open,Date.parse('2026-11-11T16:00:00Z')).date,'2026-11-09','a quote older than 45 minutes is not used');
 assert.equal(latest([],null,Date.now()),null);
+assert.equal(latest(days,{...open,time:'2026-11-11T16:00:00Z'},Date.parse('2026-11-11T15:00:00Z')).date,'2026-11-09','a future timestamp cannot become a live quote');
+// Recover every missing daily date while keeping an official value over a delayed provisional close.
+const a=src.indexOf('  function acceptVixDays('),z=src.indexOf('\n  function paintVix',a);
+assert.ok(a>0&&z>a);
+const recover=new Function('vixDays','rows','mergeDays',src.slice(a,z)+';acceptVixDays(rows);return vixDays;');
+const recovered=recover([{date:'2026-11-10',value:19.46}],[{date:'2026-11-10',value:99,provisional:true},{date:'2026-11-11',value:17.49,provisional:true},{date:'2026-11-12',value:18.7,provisional:true}],mergeDays);
+assert.deepEqual(recovered.map(d=>d.date),['2026-11-10','2026-11-11','2026-11-12']);
+assert.equal(recovered[0].value,19.46);
+const confirmed=recover(recovered,[{date:'2026-11-11',value:17.48}],mergeDays);
+assert.equal(confirmed[1].value,17.48);assert.equal(confirmed[1].provisional,undefined);
 // CI runs again after the US close.
 assert.match(fs.readFileSync('.github/workflows/deploy-pages.yml','utf8'),/cron: '30 22 \* \* 1-5'/);
 console.log('PASS VIX session: live quote scores while the session is open and fresh, finished session added as provisional close, open or older sessions ignored, Cboe replaces it, post-close CI schedule present.');

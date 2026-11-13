@@ -28,7 +28,7 @@ const vixRow={meta:{symbol:'^VIX',currency:'USD',regularMarketPrice:28.18,regula
   currentTradingPeriod:{regular:{start:vixStart,end:vixEnd}}},
   timestamp:[vixStart-86400,vixStart+900,vixEnd],indicators:{quote:[{open:[19.2,17.139999,28.18]}]}};
 box.UrlFetchApp.fetch=url=>{
-  assert.match(url,/%5EVIX.*range=1d&interval=5m/);
+  assert.match(url,/%5EVIX.*range=5d&interval=5m/);
   return {getResponseCode:()=>200,getContentText:()=>JSON.stringify({chart:{result:[vixRow]}})};
 };
 const vix=box.vixQuote_();
@@ -37,9 +37,31 @@ assert.equal(vix.openTime,'2026-11-05T08:15:00.000Z');
 assert.equal(vix.date,'2026-11-05');
 assert.equal(vix.price,28.18);
 assert.equal(vix.delayed,true);
-assert.equal(box.yahooVixSession_({...vixRow,timestamp:[vixStart-86400,vixStart+1200,vixEnd]}),null);
+assert.equal(box.yahooVixSession_({...vixRow,timestamp:[vixStart-86400,vixStart+1200,vixEnd]}).open,null);
 assert.equal(box.yahooVixSession_({...vixRow,meta:{...vixRow.meta,regularMarketTime:vixStart-1}}),null);
-console.log('VIX opening point: first same-session bar, previous session and missing opening rejected.');
+const rolled={...vixRow,meta:{...vixRow.meta,currentTradingPeriod:{regular:{start:vixStart+86400,end:vixEnd+86400}},tradingPeriods:[[{start:vixStart,end:vixEnd}]]}};
+assert.equal(box.yahooVixSession_(rolled).date,'2026-11-05','previous close survives metadata rollover');
+assert.equal(box.yahooVixSession_(rolled).open,17.14);
+assert.equal(box.yahooVixSession_({...vixRow,meta:{...vixRow.meta,symbol:'VX=F'}}),null,'VIX futures cannot replace spot VIX');
+const dailyVix={meta:{symbol:'^VIX',currency:'USD'},timestamp:[at('2026-11-05',14,30),at('2026-11-06',14,30)],indicators:{quote:[{close:[28.18,25.64]}]}};
+assert.deepEqual(JSON.parse(JSON.stringify(box.yahooVixDaily_(dailyVix,at('2026-11-06',20)*1000))),[{date:'2026-11-05',value:28.18,provisional:true}]);
+assert.equal(box.yahooVixDaily_(dailyVix,at('2026-11-06',22)*1000).at(-1).date,'2026-11-06');
+let vixRequests=0;
+box.UrlFetchApp.fetch=url=>{
+  vixRequests++;
+  return{getResponseCode:()=>200,getContentText:()=>JSON.stringify({chart:{result:[url.includes('interval=1d')?dailyVix:rolled]}})};
+};
+const bundle=box.getVixMarket();
+assert.equal(bundle.quote.date,'2026-11-05');
+assert.equal(bundle.days.length,2);
+assert.equal(bundle.errors.length,0);
+assert.ok(Number.isFinite(Date.parse(bundle.checkedAt)));
+box.getVixMarket();
+assert.equal(vixRequests,2,'visitors share the server cache');
+cache.delete('vix-market-v1');
+box.getVixMarket();
+assert.equal(vixRequests,4,'a later refresh refetches both public endpoints');
+console.log('VIX API: five-day session selection survives midnight metadata rollover; missing opening preserves the quote; daily recovery excludes unfinished bars and other symbols.');
 const table=total=>'<option value="20260911" selected>'+[12,13,14,15].map((n,i)=>`<tr><td>${n}</td><td>bucket</td><td>${i+1}</td><td>${(i+1)*100000}</td><td>1</td></tr>`).join('')+`<tr><td>${total}</td><td>合 計</td><td>20</td><td>10000000</td><td>100</td></tr>`;
 for(const total of[16,17]){const r=box.tdccParse_(table(total),'0050','20260911');assert.equal(r[0],'2026-09-11');assert.equal(r[2],10);assert.equal(r[3],4);assert.equal(r[4],10);assert.equal(r[5],4)}
 assert.throws(()=>box.tdccParse_(table(17),'0050','20260918'),/日期不符/);

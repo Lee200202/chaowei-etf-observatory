@@ -21,6 +21,9 @@ const previous = await readFile(path, 'utf8').then(JSON.parse, error => {
 });
 const latest = days.at(-1).date;
 if (previous?.latest > latest) throw Error('Cboe VIX 歷史版本較舊');
+if(Date.now()-Date.parse(latest+'T21:15:00Z')>96*3600000){
+  throw Error('VIX 日資料超過四天未更新：'+latest);
+}
 if (JSON.stringify(previous?.days) !== JSON.stringify(days)) {
   await writeFile(path, JSON.stringify({ source, latest, frequency: 'daily', days }) + '\n');
 }

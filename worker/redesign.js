@@ -100,8 +100,9 @@
       const previous=daily.findLast(row=>row[0]<last.date)?.[1];
       const dir=flow?Math.sign(last.value):Number.isFinite(previous)?Math.sign(last.value-previous):0;
       const plotKey=[marketN(),daily.length,daily.at(-1)?.join(':'),key==='volume'&&last.partialVolume].join('|');
+      const displayTime=key==='vix'&&last.time?' '+new Date(last.time).toLocaleTimeString('en-GB',{timeZone:'America/New_York',hour:'2-digit',minute:'2-digit'}):last.time?' '+last.time.slice(0,5):'';
       graph.innerHTML='<div class="factor-headline"><strong class="factor-value'+(dir>0?' up':dir<0?' down':'')+'">'+format(last.value)+'</strong><span class="rd-source-date">'+last.date+
-        (last.time?' '+last.time.slice(0,5):'')+(last.quote?' · Yahoo 延遲報價':'')+(last.partialVolume?' · 盤中累計':'')+'</span>'+
+        displayTime+(key==='vix'?' 美東':'')+(last.quote?' · Yahoo 延遲報價':'')+(last.partialVolume?' · 盤中累計':'')+'</span>'+
         lookbackGauge(rank,key==='vix')+'</div>';
       const plot=previousPlot?.dataset.key===plotKey?previousPlot:make('div','lookback-factor-chart');
       if(plot!==previousPlot){plot.dataset.key=plotKey;plot.innerHTML=renderLookbackTrend(daily,marketN(),format,key==='volume'&&last.partialVolume?'完整交易日':'')}
