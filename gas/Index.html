@@ -1031,6 +1031,26 @@ body.subtraction-site #top .osc-pane .osc-chart{height:230px}
   .chart-live-readout,.chart-floating-readout{font-size:calc((13px) * var(--text-scale,1))}
   .native-readout-host>.chart-live-readout{right:70px}
 }
+
+/* Line charts in cards: the readout sits in its own strip above the plot (latest point at rest), so it never
+   covers the line; plots are taller so the swing reads clearly. Heights scale with each card's rhythm slot. */
+.mini-live-readout{position:static!important;display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 10px;min-height:2.1em;margin:0 0 6px;padding:5px 10px;font-size:calc((13px) * var(--text-scale,1));pointer-events:none;border-radius:10px}
+.mini-live-readout[hidden]{display:flex!important;visibility:hidden}
+#matrixCards .rd-matrix-spark svg.lookback-plot,#factorRail svg.lookback-plot{height:176px}
+#researchDesk .etf-lookback-plot svg.lookback-plot{height:225px}
+@media(min-width:1000px){body.subtraction-site #top :is(#matrixCards,#factorRail) svg.lookback-plot{height:calc(var(--tide-chart-height,86px) + 92px)}}
+@media(min-width:720px) and (max-width:999px){body.subtraction-site #top :is(#matrixCards,#factorRail) svg.lookback-plot{height:calc(var(--tide-chart-height,80px) + 84px)}}
+@media(max-width:719px){body.subtraction-site #top :is(#matrixCards,#factorRail) svg.lookback-plot{height:160px!important}body.subtraction-site #top #researchDesk .etf-lookback-plot svg.lookback-plot{height:190px}}
+/* Change against the previous trading day beside the value: red up, green down (Taiwan colours). */
+.day-change{display:inline-flex;align-items:center;margin-left:8px;padding:2px 9px;border-radius:999px;font-size:calc((13px) * var(--text-scale,1));font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;vertical-align:middle;border:1px solid currentColor}
+.day-change.up{color:var(--tw-rise,#e5484d);background:color-mix(in srgb,var(--tw-rise,#e5484d) 12%,transparent)}
+.day-change.down{color:var(--tw-fall,#12a06b);background:color-mix(in srgb,var(--tw-fall,#12a06b) 12%,transparent)}
+.day-change.flat{color:var(--muted)}
+/* ETF cards show the same day-change pill as market cards. */
+body.subtraction-site #top #matrixCards .matrix-price small.up,body.subtraction-site #top #matrixCards .matrix-price small.down{display:inline-flex;align-items:center;margin-left:8px;padding:2px 9px;border-radius:999px;font-size:calc((13px) * var(--text-scale,1));font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;vertical-align:middle;border:1px solid currentColor}
+body.subtraction-site #top #matrixCards .matrix-price small.up{color:var(--tw-rise,#e5484d);background:color-mix(in srgb,var(--tw-rise,#e5484d) 12%,transparent)}
+body.subtraction-site #top #matrixCards .matrix-price small.down{color:var(--tw-fall,#12a06b);background:color-mix(in srgb,var(--tw-fall,#12a06b) 12%,transparent)}
+body.subtraction-site #top #matrixCards .matrix-price small.up::before,body.subtraction-site #top #matrixCards .matrix-price small.down::before{content:'較前日 ';white-space:pre}
 </style>
 </head>
 <body>
@@ -1118,6 +1138,6 @@ body.subtraction-site #top .osc-pane .osc-chart{height:230px}
     </footer>
   </div>
   <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
-  <script src="https://lee200202.github.io/chaowei-etf-observatory/gas-runtime-45850f60a3dfb39b.js"></script>
+  <script src="https://lee200202.github.io/chaowei-etf-observatory/gas-runtime-20d21083d8309011.js"></script>
 </body>
 </html>

@@ -102,7 +102,9 @@
       const plotKey=[marketN(),daily.length,daily.at(-1)?.join(':'),key==='volume'&&last.partialVolume].join('|');
       const displayTime=key==='vix'&&last.time?' '+new Date(last.time).toLocaleTimeString('en-GB',{timeZone:'America/New_York',hour:'2-digit',minute:'2-digit'}):last.time?' '+last.time.slice(0,5):'';
       const valueLabel=flow?MarketReadout.state(last.value,key==='margin'?'margin':'flow','億元',key==='margin'?1:2).label:format(last.value);
-      graph.innerHTML='<div class="factor-headline"><strong class="factor-value'+(dir>0?' up':dir<0?' down':'')+'">'+valueLabel+'</strong><span class="rd-source-date">'+last.date+
+      const diff=!flow&&!last.partialVolume&&Number.isFinite(previous)?last.value-previous:null,pct=Number.isFinite(diff)&&previous?diff/Math.abs(previous)*100:null;
+      const dayChange=Number.isFinite(diff)?'<span class="day-change '+(diff>0?'up':diff<0?'down':'flat')+'" title="與前一個交易日 '+format(previous)+' 相比">較前日 '+(diff>0?'+':diff<0?'−':'')+format(Math.abs(diff)).replace(/[^0-9.,]+$/,'').trim()+(Number.isFinite(pct)?'（'+(pct>0?'+':pct<0?'−':'')+fmt(Math.abs(pct),2)+'%）':'')+'</span>':'';
+      graph.innerHTML='<div class="factor-headline"><strong class="factor-value'+(dir>0?' up':dir<0?' down':'')+'">'+valueLabel+'</strong>'+dayChange+'<span class="rd-source-date">'+last.date+
         displayTime+(key==='vix'?' 美東':'')+(last.quote?' · Yahoo 延遲報價':'')+(last.partialVolume?' · 盤中累計':'')+'</span>'+
         lookbackGauge(rank,key==='vix')+'</div>';
       const plot=previousPlot?.dataset.key===plotKey?previousPlot:make('div','lookback-factor-chart');

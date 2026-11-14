@@ -1261,16 +1261,18 @@ const ChartReadouts=(()=>{
     }
     return{header,show(date,rows,point){
       header.hidden=false;header.dataset.date=date;fill(header,date,rows);fill(float,date,rows);
-      if(!point){float.hidden=true;return}
+      if(!point||mini){float.hidden=true;return}
       float.hidden=false;
       const width=host.clientWidth,w=Math.min(float.offsetWidth||230,Math.max(80,width-16));
       float.style.maxWidth=Math.max(80,width-16)+'px';
       float.style.left=Math.max(8,Math.min(width-w-8,point.x+18+w<width?point.x+18:point.x-w-18))+'px';
       float.style.top=Math.max(4,Math.min(host.clientHeight-float.offsetHeight-4,point.y+18))+'px';
-    },hide(){float.hidden=true}};
+    },hide(){float.hidden=true},
+    // Large charts: the readout overlays the chart's top band, so it is shown only while the crosshair is on the chart.
+    clear(){float.hidden=true;header.hidden=true}};
   }
-  function svg({host,plot,dates,x,height,read,group,onInspect,bars=[]}){
-    const panel=hud(host),NS='http://www.w3.org/2000/svg',line=document.createElementNS(NS,'line');
+  function svg({host,plot,dates,x,height,read,group,onInspect,bars=[],mini=false}){
+    const panel=hud(host,{mini}),NS='http://www.w3.org/2000/svg',line=document.createElementNS(NS,'line');
     line.setAttribute('class','readout-crosshair');line.setAttribute('y1',0);line.setAttribute('y2',height);line.setAttribute('visibility','hidden');plot.append(line);
     plot.setAttribute('tabindex','0');plot.setAttribute('aria-describedby',panel.header.id);
     let index=dates.length-1,previous=[],start=null,horizontal=false;
@@ -1302,7 +1304,8 @@ const ChartReadouts=(()=>{
       inspect(e,'hover');
     });
     for(const type of ['pointerup','pointercancel'])plot.addEventListener(type,()=>{start=null;horizontal=false;if(type==='pointercancel')panel.hide()});
-    plot.addEventListener('pointerleave',()=>panel.hide());
+    // A mini plot's strip returns to the latest point when the pointer leaves, so it never sticks on an old day.
+    plot.addEventListener('pointerleave',()=>{panel.hide();if(mini)show(dates.length-1,'sync')});
     plot.addEventListener('keydown',e=>{
       if(!['ArrowLeft','ArrowRight','Home','End','Escape'].includes(e.key))return;
       e.preventDefault();e.stopPropagation();
@@ -1310,11 +1313,14 @@ const ChartReadouts=(()=>{
     });
     show(index);return panel;
   }
+  // Charts with a synced crosshair (price, volume, indicators, backtest panes) are shown by the hovered chart only, so
+  // when one readout clears, every large-chart readout clears with it instead of staying over the other charts' top band.
+  const nativePanels=new Set();
   function native(host,chart,read){
-    const panel=hud(host,{native:true});
-    const inspect=p=>{if(!p.time||!p.point){panel.hide();return}const date=typeof p.time==='string'?p.time:[p.time.year,String(p.time.month).padStart(2,'0'),String(p.time.day).padStart(2,'0')].join('-');const rows=read(date);if(rows?.length)panel.show(date,rows,p.point)};
+    const panel=hud(host,{native:true});nativePanels.add(panel);
+    const inspect=p=>{if(!p.time||!p.point){for(const other of nativePanels){if(other.header.isConnected)other.clear();else nativePanels.delete(other)}return}const date=typeof p.time==='string'?p.time:[p.time.year,String(p.time.month).padStart(2,'0'),String(p.time.day).padStart(2,'0')].join('-');const rows=read(date);if(rows?.length)panel.show(date,rows,p.point)};
     chart.subscribeCrosshairMove(inspect);
-    return()=>{chart.unsubscribeCrosshairMove(inspect);panel.header.remove();host.querySelectorAll('.chart-floating-readout').forEach(n=>n.remove())};
+    return()=>{chart.unsubscribeCrosshairMove(inspect);nativePanels.delete(panel);panel.header.remove();host.querySelectorAll('.chart-floating-readout').forEach(n=>n.remove())};
   }
   function equity(host,chart,getResult){
     let source=null,index=new Map();
@@ -1345,11 +1351,10 @@ const ChartReadouts=(()=>{
       const data=miniData.get(plot.dataset.readoutKey);if(!data)continue;
       plot.dataset.readoutBound='true';miniData.delete(plot.dataset.readoutKey);
       const host=plot.parentElement,dates=data.rows.map(r=>r[0]),key=plot.closest('[data-trend]')?.dataset.trend,domain=key==='bank'?'flow':key==='margin'?'margin':null;
-      svg({host,plot,dates,x:i=>6+288*i/(dates.length-1),height:90,read:i=>{
+      svg({host,plot,dates,mini:true,x:i=>6+288*i/(dates.length-1),height:90,read:i=>{
         const value=data.rows[i][1],state=domain?MarketReadout.state(value,domain):null;
         return[{label:domain?'':'數值',value:state?.label||data.format(value),color:state?.color}];
       }});
-      const header=host.querySelector('.chart-live-readout');header.classList.add('mini-live-readout');header.hidden=true;
     }
   }
   return{hud,svg,native,equity,candles,registerMini,bindMini};
@@ -4610,7 +4615,9 @@ function tideTail(x,y,color){
       const plotKey=[marketN(),daily.length,daily.at(-1)?.join(':'),key==='volume'&&last.partialVolume].join('|');
       const displayTime=key==='vix'&&last.time?' '+new Date(last.time).toLocaleTimeString('en-GB',{timeZone:'America/New_York',hour:'2-digit',minute:'2-digit'}):last.time?' '+last.time.slice(0,5):'';
       const valueLabel=flow?MarketReadout.state(last.value,key==='margin'?'margin':'flow','億元',key==='margin'?1:2).label:format(last.value);
-      graph.innerHTML='<div class="factor-headline"><strong class="factor-value'+(dir>0?' up':dir<0?' down':'')+'">'+valueLabel+'</strong><span class="rd-source-date">'+last.date+
+      const diff=!flow&&!last.partialVolume&&Number.isFinite(previous)?last.value-previous:null,pct=Number.isFinite(diff)&&previous?diff/Math.abs(previous)*100:null;
+      const dayChange=Number.isFinite(diff)?'<span class="day-change '+(diff>0?'up':diff<0?'down':'flat')+'" title="與前一個交易日 '+format(previous)+' 相比">較前日 '+(diff>0?'+':diff<0?'−':'')+format(Math.abs(diff)).replace(/[^0-9.,]+$/,'').trim()+(Number.isFinite(pct)?'（'+(pct>0?'+':pct<0?'−':'')+fmt(Math.abs(pct),2)+'%）':'')+'</span>':'';
+      graph.innerHTML='<div class="factor-headline"><strong class="factor-value'+(dir>0?' up':dir<0?' down':'')+'">'+valueLabel+'</strong>'+dayChange+'<span class="rd-source-date">'+last.date+
         displayTime+(key==='vix'?' 美東':'')+(last.quote?' · Yahoo 延遲報價':'')+(last.partialVolume?' · 盤中累計':'')+'</span>'+
         lookbackGauge(rank,key==='vix')+'</div>';
       const plot=previousPlot?.dataset.key===plotKey?previousPlot:make('div','lookback-factor-chart');
