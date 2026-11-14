@@ -1,0 +1,76 @@
+name: Refresh TAIFEX PCR and retail ratio
+
+on:
+  schedule:
+    # TAIFEX publishes the day-session PCR and institutional open interest after about 15:00 Taipei.
+    # 15:40 and 17:40 Taipei; GitHub may start scheduled runs late, so the second run is the safety net.
+    - cron: '40 7 * * 1-5'
+    - cron: '40 9 * * 1-5'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.save.outputs.changed }}
+    steps:
+      # Always the newest main: a run that waited in the concurrency queue must not publish an older checkout.
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Fetch TAIFEX put/call ratio and mini-TAIEX open interest
+        run: |
+          # The updater retries each request; stale (over a week) or malformed data still fails the run.
+          for attempt in 1 2 3; do node scripts/update-taifex-sentiment.mjs && break; [ "$attempt" = 3 ] && exit 1; sleep 60; done
+      - id: save
+        name: Save the verified series
+        run: |
+          git add pages-data/options-pcr.json pages-data/retail-ratio.json docs/data/options-pcr.json docs/data/retail-ratio.json
+          if git diff --cached --quiet; then echo "changed=false" >> "$GITHUB_OUTPUT"; exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Refresh TAIFEX PCR and retail long/short ratio'
+          for attempt in 1 2 3; do
+            if git pull --rebase --autostash origin main; then git push origin HEAD:main && echo "changed=true" >> "$GITHUB_OUTPUT" && exit 0; else git rebase --abort || true; fi
+            echo "push attempt $attempt failed; retrying"; sleep 10
+          done
+          exit 1
+      # The site is republished only when the data actually changed.
+      - if: steps.save.outputs.changed == 'true'
+        uses: actions/configure-pages@v5
+      - if: steps.save.outputs.changed == 'true'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+  # Separate job: deploy-pages finds the artifact through the API, which can miss it right after an upload in the same job.
+  deploy:
+    needs: refresh
+    if: needs.refresh.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.retry.outputs.page_url || steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
+        continue-on-error: true
+      # One retry after a short wait covers a slow artifact registration or a transient Pages API error.
+      - if: steps.deployment.outcome == 'failure'
+        run: sleep 30
+      - id: retry
+        if: steps.deployment.outcome == 'failure'
+        uses: actions/deploy-pages@v4
