@@ -54,3 +54,21 @@ for(const f of ['worker/market-sentiment.js','worker/ph19.js','worker/market-com
 const gs=fs.readFileSync('gas-src/TaifexSentiment.gs','utf8');assert.match(gs,/cache\.put\(key,JSON\.stringify\(out\),240\)/);assert.match(gs,/查詢不受理/);
 assert.match(fs.readFileSync('.github/workflows/refresh-taifex.yml','utf8'),/cron: '40 7 \* \* 1-5'/,'weekday afternoon refresh');
 console.log(`PASS TAIFEX sentiment: PCR 11/13 ${box.taifexPcrRatio_(pcr[1],'oi').toFixed(2)}%, retail ratio ${box.taifexRetailRatio_(retail[0]).toFixed(2)}% from real CSV lines; zones, readings, red/green line, history files and two-series join.`);
+// Weighted score: PCR and retail are slots 11 and 12 (after 籌碼共振), so a saved ten-slot plan keeps its meaning;
+// a slot with weight but no data pauses the score instead of counting as zero; directions flip the 0-5 score.
+{
+  const read=f=>fs.readFileSync(f,'utf8');
+  const weighted=new Function('factorScores',read('worker/chip-weight.js').match(/function weightedScore\(weights\)\{[\s\S]*?\n\}/)[0]+';return weightedScore')(()=>[1.5,1,2,3,4,null,null,null,2,null,0.4,3.9]);
+  assert.equal(weighted([70,0,0,0,0,0,0,0,0,0,30,0]).value.toFixed(2),'1.17','0.7 × 1.5 + 0.3 × PCR 0.4');
+  assert.equal(weighted([70,0,0,0,0,0,0,0,0,0,0,30]).value.toFixed(2),'2.22','0.7 × 1.5 + 0.3 × retail 3.9');
+  assert.equal(weighted([100,0,0,0,0,0,0,0,0,0]).value,1.5,'an older ten-slot plan ignores the new slots');
+  assert.equal(weighted([50,0,0,0,0,0,0,0,0,50]).value,null,'a weighted slot without data pauses the score');
+  const build=read('scripts/build-pages.mjs');assert.ok(build.indexOf("worker/chip-resonance.js")<build.indexOf("worker/ph19.js"),'new slots are appended after 籌碼共振');
+  const ph19=read('worker/ph19.js');assert.match(ph19,/\{id:'wPcr',setting:'pcrWeight'[\s\S]*\{id:'wRetail',setting:'retailWeight'[\s\S]*EXTRA_FACTORS\.push\(f\)/);
+  const DM=new Function(read('worker/indicator-direction-core.js')+';return IndicatorDirection')();
+  assert.equal(DM.score('pcr',1,'high_buy'),4,'PCR higher scores higher by default');assert.equal(DM.score('pcr',1,'low_buy'),1);
+  assert.equal(DM.score('retail',3.9,'contrarian'),3.9,'retail contrarian by default');near(DM.score('retail',3.9,'follow'),1.1,1e-9);
+  assert.equal(DM.normalize({}).pcr,'high_buy');assert.equal(DM.normalize({}).retail,'contrarian');
+  assert.match(read('worker/ph19.css'),/\.weight-bar \.w10\{background:#a0527a\}\.weight-bar \.w11\{background:#3f7f8c\}/);
+  console.log('PASS weighted score: PCR and retail slots 11-12, older plans unchanged, missing data pauses, directions flip.');
+}

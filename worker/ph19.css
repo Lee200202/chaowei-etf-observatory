@@ -116,3 +116,5 @@ summary{cursor:pointer}
  :is(.market-fullscreen,.range-compare) .segment:has(>:nth-child(4):last-child){grid-template-columns:repeat(2,minmax(0,1fr))}
  :is(.market-fullscreen,.range-compare) .segment>button{min-width:0;justify-content:center;text-align:center;white-space:nowrap}
 }
+/* Weight bar colours for the later factors (VIX and 籌碼共振 had none, so their share was invisible). */
+.weight-bar .w8{background:#8563af}.weight-bar .w9{background:#3b7d6e}.weight-bar .w10{background:#a0527a}.weight-bar .w11{background:#3f7f8c}

@@ -98,3 +98,22 @@
   const h=document.querySelector('#marketOverview h3');
   if(h&&h.textContent.trim()==='背景不同，讀數各有節奏。')h.innerHTML='<span class="phrase">背景不同，</span><span class="phrase">讀數各有節奏。</span>';
 })();
+
+/* PCR and the retail long/short ratio in the ETF page's weighted score. They are appended after every existing factor
+   (including 籌碼共振), so a saved weight plan keeps its meaning and simply gives the two new factors no weight. Each
+   score follows the direction chosen in the card dialog; no data means the combined score pauses, never a zero. */
+(()=>{
+  const list=$('weights').querySelector('.weights');
+  for(const f of [{id:'wPcr',setting:'pcrWeight',label:'選擇權 PCR（未平倉）',name:'選擇權 PCR',key:'pcr'},{id:'wRetail',setting:'retailWeight',label:'散戶多空比（小台）',name:'散戶多空比',key:'retail'}]){
+    const row=document.createElement('div');row.className='weight';
+    row.innerHTML=`<label for="${f.id}">${f.label}</label><input id="${f.id}" type="range" min="0" max="100" step="1" value="0"><input class="w-num" type="number" min="0" max="100" step="1" data-for="${f.id}" aria-label="${f.label}權重數值"><output id="o${f.id.slice(1)}">0%</output>`;
+    list.append(row);f.row=row;f.score=()=>directionScore(f.key);
+    settings[f.setting]=Math.max(0,Math.min(100,Number(settings[f.setting])||0));
+    const num=row.querySelector('.w-num');$(f.id).value=settings[f.setting];num.value=settings[f.setting];$(f.id).disabled=shareView;num.disabled=shareView;
+    $(f.id).addEventListener('input',()=>{num.value=$(f.id).value;updateWeights()});
+    num.addEventListener('input',e=>{$(f.id).value=Math.max(0,Math.min(100,Number(e.target.value)||0));updateWeights()});
+    const wrap=document.createElement('div');wrap.className='weight-direction';makeDirection(f.key,wrap);row.append(wrap);
+    EXTRA_FACTORS.push(f);
+  }
+  updateWeights();
+})();
