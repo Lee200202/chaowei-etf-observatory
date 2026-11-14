@@ -45,5 +45,8 @@ console.log('PASS layout rules: 12- and 10-column uneven card rhythm with varied
   has(cmp,'setBoth(clampVp(pan.v.from+shift,pan.v.to+shift))','panning A or B moves both');
   has(cmp,'setBoth(clampVp(at-ratio*next,at-ratio*next+next))','zooming A or B zooms both');
   has(cmp,"if(b.dataset.rcZoom==='reset'){setBoth(windowVp())",'reset resets both');
+  // Phones: water levels split five above four, centred; button groups become even grids.
+  assert.match(css19,/@media\(max-width:600px\)\{\n body\.editorial-site #top \.market-overview \.rd-factor-bars\{display:flex;flex-wrap:wrap;justify-content:center[^}]*\}\n body\.editorial-site #top \.market-overview \.rd-factor-bar\{flex:0 0 20%/,'phone water levels: two centred rows of five and four');
+  has(css19,':is(.market-fullscreen,.range-compare) .segment:has(>:nth-child(4):last-child){grid-template-columns:repeat(2,minmax(0,1fr))}','phone: four buttons as 2×2');
   console.log('PASS nine-card rhythm: rows close with two or more cards and neighbours differ at 12 and 10 columns; overview count top right, levels centred.');
 }

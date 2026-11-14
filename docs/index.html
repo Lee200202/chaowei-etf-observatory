@@ -1156,6 +1156,20 @@ body.editorial-site #top .purpose-link:hover{border-color:var(--ink);background:
 body.editorial-site #top .purpose-link:focus-visible{outline:3px solid var(--teal);outline-offset:2px}
 /* Anything that opens or closes on click shows the hand cursor, like every other control. */
 summary{cursor:pointer}
+/* Phones: nine water levels in two centred rows (five above, four below), each bar wider and easier to read. */
+@media(max-width:600px){
+ body.editorial-site #top .market-overview .rd-factor-bars{display:flex;flex-wrap:wrap;justify-content:center;gap:14px 0;width:100%}
+ body.editorial-site #top .market-overview .rd-factor-bar{flex:0 0 20%;min-width:0}
+}
+#marketOverview h3 .phrase{display:inline-block}
+/* Phones: button groups in the market dialog and the range compare become even grids, so no button is left alone
+   on a second line (4 → 2×2, 6 → 3×2, 9 → 3×3, 3 or 5 → rows of three, 2 → side by side). */
+@media(max-width:600px){
+ :is(.market-fullscreen,.range-compare) .segment{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;width:100%}
+ :is(.market-fullscreen,.range-compare) .segment:has(>:nth-child(2):last-child),
+ :is(.market-fullscreen,.range-compare) .segment:has(>:nth-child(4):last-child){grid-template-columns:repeat(2,minmax(0,1fr))}
+ :is(.market-fullscreen,.range-compare) .segment>button{min-width:0;justify-content:center;text-align:center;white-space:nowrap}
+}
 </style>
 </head>
 <body>
@@ -7048,6 +7062,12 @@ function setTideTone(card, location) {
     return marks.filter((_,k)=>k%step===0).map(i=>{const d=rows[i].date,label=long||d.slice(5,7)==='01'?d.slice(0,4):Number(d.slice(5,7))+'月';return`<line x1="${X(i)}" x2="${X(i)}" y1="${P.t}" y2="${H-P.b}" class="rc-grid"/><text x="${X(i)}" y="${H-7}" text-anchor="middle" class="rc-tick">${label}</text>`}).join('');
   }
   window.addEventListener('resize',()=>{if(factorTrendKey==='pcr'||factorTrendKey==='retail'){clearTimeout(window.__sentResize);window.__sentResize=setTimeout(()=>paint(factorTrendKey),150)}});
+})();
+
+/* The overview heading wraps between its two phrases, never inside one (phones put "9 / 9" beside it). */
+(()=>{
+  const h=document.querySelector('#marketOverview h3');
+  if(h&&h.textContent.trim()==='背景不同，讀數各有節奏。')h.innerHTML='<span class="phrase">背景不同，</span><span class="phrase">讀數各有節奏。</span>';
 })();
 
 })();

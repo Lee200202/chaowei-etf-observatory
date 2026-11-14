@@ -92,3 +92,9 @@
   }
   window.addEventListener('resize',()=>{if(factorTrendKey==='pcr'||factorTrendKey==='retail'){clearTimeout(window.__sentResize);window.__sentResize=setTimeout(()=>paint(factorTrendKey),150)}});
 })();
+
+/* The overview heading wraps between its two phrases, never inside one (phones put "9 / 9" beside it). */
+(()=>{
+  const h=document.querySelector('#marketOverview h3');
+  if(h&&h.textContent.trim()==='背景不同，讀數各有節奏。')h.innerHTML='<span class="phrase">背景不同，</span><span class="phrase">讀數各有節奏。</span>';
+})();
