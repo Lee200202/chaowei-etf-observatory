@@ -25,7 +25,7 @@ console.log('PASS layout rules: 12- and 10-column uneven card rhythm with varied
   for(const [query,cols] of [['@media(min-width:1000px)',12],['@media(min-width:720px) and (max-width:999px)',10]]){
     const cycle=[];for(const b of allBlocks(css,query))for(const m of b.matchAll(/\(#matrixCards,#factorRail\)>:nth-child\(7n\+(\d)\)\{--tide-span:(\d+)/g))cycle[m[1]-1]=Number(m[2]);
     assert.equal(cycle.filter(Number.isFinite).length,7,query+' base cycle of seven spans');
-    const spans=Array.from({length:9},(_,i)=>cycle[i%7]);for(const m of blocks19(query).matchAll(/#factorRail>\.factor:nth-child\((\d)\)\{--tide-span:(\d+)/g))spans[m[1]-1]=Number(m[2]);
+    const spans=Array.from({length:9},(_,i)=>cycle[i%7]);for(const m of allBlocks(css19,query).join("").matchAll(/#factorRail>\.factor:nth-child\((\d)\)\{--tide-span:(\d+)/g))spans[m[1]-1]=Number(m[2]);
     const rows=[[]];let used=0;for(const s of spans){if(used+s>cols){rows.push([]);used=0}rows.at(-1).push(s);used+=s}
     // No two rows may be the same sequence either (8/4 then 5/7 then 7/5 is fine; 5/7 twice is not).
     const seqs=rows.map(r=>r.join('/'));assert.equal(new Set(seqs).size,seqs.length,query+' two rows repeat the same widths: '+seqs.join(' | '));
@@ -48,6 +48,16 @@ console.log('PASS layout rules: 12- and 10-column uneven card rhythm with varied
   // Phones: water levels split five above four, centred; button groups become even grids.
   assert.match(css19,/@media\(max-width:600px\)\{\n body\.editorial-site #top \.market-overview \.rd-factor-bars\{display:flex;flex-wrap:wrap;justify-content:center[^}]*\}\n body\.editorial-site #top \.market-overview \.rd-factor-bar\{flex:0 0 20%/,'phone water levels: two centred rows of five and four');
   has(css19,':is(.market-fullscreen,.range-compare) .segment:has(>:nth-child(4):last-child){grid-template-columns:repeat(2,minmax(0,1fr))}','phone: four buttons as 2×2');
+  // Settings inputs keep their size; the custom-MA checkbox shares a line with its text.
+  has(css19,'.ind-grid fieldset{align-content:flex-start;align-items:flex-start}','settings inputs are not stretched to the box height');
+  has(css19,'.ind-grid fieldset.custom-ma-settings{grid-column:1/-1','custom MA spans the full row');
+  has(css19,'.custom-ma-settings label:has(>input[type=checkbox]){display:flex!important;flex-direction:row;align-items:center','checkbox beside its text');
+  // Locked members-only cards grow to fit the lock box.
+  const ph19js=fs.readFileSync('worker/ph19.js','utf8');assert.match(ph19js,/card\.style\.minHeight=need\+'px'/,'members-only cards fit their lock box');
+  // Home doors stay uneven on tablets.
+  assert.match(css19,/@media\(min-width:600px\) and \(max-width:999px\)\{\n body\.subtraction-site #top \.purpose-deck>\.purpose-door:nth-child\(1\)\{grid-column:span 7;min-height:420px/,'home doors 7/5 then 5/7 on tablets');
+  // Every live source is listed in the footer table.
+  assert.match(fs.readFileSync('worker/page.html','utf8'),/<th scope="row">選擇權 PCR、散戶多空比<\/th>/,'TAIFEX listed among the data sources');
   has(css19,'body.editorial-site #top .etf-quick-switch button[aria-pressed="true"]{background:var(--rd-ink,#203a34);border-color:var(--rd-ink,#203a34);color:var(--paper)}','the selected quick-switch chip stays readable');
   console.log('PASS nine-card rhythm: rows close with two or more cards and neighbours differ at 12 and 10 columns; overview count top right, levels centred.');
 }

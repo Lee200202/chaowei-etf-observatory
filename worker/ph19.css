@@ -120,3 +120,39 @@ summary{cursor:pointer}
 .weight-bar .w8{background:#8563af}.weight-bar .w9{background:#3b7d6e}.weight-bar .w10{background:#a0527a}.weight-bar .w11{background:#3f7f8c}
 /* The selected quick-switch ETF chip: a later generic .pill background turned it white-on-white (text invisible). */
 body.editorial-site #top .etf-quick-switch button[aria-pressed="true"]{background:var(--rd-ink,#203a34);border-color:var(--rd-ink,#203a34);color:var(--paper)}
+
+/* Indicator settings: boxes in one row share a height, but their contents stay at the top at natural size, so a
+   short box (RSI／KD, K 線樣式) no longer stretches its inputs to the height of the tallest box. The custom-MA
+   checkbox sits on the same line as its text. */
+.ind-grid fieldset{align-content:flex-start;align-items:flex-start}
+.ind-grid label,.custom-ma-settings label{align-content:start}
+.ind-grid select{height:auto}
+.custom-ma-settings label:has(>input[type=checkbox]){display:flex!important;flex-direction:row;align-items:center;gap:8px;flex-basis:100%;font-size:13px;color:var(--ink);cursor:pointer}
+.custom-ma-settings label>input[type=checkbox]{width:18px!important;height:18px;min-height:0;margin:0;accent-color:var(--teal)}
+
+/* Home doors (今天，想先看什麼？) keep an uneven rhythm on tablets too: 7/5 then 5/7, different heights, offsets. */
+@media(min-width:1000px){
+ body.subtraction-site #top .purpose-deck>.purpose-door:nth-child(1){min-height:430px}
+ body.subtraction-site #top .purpose-deck>.purpose-door:nth-child(2){min-height:300px}
+ body.subtraction-site #top .purpose-deck>.purpose-door:nth-child(3){min-height:290px}
+ body.subtraction-site #top .purpose-deck>.purpose-door:nth-child(4){min-height:400px}
+}
+@media(min-width:600px) and (max-width:999px){
+ body.subtraction-site #top .purpose-deck>.purpose-door:nth-child(1){grid-column:span 7;min-height:420px;margin-top:0}
+ body.subtraction-site #top .purpose-deck>.purpose-door:nth-child(2){grid-column:span 5;min-height:290px;margin-top:34px}
+ body.subtraction-site #top .purpose-deck>.purpose-door:nth-child(3){grid-column:span 5;min-height:300px;margin-top:-12px}
+ body.subtraction-site #top .purpose-deck>.purpose-door:nth-child(4){grid-column:span 7;min-height:400px;margin-top:20px}
+}
+/* Settings boxes in an explicit grid so every row closes: 均線／布林／MACD, then RSI／KD beside a double-width K 線樣式,
+   then the custom MA across the full width with its fields on one line (two columns on tablets, one on phones). */
+.ind-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.ind-grid fieldset:has(#chartType){grid-column:span 2}
+.ind-grid fieldset.custom-ma-settings{grid-column:1/-1;align-items:flex-end;gap:10px 14px}
+.ind-grid fieldset.custom-ma-settings>label:has(>input[type=checkbox]){flex-basis:auto;align-self:center;min-height:40px}
+.ind-grid fieldset.custom-ma-settings>label{flex:0 1 auto}
+.ind-grid fieldset.custom-ma-settings input[type=number]{width:96px}
+.ind-grid fieldset.custom-ma-settings select{min-width:140px}
+.ind-grid fieldset.custom-ma-settings input[type=color]{width:64px;min-height:40px;padding:3px}
+.ind-grid fieldset.custom-ma-settings>output{flex-basis:100%}
+@media(max-width:759px){.ind-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ind-grid fieldset:has(#chartType){grid-column:1/-1}}
+@media(max-width:519px){.ind-grid{grid-template-columns:minmax(0,1fr)}.ind-grid fieldset:nth-child(n){grid-column:auto}}

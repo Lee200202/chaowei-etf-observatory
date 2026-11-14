@@ -1174,6 +1174,42 @@ summary{cursor:pointer}
 .weight-bar .w8{background:#8563af}.weight-bar .w9{background:#3b7d6e}.weight-bar .w10{background:#a0527a}.weight-bar .w11{background:#3f7f8c}
 /* The selected quick-switch ETF chip: a later generic .pill background turned it white-on-white (text invisible). */
 body.editorial-site #top .etf-quick-switch button[aria-pressed="true"]{background:var(--rd-ink,#203a34);border-color:var(--rd-ink,#203a34);color:var(--paper)}
+
+/* Indicator settings: boxes in one row share a height, but their contents stay at the top at natural size, so a
+   short box (RSI／KD, K 線樣式) no longer stretches its inputs to the height of the tallest box. The custom-MA
+   checkbox sits on the same line as its text. */
+.ind-grid fieldset{align-content:flex-start;align-items:flex-start}
+.ind-grid label,.custom-ma-settings label{align-content:start}
+.ind-grid select{height:auto}
+.custom-ma-settings label:has(>input[type=checkbox]){display:flex!important;flex-direction:row;align-items:center;gap:8px;flex-basis:100%;font-size:calc((13px) * var(--text-scale,1));color:var(--ink);cursor:pointer}
+.custom-ma-settings label>input[type=checkbox]{width:18px!important;height:18px;min-height:0;margin:0;accent-color:var(--teal)}
+
+/* Home doors (今天，想先看什麼？) keep an uneven rhythm on tablets too: 7/5 then 5/7, different heights, offsets. */
+@media(min-width:1000px){
+ body.subtraction-site #top .purpose-deck>.purpose-door:nth-child(1){min-height:430px}
+ body.subtraction-site #top .purpose-deck>.purpose-door:nth-child(2){min-height:300px}
+ body.subtraction-site #top .purpose-deck>.purpose-door:nth-child(3){min-height:290px}
+ body.subtraction-site #top .purpose-deck>.purpose-door:nth-child(4){min-height:400px}
+}
+@media(min-width:600px) and (max-width:999px){
+ body.subtraction-site #top .purpose-deck>.purpose-door:nth-child(1){grid-column:span 7;min-height:420px;margin-top:0}
+ body.subtraction-site #top .purpose-deck>.purpose-door:nth-child(2){grid-column:span 5;min-height:290px;margin-top:34px}
+ body.subtraction-site #top .purpose-deck>.purpose-door:nth-child(3){grid-column:span 5;min-height:300px;margin-top:-12px}
+ body.subtraction-site #top .purpose-deck>.purpose-door:nth-child(4){grid-column:span 7;min-height:400px;margin-top:20px}
+}
+/* Settings boxes in an explicit grid so every row closes: 均線／布林／MACD, then RSI／KD beside a double-width K 線樣式,
+   then the custom MA across the full width with its fields on one line (two columns on tablets, one on phones). */
+.ind-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.ind-grid fieldset:has(#chartType){grid-column:span 2}
+.ind-grid fieldset.custom-ma-settings{grid-column:1/-1;align-items:flex-end;gap:10px 14px}
+.ind-grid fieldset.custom-ma-settings>label:has(>input[type=checkbox]){flex-basis:auto;align-self:center;min-height:40px}
+.ind-grid fieldset.custom-ma-settings>label{flex:0 1 auto}
+.ind-grid fieldset.custom-ma-settings input[type=number]{width:96px}
+.ind-grid fieldset.custom-ma-settings select{min-width:140px}
+.ind-grid fieldset.custom-ma-settings input[type=color]{width:64px;min-height:40px;padding:3px}
+.ind-grid fieldset.custom-ma-settings>output{flex-basis:100%}
+@media(max-width:759px){.ind-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ind-grid fieldset:has(#chartType){grid-column:1/-1}}
+@media(max-width:519px){.ind-grid{grid-template-columns:minmax(0,1fr)}.ind-grid fieldset:nth-child(n){grid-column:auto}}
 </style>
 </head>
 <body>
@@ -1254,6 +1290,7 @@ body.editorial-site #top .etf-quick-switch button[aria-pressed="true"]{backgroun
           <tr><th scope="row">融資增減</th><td><a href="https://www.twse.com.tw/zh/trading/margin/mi-margn.html" target="_blank" rel="noopener noreferrer">臺灣證券交易所</a></td><td>比較每日融資餘額增減。</td></tr>
           <tr><th scope="row">八大行庫</th><td><a href="https://histock.tw/stock/broker8.aspx" target="_blank" rel="noopener noreferrer">HiStock</a></td><td>全市場每日買賣淨額。</td></tr>
           <tr><th scope="row">VIX</th><td><a href="https://www.cboe.com/tradable-products/vix/vix-historical-data" target="_blank" rel="noopener noreferrer">Cboe</a></td><td>採美東交易日收盤計分，另顯示可用的 Yahoo 延遲行情。</td></tr>
+          <tr><th scope="row">選擇權 PCR、散戶多空比</th><td><a href="https://www.taifex.com.tw/cht/3/pcRatio" target="_blank" rel="noopener noreferrer">臺灣期貨交易所</a></td><td>期交所每日盤後公布（約 15:00 後）；平日 15:40、17:40 更新，頁面每 5 分鐘向期交所核對當日資料。散戶多空比由小台未平倉與三大法人推算。</td></tr>
         </tbody>
       </table>
       <div>本站供研究參考。搜尋字詞、查看的 ETF 與停留時間用於匿名使用統計，不含姓名或電子郵件，可在「帳號與外觀」關閉。</div>
@@ -7091,6 +7128,26 @@ function setTideTone(card, location) {
     EXTRA_FACTORS.push(f);
   }
   updateWeights();
+})();
+
+/* Members-only cards: the lock box is measured and the card grows to fit it, so the sign-in prompt is never cut off
+   (fixed heights clipped it on short cards such as 大戶持有分布). Members see the content and no extra height. */
+(()=>{
+  function fit(){
+    const member=document.body.classList.contains('member');
+    for(const card of document.querySelectorAll('.member-only')){
+      const lock=card.querySelector(':scope>.member-lock'),box=lock?.querySelector('.member-lock-box');
+      if(member||!box||!box.offsetHeight){card.style.removeProperty('min-height');card.style.removeProperty('max-height');continue}
+      const need=Math.ceil(box.offsetHeight+(parseFloat(getComputedStyle(lock).paddingTop)||0)+(parseFloat(getComputedStyle(lock).paddingBottom)||0)+8);
+      card.style.minHeight=need+'px';if((parseFloat(getComputedStyle(card).maxHeight)||Infinity)<need)card.style.maxHeight=need+'px';
+    }
+  }
+  let frame=0;const later=()=>{if(!frame)frame=requestAnimationFrame(()=>{frame=0;fit()})};
+  const ro=new ResizeObserver(later),seen=new WeakSet();
+  const watch=()=>{for(const b of document.querySelectorAll('.member-lock-box'))if(!seen.has(b)){seen.add(b);ro.observe(b)}later()};
+  // React only to sign-in changes (body class) and to newly added lock boxes, not to every chart redraw.
+  new MutationObserver(list=>{if(list.some(m=>m.type==='attributes'&&m.target===document.body||[...m.addedNodes].some(n=>n.nodeType===1&&(n.matches('.member-lock-box,.member-lock,.member-only')||n.querySelector?.('.member-lock-box')))))watch()}).observe(document.body,{attributes:true,attributeFilter:['class'],childList:true,subtree:true});
+  document.addEventListener('toggle',later,true);window.addEventListener('resize',later);watch();
 })();
 
 })();

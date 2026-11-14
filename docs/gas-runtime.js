@@ -5830,4 +5830,24 @@ function setTideTone(card, location) {
   updateWeights();
 })();
 
+/* Members-only cards: the lock box is measured and the card grows to fit it, so the sign-in prompt is never cut off
+   (fixed heights clipped it on short cards such as 大戶持有分布). Members see the content and no extra height. */
+(()=>{
+  function fit(){
+    const member=document.body.classList.contains('member');
+    for(const card of document.querySelectorAll('.member-only')){
+      const lock=card.querySelector(':scope>.member-lock'),box=lock?.querySelector('.member-lock-box');
+      if(member||!box||!box.offsetHeight){card.style.removeProperty('min-height');card.style.removeProperty('max-height');continue}
+      const need=Math.ceil(box.offsetHeight+(parseFloat(getComputedStyle(lock).paddingTop)||0)+(parseFloat(getComputedStyle(lock).paddingBottom)||0)+8);
+      card.style.minHeight=need+'px';if((parseFloat(getComputedStyle(card).maxHeight)||Infinity)<need)card.style.maxHeight=need+'px';
+    }
+  }
+  let frame=0;const later=()=>{if(!frame)frame=requestAnimationFrame(()=>{frame=0;fit()})};
+  const ro=new ResizeObserver(later),seen=new WeakSet();
+  const watch=()=>{for(const b of document.querySelectorAll('.member-lock-box'))if(!seen.has(b)){seen.add(b);ro.observe(b)}later()};
+  // React only to sign-in changes (body class) and to newly added lock boxes, not to every chart redraw.
+  new MutationObserver(list=>{if(list.some(m=>m.type==='attributes'&&m.target===document.body||[...m.addedNodes].some(n=>n.nodeType===1&&(n.matches('.member-lock-box,.member-lock,.member-only')||n.querySelector?.('.member-lock-box')))))watch()}).observe(document.body,{attributes:true,attributeFilter:['class'],childList:true,subtree:true});
+  document.addEventListener('toggle',later,true);window.addEventListener('resize',later);watch();
+})();
+
 })();
