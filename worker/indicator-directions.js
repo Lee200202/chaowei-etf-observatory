@@ -16,7 +16,7 @@ function directionScore(key){
     const p=range?(last.index-range.low)/(range.high-range.low):null;
     return DM.score(key,null,settings.factorModes.volume,{rank:marketPosition.volumeScore/5,pricePosition:p});
   }
-  const base={etf:position?.core,index:marketPosition?.index?.core,oil:brentPosition?.core,fx:fxPosition?(settings.fxDirection==='high'?5-fxPosition.core:fxPosition.core):null,margin:mktMarginPosition?.core,bank:bankPosition?.core,vix:DM.vixScore(vixLatest()?.value)}[key];
+  const base={etf:position?.core,index:marketPosition?.index?.core,oil:brentPosition?.core,fx:fxPosition?(settings.fxDirection==='high'?5-fxPosition.core:fxPosition.core):null,margin:mktMarginPosition?.core,bank:bankPosition?.core,vix:DM.vixScore(vixLatest()?.value),pcr:pcrPosition?.core,retail:retailPosition?.core}[key];
   return DM.score(key,base,settings.factorModes[key]);
 }
 const directionSelects=[];
@@ -27,7 +27,7 @@ function makeDirection(key,parent,before=null){
   select.addEventListener('change',e=>{e.stopPropagation();settings.factorModes[key]=select.value;applyDirections()});
   before?parent.insertBefore(select,before):parent.append(select);directionSelects.push(select);return select;
 }
-const scoreIds={index:'indexScore',volume:'volumeScore',oil:'brentScore',fx:'fxScore',margin:'mktMarginScore',bank:'bankScore'};
+const scoreIds={index:'indexScore',volume:'volumeScore',oil:'brentScore',fx:'fxScore',margin:'mktMarginScore',bank:'bankScore',pcr:'pcrScore',retail:'retailScore'};
 makeDirection('etf',$('grade').parentElement,$('grade'));
 for(const[key,id]of Object.entries(scoreIds)){const score=$(id),parent=score.closest('.factor');makeDirection(key,parent,score);const tag=document.createElement('p');tag.className='direction-action';tag.id='action-'+key;score.after(tag)}
 const etfAction=document.createElement('p');etfAction.className='direction-action';etfAction.id='action-etf';$('waterText').after(etfAction);

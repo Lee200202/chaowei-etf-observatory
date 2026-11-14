@@ -8,12 +8,14 @@ const IndicatorDirection=(()=>{
     fx:{name:'美元／新台幣',modes:[['twd_strong_buy','匯率低／台幣升分數越高'],['twd_weak_buy','匯率高／台幣貶分數越高']],default:'twd_strong_buy'},
     margin:{name:'大盤融資增減',modes:[['decrease_buy','融資減少分數越高'],['increase_buy','融資增加分數越高']],default:'decrease_buy'},
     bank:{name:'全市場官股',modes:[['buy_follow','官股買超分數越高'],['sell_follow','官股賣超分數越高']],default:'buy_follow'},
-    vix:{name:'恐慌指數 VIX',modes:[['fear_buy','恐慌越高分數越高'],['calm_buy','波動越低分數越高']],default:'fear_buy'}
+    vix:{name:'恐慌指數 VIX',modes:[['fear_buy','恐慌越高分數越高'],['calm_buy','波動越低分數越高']],default:'fear_buy'},
+    pcr:{name:'選擇權 PCR',modes:[['high_buy','PCR 越高分數越高'],['low_buy','PCR 越低分數越高']],default:'high_buy'},
+    retail:{name:'散戶多空比',modes:[['contrarian','散戶越偏空分數越高（反向）'],['follow','散戶越偏多分數越高']],default:'contrarian'}
   };
   const presets={
-    value:{etf:'low_buy',index:'low_buy',volume:'low_buy',oil:'low_buy',fx:'twd_weak_buy',margin:'decrease_buy',bank:'buy_follow',vix:'fear_buy'},
-    trend:{etf:'high_buy',index:'high_buy',volume:'high_buy',oil:'low_buy',fx:'twd_strong_buy',margin:'increase_buy',bank:'sell_follow',vix:'calm_buy'},
-    hedge:{etf:'low_buy',index:'high_buy',volume:'smart_pv',oil:'low_buy',fx:'twd_strong_buy',margin:'decrease_buy',bank:'buy_follow',vix:'fear_buy'}
+    value:{etf:'low_buy',index:'low_buy',volume:'low_buy',oil:'low_buy',fx:'twd_weak_buy',margin:'decrease_buy',bank:'buy_follow',vix:'fear_buy',pcr:'high_buy',retail:'contrarian'},
+    trend:{etf:'high_buy',index:'high_buy',volume:'high_buy',oil:'low_buy',fx:'twd_strong_buy',margin:'increase_buy',bank:'sell_follow',vix:'calm_buy',pcr:'high_buy',retail:'follow'},
+    hedge:{etf:'low_buy',index:'high_buy',volume:'smart_pv',oil:'low_buy',fx:'twd_strong_buy',margin:'decrease_buy',bank:'buy_follow',vix:'fear_buy',pcr:'high_buy',retail:'contrarian'}
   };
   function normalize(m={}){return Object.fromEntries(Object.entries(meta).map(([k,v])=>[k,v.modes.some(x=>x[0]===m?.[k])?m[k]:v.default]))}
   function score(key,base,mode,{rank,pricePosition}={}){
@@ -23,7 +25,7 @@ const IndicatorDirection=(()=>{
       return clamp(5*(mode==='low_buy'?1-rank:rank));
     }
     if(!Number.isFinite(base))return null;
-    const flip=mode==='high_buy'||mode==='increase_buy'||mode==='sell_follow'||mode==='calm_buy'||key==='fx'&&mode==='twd_weak_buy';
+    const flip=mode==='high_buy'||mode==='increase_buy'||mode==='sell_follow'||mode==='calm_buy'||mode==='follow'||key==='fx'&&mode==='twd_weak_buy';
     return clamp(flip?5-base:base);
   }
   // Site-defined contrarian scale. Intermediate knots interpolate continuously.

@@ -21,7 +21,7 @@ function fillMarketConfig(){
   $('marketLookbackValue').value=settings.marketWindow+' 筆';
   $('marketMethod').value=settings.marketMethod;$('marketSpan').value=settings.marketSpan;
   $('marketSpanWrap').classList.toggle('hidden',settings.marketMethod!=='mean');
-  $('marketMethodHelp').textContent='卡片走勢顯示最近 N 筆。六項市場分數以本次值之前的 N 筆作比較；VIX 分數用本站恐慌門檻，參考筆數控制走勢。資料不足時顯示實際筆數，其他因子少於 20 筆暫停計分。';
+  $('marketMethodHelp').textContent='卡片走勢顯示最近 N 筆。八項市場分數（含選擇權 PCR、散戶多空比）以本次值之前的 N 筆作比較；VIX 分數用本站恐慌門檻，參考筆數控制走勢。資料不足時顯示實際筆數，其他因子少於 20 筆暫停計分。';
 }
 function setMarketLookback(value){
   const next=Math.max(20,Math.min(2400,Math.round(Number(value)||120)));

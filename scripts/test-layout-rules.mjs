@@ -16,3 +16,18 @@ assert.match(js,/clear\(\)\{float\.hidden=true;header\.hidden=true\}/,'large-cha
 assert.match(cards,/class="day-change '\+\(diff>0\?'up':diff<0\?'down':'flat'\)/,'market cards show a red/green day-change pill');
 assert.match(css,/\.day-change\.up\{color:var\(--tw-rise/,'rise is red');assert.match(css,/\.day-change\.down\{color:var\(--tw-fall/,'fall is green');
 console.log('PASS layout rules: 12- and 10-column uneven card rhythm with varied widths, heights and offsets; chart readouts never cover the plot; red/green day-change pill.');
+// Nine market cards (ph19.css): pack the spans into grid rows. Every row closes with at least two cards, and
+// neighbouring cards never share a width, so the rail never reads as a regular left-right grid.
+{
+  const css19=fs.readFileSync('worker/ph19.css','utf8').replace(/\r\n/g,'\n'),blocks19=q=>{const i=css19.lastIndexOf(q);assert.ok(i>=0,'ph19 missing '+q);let d=0,j=css19.indexOf('{',i);for(let k=j;k<css19.length;k++){if(css19[k]==='{')d++;if(css19[k]==='}'&&--d===0)return css19.slice(j,k+1)}return''};
+  for(const [query,cols,base] of [['@media(min-width:1000px)',12,[7,5,4,8,5,3,4,7,5]],['@media(min-width:720px) and (max-width:999px)',10,[6,4,4,6,5,5,10,6,4]]]){
+    const spans=[...base];for(const m of blocks19(query).matchAll(/#factorRail>\.factor:nth-child\((\d)\)\{--tide-span:(\d+)/g))spans[m[1]-1]=Number(m[2]);
+    const rows=[[]];let used=0;for(const s of spans){if(used+s>cols){rows.push([]);used=0}rows.at(-1).push(s);used+=s}
+    for(const row of rows){assert.ok(row.length>=2,query+' a card fills a row alone: '+JSON.stringify(rows));assert.equal(row.reduce((a,b)=>a+b,0),cols,query+' row does not close: '+JSON.stringify(rows));
+      row.forEach((s,i)=>assert.ok(!i||s!==row[i-1],query+' neighbours share a width: '+JSON.stringify(rows)))}
+  }
+  assert.match(css19,/\.market-overview-stats\{grid-column:2;grid-row:1;justify-self:end/,'scorable-factor count sits top right');
+  assert.match(css19,/\.market-overview \.rd-factor-bars\{grid-column:1\/-1;grid-row:2;justify-self:center/,'water levels centred below');
+  assert.match(css19,/\.rd-factor-bars\{grid-template-columns:repeat\(9,/,'nine water-level bars on one row');
+  console.log('PASS nine-card rhythm: rows close with two or more cards and neighbours differ at 12 and 10 columns; overview count top right, levels centred.');
+}

@@ -135,6 +135,8 @@ function installChaoweiApi(base,serverFallback){
     if(path==='/api/brent')return file('data/brent.json');
     if(path==='/api/vix')return freshFile('data/vix.json');
     if(path==='/api/oil')return freshFile('data/oil-spot.json');
+    if(path==='/api/pcr')return freshFile('data/options-pcr.json');
+    if(path==='/api/retail')return freshFile('data/retail-ratio.json');
     if(path==='/api/bank')return freshFile('data/history/histock-bank.json');
     if(path==='/api/fx')return file('data/fx.json');
     if(path==='/api/history')return history(params.get('code'));
@@ -242,7 +244,8 @@ function installChaoweiLive(appsScriptUrl){
     window.CHAOWEI_VIX=()=>new Promise((resolve,reject)=>google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getVixMarket());
     window.CHAOWEI_BANK=()=>new Promise((resolve,reject)=>google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getBankHistory());
     window.CHAOWEI_HOLDERS=code=>new Promise((resolve,reject)=>google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getHolderHistory(code));
-  }else if(appsScriptUrl){window.CHAOWEI_VIX=()=>extra('vix');window.CHAOWEI_BANK=()=>extra('bank');window.CHAOWEI_HOLDERS=code=>extra('holders',code)}
+    window.CHAOWEI_TAIFEX=()=>new Promise((resolve,reject)=>google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getTaifexSentiment());
+  }else if(appsScriptUrl){window.CHAOWEI_VIX=()=>extra('vix');window.CHAOWEI_BANK=()=>extra('bank');window.CHAOWEI_HOLDERS=code=>extra('holders',code);window.CHAOWEI_TAIFEX=()=>extra('taifex')}
   // Anonymous usage events (one row each) and the popular-search list, via the same Apps Script.
   const jsonp=(api,prefix)=>new Promise((resolve,reject)=>{
     const callback=prefix+Date.now().toString(36)+Math.random().toString(36).slice(2,10),script=document.createElement('script'),url=new URL(appsScriptUrl);
@@ -3124,7 +3127,7 @@ function fillMarketConfig(){
   $('marketLookbackValue').value=settings.marketWindow+' 筆';
   $('marketMethod').value=settings.marketMethod;$('marketSpan').value=settings.marketSpan;
   $('marketSpanWrap').classList.toggle('hidden',settings.marketMethod!=='mean');
-  $('marketMethodHelp').textContent='卡片走勢顯示最近 N 筆。六項市場分數以本次值之前的 N 筆作比較；VIX 分數用本站恐慌門檻，參考筆數控制走勢。資料不足時顯示實際筆數，其他因子少於 20 筆暫停計分。';
+  $('marketMethodHelp').textContent='卡片走勢顯示最近 N 筆。八項市場分數（含選擇權 PCR、散戶多空比）以本次值之前的 N 筆作比較；VIX 分數用本站恐慌門檻，參考筆數控制走勢。資料不足時顯示實際筆數，其他因子少於 20 筆暫停計分。';
 }
 function setMarketLookback(value){
   const next=Math.max(20,Math.min(2400,Math.round(Number(value)||120)));
@@ -3297,12 +3300,145 @@ const marketApplyProfile=window.chaoweiApplyProfile;window.chaoweiApplyProfile=p
 window.addEventListener('resize',()=>{clearTimeout(window.__bankResize);window.__bankResize=setTimeout(renderBankTrend,150)});
 loadBanks();
 
+/* TAIFEX sentiment maths for the PCR and retail long/short cards: rows, ranges, position zones and readings. */
+const SentimentCore=(()=>{
+  const RANGES=[['2w','兩週',{rows:10}],['1m','1 個月',{months:1}],['3m','3 個月',{months:3}],['6m','6 個月',{months:6}],['1y','1 年',{months:12}],['3y','3 年',{months:36}]];
+  // Files store counts; ratios are recomputed here so the card, gauge and charts agree to the last digit.
+  function pcrRows(file){
+    return(file?.days||[]).filter(r=>Array.isArray(r)&&r[2]>0&&r[4]>0).map(([date,putVol,callVol,putOi,callOi])=>({date,putVol,callVol,putOi,callOi,oiRatio:putOi/callOi*100,volRatio:putVol/callVol*100,value:putOi/callOi*100}));
+  }
+  function retailRows(file){
+    return(file?.days||[]).filter(r=>Array.isArray(r)&&r[1]>0).map(([date,oi,long,short])=>({date,oi,long,short,net:long-short,ratio:(short-long)/oi*100,value:(short-long)/oi*100}));
+  }
+  // Newer rows (a live bundle) replace older ones by date.
+  function merge(rows,more){const m=new Map(rows.map(r=>[r.date,r]));for(const r of more||[])m.set(r.date,r);return[...m.values()].sort((a,b)=>a.date<b.date?-1:1)}
+  function range(rows,id){
+    const spec=(RANGES.find(r=>r[0]===id)||RANGES[2])[2];if(!rows.length)return[];
+    if(spec.rows)return rows.slice(-spec.rows);
+    const d=new Date(rows.at(-1).date+'T00:00:00Z');d.setUTCMonth(d.getUTCMonth()-spec.months);const from=d.toISOString().slice(0,10);
+    return rows.filter(r=>r.date>from);
+  }
+  // Where the latest value sits between the range's low and high, split into thirds.
+  function zone(values){
+    const a=values.filter(Number.isFinite);if(!a.length)return null;
+    const last=a.at(-1),low=Math.min(...a),high=Math.max(...a),pos=high>low?(last-low)/(high-low):.5;
+    return{last,low,high,pos,mean:a.reduce((s,x)=>s+x,0)/a.length,segment:pos<1/3?'low':pos>2/3?'high':'mid',label:pos<1/3?'偏低段':pos>2/3?'偏高段':'中段'};
+  }
+  const pct=v=>(Math.round(v*100)/100).toFixed(2)+'%',lots=v=>Math.round(v).toLocaleString('zh-TW')+' 口',signed=(v,f)=>(v>0?'+':v<0?'−':'')+f(Math.abs(v));
+  // threshold: 'user' compares with the reader's threshold, 'zero' with zero, 'mean' with the range average.
+  const METRICS={
+    pcr:[
+      {id:'oiRatio',label:'未平倉 PCR',long:'賣權買權未平倉比率',unit:'%',format:pct,threshold:'user',reading:{
+        low:'未平倉 PCR 位於所選區間偏低段，表示賣權未平倉相對偏少，避險部位偏低，情緒面偏向空方。台指選擇權的賣權多由賣方（常見為法人）建立，賣權少代表下方支撐相對薄弱。',
+        mid:'未平倉 PCR 位於所選區間中段，賣權與買權未平倉大致均衡，情緒面中性，宜搭配指數走勢與其他刻度一起看。',
+        high:'未平倉 PCR 位於所選區間偏高段，表示賣權未平倉相對偏多，賣方在下方累積較多支撐，情緒面偏向多方；若指數同時急跌，也可能是避險需求升高，宜搭配指數走勢判讀。'}},
+      {id:'volRatio',label:'成交量 PCR',long:'賣權買權成交量比率',unit:'%',format:pct,threshold:'user',reading:{
+        low:'成交量 PCR 位於偏低段，當天買權成交明顯多於賣權，短線追價氣氛較濃。成交量只反映當天進出，起伏較大，宜看連續幾天。',
+        mid:'成交量 PCR 位於中段，買賣權成交大致均衡，短線情緒中性。',
+        high:'成交量 PCR 位於偏高段，當天賣權成交相對活躍，短線避險或看空交易增加。成交量只反映當天進出，起伏較大，宜看連續幾天。'}},
+      {id:'putOi',label:'賣權未平倉',long:'賣權未平倉口數',unit:'口',format:lots,threshold:'mean',reading:{
+        low:'賣權未平倉口數位於偏低段，下方的賣方部位相對較少，指數下跌時的支撐偏弱。',
+        mid:'賣權未平倉口數位於中段，下方支撐與平常相當。',
+        high:'賣權未平倉口數位於偏高段，賣方在下方累積較多部位，常被視為支撐增強。'}},
+      {id:'callOi',label:'買權未平倉',long:'買權未平倉口數',unit:'口',format:lots,threshold:'mean',reading:{
+        low:'買權未平倉口數位於偏低段，上方的買權賣方部位相對較少，上檔壓力較輕。',
+        mid:'買權未平倉口數位於中段，上檔壓力與平常相當。',
+        high:'買權未平倉口數位於偏高段，上方壓力相對較重，指數上攻時可能遇到賣壓。'}}
+    ],
+    retail:[
+      {id:'ratio',label:'散戶多空比',long:'小台散戶多空比',unit:'%',format:v=>signed(v,pct),threshold:'user',reading:{
+        low:'散戶多空比位於所選區間偏低段，小台散戶偏空、三大法人相對偏多，市場常把它當作反向的偏多訊號。',
+        mid:'散戶多空比位於所選區間中段，散戶多空部位沒有明顯偏向，情緒面中性。',
+        high:'散戶多空比位於所選區間偏高段，小台散戶淨多單偏多、三大法人相對偏空，市場常把它當作反向的偏空訊號：散戶追多時，行情較容易震盪或回檔。'}},
+      {id:'net',label:'法人淨部位',long:'三大法人小台淨部位',unit:'口',format:v=>signed(v,lots),threshold:'zero',reading:{
+        low:'三大法人小台淨部位位於偏低段（偏空），散戶相對偏多。',
+        mid:'三大法人小台淨部位位於中段，法人沒有明顯偏向。',
+        high:'三大法人小台淨部位位於偏高段（偏多），散戶相對偏空。'}},
+      {id:'oi',label:'小台未平倉',long:'小台全市場未平倉口數',unit:'口',format:lots,threshold:'mean',reading:{
+        low:'小台全市場未平倉位於偏低段，參與者觀望，部位較輕。',
+        mid:'小台全市場未平倉位於中段，參與程度與平常相當。',
+        high:'小台全市場未平倉位於偏高段，參與與槓桿部位偏多，後續波動可能放大。'}}
+    ]
+  };
+  function metric(key,id){const list=METRICS[key]||[];return list.find(m=>m.id===id)||list[0]}
+  function reading(key,id,z){if(!z)return'資料不足，暫不判讀。';return metric(key,id).reading[z.segment]}
+  // The bar colour: red at or above the line, green below (Taiwan colours). 'mean' uses the range average.
+  function line(m,values,userThreshold){return m.threshold==='zero'?0:m.threshold==='mean'?values.reduce((s,x)=>s+x,0)/Math.max(1,values.length):userThreshold}
+  function side(value,threshold){return value>=threshold?'rise':'fall'}
+  return{RANGES,METRICS,pcrRows,retailRows,merge,range,zone,metric,reading,line,side};
+})();
+
+/* ---------- TAIFEX sentiment cards: options PCR and the mini-TAIEX retail long/short ratio ---------- */
+// Daily files from the evening/afternoon CI refresh, topped up every five minutes by the Apps Script live bundle,
+// which reads TAIFEX directly (a day TAIFEX has published shows up before the next CI run).
+var pcrDays=[],retailDays=[],pcrPosition=null,retailPosition=null,taifexCheckedAt=null;
+settings.pcrThreshold=Number.isFinite(Number(settings.pcrThreshold))&&Number(settings.pcrThreshold)>0?Number(settings.pcrThreshold):100;
+settings.retailThreshold=Number.isFinite(Number(settings.retailThreshold))?Number(settings.retailThreshold):0;
+{
+  const pcrTile=document.createElement('div');pcrTile.className='factor sentiment-factor';pcrTile.id='pcrTile';
+  pcrTile.innerHTML='<span class="factor-icon"></span><h4>選擇權 PCR · 未平倉</h4><strong id="pcrScore">—</strong><p id="pcrMeta">讀取期交所臺指選擇權資料中</p><small class="sentiment-note">賣權未平倉 ÷ 買權未平倉 · 期交所每日盤後</small>';
+  const retailTile=document.createElement('div');retailTile.className='factor sentiment-factor';retailTile.id='retailTile';
+  retailTile.innerHTML='<span class="factor-icon"></span><h4>散戶多空比 · 小台</h4><strong id="retailScore">—</strong><p id="retailMeta">讀取期交所小台與三大法人資料中</p><small class="sentiment-note">（法人空單 − 法人多單）÷ 小台未平倉 · 期交所每日盤後</small>';
+  $('refreshClock').closest('.factor').before(pcrTile,retailTile);
+}
+function sentimentAge(last){return bars.length&&last?(Date.parse(bars.at(-1).date)-Date.parse(last.date))/86400000:0}
+function computePcr(){
+  const last=pcrDays.at(-1),s=factorScore(pcrDays.map(x=>x.oiRatio));
+  if(!last||!s){pcrPosition=null;$('pcrScore').textContent='—';$('pcrMeta').textContent=last?'參考資料不足 21 日':'期交所 PCR 暫不可用';return}
+  if(sentimentAge(last)>10){pcrPosition=null;$('pcrScore').textContent='逾期';$('pcrMeta').textContent=last.date+' 之後沒有新資料，暫停計分';return}
+  pcrPosition={...s,last};
+  $('pcrMeta').textContent=`${last.date} · 未平倉 PCR ${fmt(last.oiRatio,2)}% · 賣權 ${fmt(last.putOi,0)} 口／買權 ${fmt(last.callOi,0)} 口`;
+}
+function computeRetail(){
+  const last=retailDays.at(-1),s=factorScore(retailDays.map(x=>x.ratio));
+  if(!last||!s){retailPosition=null;$('retailScore').textContent='—';$('retailMeta').textContent=last?'參考資料不足 21 日':'期交所散戶多空比暫不可用';return}
+  if(sentimentAge(last)>10){retailPosition=null;$('retailScore').textContent='逾期';$('retailMeta').textContent=last.date+' 之後沒有新資料，暫停計分';return}
+  retailPosition={...s,last};
+  $('retailMeta').textContent=`${last.date} · 散戶${last.ratio>=0?'淨多':'淨空'} ${fmt(Math.abs(last.ratio),2)}% · 法人淨 ${signNum(last.net,0)} 口`;
+}
+function paintSentiment(){computePcr();computeRetail();updateWeights();if(factorTrendKey==='pcr'||factorTrendKey==='retail')renderFactorTrend();document.dispatchEvent(new Event('sentiment-updated'))}
+let sentimentLoading=false;
+async function loadSentiment(){
+  if(sentimentLoading)return;sentimentLoading=true;
+  const files=Promise.allSettled([fetch('/api/pcr').then(r=>r.json()),fetch('/api/retail').then(r=>r.json())]).then(([p,r])=>{
+    if(p.status==='fulfilled'&&Array.isArray(p.value?.days))pcrDays=SentimentCore.merge(SentimentCore.pcrRows(p.value),pcrDays.filter(x=>x.live));
+    if(r.status==='fulfilled'&&Array.isArray(r.value?.days))retailDays=SentimentCore.merge(SentimentCore.retailRows(r.value),retailDays.filter(x=>x.live));
+    paintSentiment();
+  });
+  const live=(async()=>{
+    if(!window.CHAOWEI_TAIFEX)return;
+    const d=await window.CHAOWEI_TAIFEX();if(!d||d.error)return;
+    // Live rows win over the file for the same date (TAIFEX may revise a day's counts after publication).
+    if(d.pcr?.length)pcrDays=SentimentCore.merge(pcrDays,SentimentCore.pcrRows({days:d.pcr}).map(x=>({...x,live:true})));
+    if(d.retail?.length)retailDays=SentimentCore.merge(retailDays,SentimentCore.retailRows({days:d.retail}).map(x=>({...x,live:true})));
+    taifexCheckedAt=d.checkedAt||null;paintSentiment();
+  })();
+  await Promise.allSettled([files,live]);sentimentLoading=false;
+}
+FACTOR_TRENDS.pcr={title:'選擇權 PCR（未平倉 Put/Call 比）',unit:'%',color:'#a0527a',data:()=>pcrDays.map(x=>[x.date,x.oiRatio]),fmt:v=>fmt(v,2)+'%'};
+FACTOR_TRENDS.retail={title:'散戶多空比（小型臺指期貨）',unit:'%',color:'#3f7f8c',data:()=>retailDays.map(x=>[x.date,x.ratio]),fmt:v=>signNum(v,2)+'%'};
+for(const [key,id] of [['pcr','pcrTile'],['retail','retailTile']]){
+  const tile=$(id);tile.dataset.trend=key;tile.tabIndex=0;tile.setAttribute('role','button');tile.setAttribute('aria-expanded','false');
+  tile.setAttribute('aria-label',FACTOR_TRENDS[key].title+'：查看解讀與趨勢圖');
+  const hint=document.createElement('span');hint.className='factor-more';hint.textContent='看解讀 ›';tile.append(hint);
+}
+const sentimentRecompute=recomputeFactors;recomputeFactors=function(){sentimentRecompute();computePcr();computeRetail();updateWeights()};
+setInterval(()=>{if(!document.hidden)loadSentiment()},300000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadSentiment()});
+window.addEventListener('chaowei-snapshot-updated',e=>{if(/options-pcr|retail-ratio/.test(e.detail?.path||''))loadSentiment()});
+loadSentiment();
+
 /* Range comparison maths for the market page: TAIEX close vs market margin balance on shared trading days. */
 const RangeCompare=(()=>{
   // Only days present in both series are compared; a missing margin day is skipped, never filled.
   function join(market,margin){
     const m=new Map((margin||[]).filter(x=>Number.isFinite(x.value)).map(x=>[x.date,x.value]));
     return(market||[]).filter(x=>Number.isFinite(x.index)&&!x.intraday&&m.has(x.date)).map(x=>({date:x.date,index:x.index,margin:m.get(x.date)}));
+  }
+  // Any two dated series ({date,value}), on the days both have: rows are {date,a,b}.
+  function joinSeries(a,b){
+    const m=new Map((b||[]).filter(x=>Number.isFinite(x.value)).map(x=>[x.date,x.value]));
+    const seen=new Set();return(a||[]).filter(x=>Number.isFinite(x.value)&&!x.intraday&&m.has(x.date)&&!seen.has(x.date)&&seen.add(x.date)).map(x=>({date:x.date,a:x.value,b:m.get(x.date)})).sort((p,q)=>p.date<q.date?-1:1);
   }
   // The last `months` calendar months ending on the latest shared day (0 = everything).
   function windowRows(rows,months){
@@ -3317,10 +3453,10 @@ const RangeCompare=(()=>{
     if(n<2)return null;a=Math.max(0,Math.min(n-2,Math.round(a)));b=Math.max(a+1,Math.min(n-1,Math.round(b)));return{a,b};
   }
   // Presets: from the window's index high to the latest day, or to the lowest index after that high.
-  function preset(rows,kind){
+  function preset(rows,kind,key='index'){
     const n=rows.length;if(n<2)return null;
-    let a=argmax(rows,'index');if(a>=n-1)a=argmax(rows,'index',0,n-2);
-    const b=kind==='peakToLow'?argmin(rows,'index',a+1):n-1;
+    let a=argmax(rows,key);if(a>=n-1)a=argmax(rows,key,0,n-2);
+    const b=kind==='peakToLow'?argmin(rows,key,a+1):n-1;
     return clampSel(n,a,b);
   }
   // Start minus end, as in "49968 − 41513 = 8455 (跌 16.92%)"; pct is the signed change from start to end.
@@ -3331,52 +3467,73 @@ const RangeCompare=(()=>{
   function ratio(a,b){return Number.isFinite(a.pct)&&Number.isFinite(b.pct)&&Math.abs(a.pct)>=1e-4?b.pct/a.pct:null}
   // Highest value inside the selection and the move from it to the end; null when the start itself is the high.
   function peakInside(rows,sel,key){const k=argmax(rows,key,sel.a,sel.b);if(k<=sel.a||k>=sel.b)return null;return change(rows,{a:k,b:sel.b},key)}
-  return{join,windowRows,argmax,argmin,clampSel,preset,change,ratio,peakInside};
+  return{join,joinSeries,windowRows,argmax,argmin,clampSel,preset,change,ratio,peakInside};
 })();
 
-/* ---------- 大盤與融資：同一段區間對照（市場刻度卡片最下方） ---------- */
+/* ---------- 任兩張市場卡片：同一段區間對照（市場刻度卡片最下方） ---------- */
+// Two transparent boxes start empty. Drag any market card's "拖到下方比較" handle into box A or B (or tap the handle to
+// fill the next empty box); once both are filled, the two series are compared on the days both have data.
 // Hover shows a vertical line on both charts. Double-click (double-tap) locks it as the start; moving right previews
 // the end and a click (or tap) fixes it. The start is always the left end; Esc cancels.
 // Each chart zooms (wheel, + / −) and pans (drag) on its own over the whole shared history; the selection is by date.
+const CompareSeries={
+  index:{title:'加權指數',unit:'點',line:'#0e7490',digits:2,mode:'pct',up:'漲',down:'跌',rows:()=>market.filter(x=>!x.intraday).map(x=>({date:x.date,value:x.index}))},
+  volume:{title:'大盤成交股數',unit:'億股',line:'#4f8fa0',digits:1,mode:'pct',up:'增',down:'減',rows:()=>market.filter(x=>!x.intraday).map(x=>({date:x.date,value:x.volume/1e8}))},
+  brent:{title:'布蘭特原油',unit:'美元／桶',line:'#c98a2b',digits:2,mode:'pct',up:'漲',down:'跌',rows:()=>oilDays},
+  fx:{title:'美元／新台幣',unit:'新台幣',line:'#7c6bb0',digits:3,mode:'pct',up:'升',down:'降',rows:()=>fx},
+  margin:{title:'融資餘額',unit:'億元',line:'#b4566e',digits:1,mode:'pct',up:'增幅',down:'減幅',rows:()=>marginDays},
+  // Daily net flows only make sense summed: the difference between two days is the net over the interval.
+  bank:{title:'八大官股累計淨額',unit:'億元',line:'#16867d',digits:2,mode:'diff',up:'區間淨買超',down:'區間淨賣超',rows:()=>{let s=0;return bankDays.map(x=>({date:x.date,value:s+=x.value}))}},
+  vix:{title:'恐慌指數 VIX',unit:'點',line:'#8563af',digits:2,mode:'pct',up:'升',down:'降',rows:()=>vixDays},
+  // Ratios move in percentage points; the retail ratio also crosses zero, so a relative % would mislead.
+  pcr:{title:'選擇權 PCR（未平倉）',unit:'個百分點',valueUnit:'%',line:'#a0527a',digits:2,mode:'points',up:'上升',down:'下降',rows:()=>pcrDays.map(x=>({date:x.date,value:x.oiRatio}))},
+  retail:{title:'散戶多空比',unit:'個百分點',valueUnit:'%',line:'#3f7f8c',digits:2,mode:'points',up:'上升',down:'下降',rows:()=>retailDays.map(x=>({date:x.date,value:x.ratio}))}
+};
 (()=>{
   const RC=RangeCompare,RANGES=[['3m','3 個月',3],['6m','6 個月',6],['1y','1 年',12],['2y','2 年',24],['all','全部',0]];
-  const SERIES=[{key:'index',tag:'A',title:'加權指數',unit:'點',line:'#0e7490',up:'漲',down:'跌'},{key:'margin',tag:'B',title:'融資餘額',unit:'億元',line:'#b4566e',up:'增幅',down:'減幅'}];
+  const slots={a:null,b:null},SLOTS=[{key:'a',tag:'A'},{key:'b',tag:'B'}];
+  const spec=k=>({...CompareSeries[slots[k]],key:k,tag:k.toUpperCase()});
   const sec=document.createElement('section');sec.className='range-compare';sec.id='rangeCompare';
-  sec.innerHTML='<div class="range-compare-head"><div><p class="kicker teal">RANGE COMPARE</p><h3>大盤與融資，同一段區間</h3><p class="small">滑鼠移到圖上會出現直線；在起點連點兩下定住，再往右移到終點點一下確認，Esc 取消。每張圖可各自用滾輪或「＋／－」縮放、按住拖曳左右移動（手機：拖曳移動，連點兩下定起點，再點一下定終點）。</p></div>'+
-    '<div class="range-compare-tools"><div class="segment" role="group" aria-label="兩張圖一起顯示的期間" data-rc-ranges>'+RANGES.map(([id,label])=>`<button type="button" data-rc-range="${id}">${label}</button>`).join('')+'</div>'+
-    '<div class="segment" role="group" aria-label="快速選取"><button type="button" data-rc-preset="peakToLatest">高點至最新</button><button type="button" data-rc-preset="peakToLow">高點至低點</button></div></div></div>'+
+  sec.innerHTML='<div class="range-compare-head"><div><p class="kicker teal">RANGE COMPARE</p><h3>任選兩張卡片，同一段區間</h3><p class="small">把上方任兩張市場卡片的「拖到下方比較」拖進 A、B 兩個框（或點一下該按鈕，依序放入），就會比對同一段區間的漲跌幅度。圖上滑鼠移動會出現直線；在起點連點兩下定住，再往右移到終點點一下確認，Esc 取消。每張圖可各自用滾輪或「＋／－」縮放、按住拖曳左右移動。</p></div></div>'+
+    '<div class="rc-slots" role="group" aria-label="比較框">'+SLOTS.map(s=>`<div class="rc-slot" data-slot="${s.key}"><span class="rc-slot-tag">${s.tag}</span><div class="rc-slot-body"></div><button type="button" class="pill mini rc-slot-clear" data-slot-clear="${s.key}" hidden>移除</button></div>`).join('')+'</div>'+
+    '<div class="rc-body"><div class="range-compare-tools"><div class="segment" role="group" aria-label="兩張圖一起顯示的期間" data-rc-ranges>'+RANGES.map(([id,label])=>`<button type="button" data-rc-range="${id}">${label}</button>`).join('')+'</div>'+
+    '<div class="segment" role="group" aria-label="快速選取"><button type="button" data-rc-preset="peakToLatest">A 高點至最新</button><button type="button" data-rc-preset="peakToLow">A 高點至低點</button></div></div>'+
     '<div class="range-compare-result" aria-live="polite"></div><p class="rc-hint small" aria-live="polite"></p><div class="range-compare-charts"></div>'+
     '<div class="range-compare-sliders"><label><span>起點</span><input type="range" min="0" step="1" data-rc-end="a" aria-label="區間起點"><output></output></label><label><span>終點</span><input type="range" min="0" step="1" data-rc-end="b" aria-label="區間終點"><output></output></label></div>'+
-    '<p class="small range-compare-note">加權指數用證交所收盤；融資餘額用證交所信用交易統計（上市融資金額）。只比對兩者都有資料的交易日，盤中暫值不納入。</p>';
+    '<p class="small range-compare-note">只比對兩者都有資料的日期（不同來源的交易日不一定相同，缺的日子跳過、不補值），盤中暫值不納入。比率類（PCR、散戶多空比）以「百分點」表示變化；八大官股以區間累計淨額比較。</p></div>';
   // Appended at the end of the market card: the slot right after the card rail is the carousel progress bar, hidden in grid view.
   $('market').append(sec);
   const charts=sec.querySelector('.range-compare-charts'),result=sec.querySelector('.range-compare-result'),plots={};
-  for(const s of SERIES){
+  for(const s of SLOTS){
     const fig=document.createElement('figure');fig.className='rc-figure';
-    fig.innerHTML=`<figcaption><b>${s.tag}　${s.title}</b><span class="rc-span"></span><span class="rc-zoom" role="group" aria-label="${s.title}縮放"><button type="button" data-rc-zoom="in" data-rc-chart="${s.key}" aria-label="${s.title}放大">＋</button><button type="button" data-rc-zoom="out" data-rc-chart="${s.key}" aria-label="${s.title}縮小">－</button><button type="button" data-rc-zoom="reset" data-rc-chart="${s.key}">重設</button></span></figcaption><div class="rc-plot"><div class="rc-svg"></div><div class="rc-cross" hidden><span></span></div><div class="rc-hit" data-rc-plot="${s.key}" aria-hidden="true"></div></div><p class="rc-ends"></p>`;
-    charts.append(fig);plots[s.key]={fig,host:fig.querySelector('.rc-svg'),hit:fig.querySelector('.rc-hit'),ends:fig.querySelector('.rc-ends'),cross:fig.querySelector('.rc-cross'),span:fig.querySelector('.rc-span')};
+    fig.innerHTML=`<figcaption><b></b><span class="rc-span"></span><span class="rc-zoom" role="group" aria-label="${s.tag} 縮放"><button type="button" data-rc-zoom="in" data-rc-chart="${s.key}" aria-label="${s.tag} 放大">＋</button><button type="button" data-rc-zoom="out" data-rc-chart="${s.key}" aria-label="${s.tag} 縮小">－</button><button type="button" data-rc-zoom="reset" data-rc-chart="${s.key}">重設</button></span></figcaption><div class="rc-plot"><div class="rc-svg"></div><div class="rc-cross" hidden><span></span></div><div class="rc-hit" data-rc-plot="${s.key}" aria-hidden="true"></div></div><p class="rc-ends"></p>`;
+    charts.append(fig);plots[s.key]={fig,title:fig.querySelector('figcaption b'),host:fig.querySelector('.rc-svg'),hit:fig.querySelector('.rc-hit'),ends:fig.querySelector('.rc-ends'),cross:fig.querySelector('.rc-cross'),span:fig.querySelector('.rc-span')};
   }
   const H=250,PAD={l:10,r:80,t:34,b:26},MIN_SPAN=15;
-  let view=[],sel=null,vp={},picking=null,before=null,frame=0,lastWidth=0,lastTap={t:0,x:0},pan=null;
+  let view=[],sel=null,vp={},picking=null,before=null,frame=0,lastWidth=0,lastTap={t:0,x:0},pan=null,SERIES=[];
   const hint=sec.querySelector('.rc-hint');
   const rangeKey=()=>RANGES.some(r=>r[0]===settings.compareRange)?settings.compareRange:'6m';
   const md=d=>Number(d.slice(5,7))+'/'+d.slice(8,10);
   const ymd=d=>d.slice(0,4)+'/'+md(d);
-  const num=(v,s)=>fmt(v,s.key==='index'?2:1);
-  const clampVp=(from,to)=>{const n=view.length,span=Math.max(MIN_SPAN,Math.min(n-1,Math.round(to-from)));from=Math.round(from);from=Math.max(0,Math.min(n-1-span,from));return{from,to:from+span}};
+  const num=(v,s)=>fmt(v,s.digits)+(s.valueUnit||'');
+  const axis=v=>fmt(v,Math.abs(v)>=1000?0:Math.abs(v)>=100?1:2);
+  const ready=()=>!!(slots.a&&slots.b);
+  const clampVp=(from,to)=>{const n=view.length,span=Math.max(Math.min(MIN_SPAN,n-1),Math.min(n-1,Math.round(to-from)));from=Math.round(from);from=Math.max(0,Math.min(n-1-span,from));return{from,to:from+span}};
   // The window buttons put both charts on the last N months; each chart can then zoom and pan by itself.
   function windowVp(){const w=RC.windowRows(view,RANGES.find(r=>r[0]===rangeKey())[2]),from=Math.max(0,view.length-w.length);return clampVp(from,view.length-1)}
-  function setBoth(v){for(const s of SERIES)vp[s.key]={...v}}
+  function setBoth(v){for(const s of SLOTS)vp[s.key]={...v}}
   // Keep the chosen days and each chart's visible dates when data refreshes.
-  function rebuild(){
-    const keepSel=sel&&view.length?[view[sel.a]?.date,view[sel.b]?.date]:null,keepVp=Object.fromEntries(Object.entries(vp).map(([k,v])=>[k,[view[v.from]?.date,view[v.to]?.date]]));
-    view=RC.join(market,marginDays);if(view.length<2){paint();return}
+  function rebuild(reset=false){
+    if(!ready()){view=[];sel=null;paint();return}
+    SERIES=SLOTS.map(s=>spec(s.key));
+    const keepSel=!reset&&sel&&view.length?[view[sel.a]?.date,view[sel.b]?.date]:null,keepVp=reset?{}:Object.fromEntries(Object.entries(vp).map(([k,v])=>[k,[view[v.from]?.date,view[v.to]?.date]]));
+    view=RC.joinSeries(CompareSeries[slots.a].rows(),CompareSeries[slots.b].rows());if(view.length<2){sel=null;paint();return}
     const find=d=>view.findIndex(x=>x.date===d);
-    if(Object.keys(keepVp).length&&keepVp.index?.[0])for(const s of SERIES){const [f,t]=keepVp[s.key]||[];const a=find(f),b=find(t);vp[s.key]=a>=0&&b>a?clampVp(a,b===view.length-2?view.length-1:b):windowVp()}else setBoth(windowVp());
+    if(Object.keys(keepVp).length&&keepVp.a?.[0])for(const s of SLOTS){const [f,t]=keepVp[s.key]||[];const a=find(f),b=find(t);vp[s.key]=a>=0&&b>a?clampVp(a,b===view.length-2?view.length-1:b):windowVp()}else setBoth(windowVp());
     const a=keepSel?find(keepSel[0]):-1,b=keepSel?find(keepSel[1]):-1;sel=a>=0&&b>a?{a,b}:presetIn('peakToLatest');paint();
   }
-  // Presets look inside chart A's visible window.
-  function presetIn(kind){const v=vp.index||windowVp(),p=RC.preset(view.slice(v.from,v.to+1),kind);return p?{a:p.a+v.from,b:p.b+v.from}:null}
+  // Presets look inside chart A's visible window, at A's own high.
+  function presetIn(kind){const v=vp.a||windowVp(),p=RC.preset(view.slice(v.from,v.to+1),kind,'a');return p?{a:p.a+v.from,b:p.b+v.from}:null}
   function schedule(){if(!frame)frame=requestAnimationFrame(()=>{frame=0;paint()})}
   let lastPlotKey;
   function svgFor(s,w,rise){
@@ -3388,20 +3545,21 @@ const RangeCompare=(()=>{
     // Ticks: months on short spans, years once the view covers more than about two years; thinned for phone widths.
     const years=n>520,marks=[];seg.forEach((x,k)=>{if(k&&x.date.slice(0,years?4:7)!==seg[k-1].date.slice(0,years?4:7))marks.push(from+k)});const step=Math.max(1,Math.ceil(marks.length/Math.max(2,Math.floor(pw/70))));
     const ticks=marks.filter((_,k)=>k%step===0).map(i=>{const d=view[i].date,label=years||d.slice(5,7)==='01'?d.slice(0,4):Number(d.slice(5,7))+'月';return`<line x1="${X(i)}" x2="${X(i)}" y1="${PAD.t}" y2="${PAD.t+ph}" class="rc-grid"/><text x="${X(i)}" y="${H-8}" text-anchor="middle" class="rc-tick">${label}</text>`}).join('');
+    const zero=lo<0&&hi>0?`<line x1="${PAD.l}" x2="${PAD.l+pw}" y1="${Y(0)}" y2="${Y(0)}" class="rc-zero"/>`:'';
     const pin=(i,label,cls)=>`<circle cx="${X(i)}" cy="${Y(view[i][s.key])}" r="3" class="${cls}"/><text x="${Math.min(X(i),PAD.l+pw)}" y="${Y(view[i][s.key])+(cls==='rc-hi'?-7:13)}" text-anchor="${X(i)>PAD.l+pw*.8?'end':X(i)<PAD.l+pw*.2?'start':'middle'}" class="rc-pin">${label}</text>`;
     const tail=to===view.length-1&&typeof tideTail==='function'?tideTail(X(to),Y(vals.at(-1)),s.line):'';
-    return`<svg data-tide-plot ${rise?'':'data-tide-static'} viewBox="0 0 ${w} ${H}" width="${w}" height="${H}" role="img" aria-label="${s.title}：顯示 ${view[from].date} 至 ${view[to].date}；選取 ${c.from} ${num(c.start,s)} ${s.unit}，${c.to} ${num(c.end,s)} ${s.unit}">`+
-      (overlap?`<rect x="${X(sa)}" y="${PAD.t}" width="${Math.max(1,X(sb)-X(sa))}" height="${ph}" fill="${tone}" opacity=".09"/>`:'')+ticks+
-      [hiI,loI].filter(i=>!(inB&&xb>PAD.l+pw-50&&Math.abs(Y(view[i][s.key])-yb)<16)).map(i=>`<text x="${w-PAD.r+6}" y="${Y(view[i][s.key])+4}" class="rc-axis">${fmt(view[i][s.key],0)}</text>`).join('')+
+    return`<svg data-tide-plot ${rise?'':'data-tide-static'} viewBox="0 0 ${w} ${H}" width="${w}" height="${H}" role="img" aria-label="${s.title}：顯示 ${view[from].date} 至 ${view[to].date}；選取 ${c.from} ${num(c.start,s)}，${c.to} ${num(c.end,s)}">`+
+      (overlap?`<rect x="${X(sa)}" y="${PAD.t}" width="${Math.max(1,X(sb)-X(sa))}" height="${ph}" fill="${tone}" opacity=".09"/>`:'')+ticks+zero+
+      [hiI,loI].filter(i=>!(inB&&xb>PAD.l+pw-50&&Math.abs(Y(view[i][s.key])-yb)<16)).map(i=>`<text x="${w-PAD.r+6}" y="${Y(view[i][s.key])+4}" class="rc-axis">${axis(view[i][s.key])}</text>`).join('')+
       `<g data-tide-base="${H-PAD.b}"><polyline points="${pts(from,to)}" fill="none" stroke="${s.line}" stroke-width="1.6" opacity=".45"/>`+
       (overlap?`<polyline points="${pts(sa,sb)}" fill="none" stroke="${tone}" stroke-width="2.6" stroke-linejoin="round"/>`:'')+`${tail}</g>`+
       (inA&&inB?`<line x1="${xa}" x2="${xb}" y1="${ya}" y2="${ya}" stroke="${tone}" stroke-dasharray="4 4" opacity=".75"/><line x1="${xb}" x2="${xb}" y1="${ya}" y2="${yb}" stroke="${tone}" stroke-width="2"/>`:'')+
       (hiI===sel.a||hiI===sel.b?'':pin(hiI,'高 '+md(view[hiI].date),'rc-hi'))+(loI===sel.a||loI===sel.b?'':pin(loI,'低 '+md(view[loI].date),'rc-lo'))+
       (inA?`<line x1="${xa}" x2="${xa}" y1="${PAD.t}" y2="${PAD.t+ph}" class="rc-edge${picking!=null?' locked':''}"/><circle cx="${xa}" cy="${ya}" r="5.5" fill="var(--paper)" stroke="${s.line}" stroke-width="2.4"/>`:'')+
       (inB?`<line x1="${xb}" x2="${xb}" y1="${PAD.t}" y2="${PAD.t+ph}" class="rc-edge${picking!=null?' preview':''}"/><circle cx="${xb}" cy="${yb}" r="5.5" fill="${tone}" stroke="var(--paper)" stroke-width="2"/>`:'')+
-      values(s,c,{w,pw,ph,xa,xb,ya,yb,tone,hiI,loI,inA,inB,X})+
-      ''+'</svg>';
+      values(s,c,{w,pw,ph,xa,xb,ya,yb,tone,hiI,loI,inA,inB,X})+'</svg>';
   }
+  function change(s,c){const pct=s.mode==='pct'&&c.pct!=null?`（${c.pct>0?'+':c.pct<0?'−':''}${fmt(Math.abs(c.pct)*100,2)}%）`:'';return(c.diff>0?'+':c.diff<0?'−':'')+fmt(Math.abs(c.diff),s.digits)+(s.mode==='points'?' 百分點':'')+pct}
   // Values on the chart: start above its point, end beside its point (in the right gutter when at the right edge),
   // and the change beside the vertical drop line (on a narrow chart, in the strip above the plot). Text carries a paper halo so it stays readable over the lines.
   function values(s,c,{w,pw,ph,xa,xb,ya,yb,tone,hiI,loI,inA,inB,X}){
@@ -3410,27 +3568,43 @@ const RangeCompare=(()=>{
     const startTag=(hiI===sel.a?'高 ':loI===sel.a?'低 ':'')+md(c.from)+' '+num(c.start,s),endTag=(hiI===sel.b?'高 ':loI===sel.b?'低 ':'')+md(c.to)+' '+num(c.end,s);
     const crowded=hiI!==sel.a&&hiI!==sel.b&&Math.abs(X(hiI)-xa)<110,sy=!crowded&&ya-12>12?ya-12:Math.min(PAD.t+ph-4,ya+20),sAnchor=xa<PAD.l+70?'start':xa>right-70?'end':'middle';
     const gutter=xb>right-50,ey=Math.min(PAD.t+ph-4,Math.max(PAD.t+10,yb+(c.diff<0?16:-10)));
-    const pct=c.pct==null?'':`（${c.pct>0?'+':c.pct<0?'−':''}${fmt(Math.abs(c.pct)*100,2)}%）`,chg=(c.diff>0?'+':c.diff<0?'−':'')+num(Math.abs(c.diff),s)+pct;
     const room=inA&&inB&&xb-xa>130&&Math.abs(yb-ya)>30,cy=room?(ya+yb)/2+4:14;
     return(inA?lab(sAnchor==='start'?Math.max(PAD.l,xa-4):sAnchor==='end'?xa+4:xa,sy,sAnchor,startTag,'rc-val'):'')+
       (inB?(gutter?lab(w-PAD.r+6,yb+4,'start',num(c.end,s),'rc-val',tone)+lab(xb-8,ey,'end',md(c.to),'rc-val'):lab(xb+9,yb+4,'start',endTag,'rc-val',tone)):'')+
-      lab(room?xb-8:w-4,cy,'end',chg,'rc-chg',tone);
+      lab(room?xb-8:w-4,cy,'end',change(s,c),'rc-chg',tone);
   }
-  // "49,968 − 41,513 = 8,455（跌 16.92%）" for a fall; a rise reads end − start.
+  // "49,968 − 41,513 = 8,455（跌 16.92%）" for a fall; a rise reads end − start. Ratios read in percentage points.
   function sentence(s,c){
-    const pct=c.pct==null?'—':fmt(Math.abs(c.pct)*100,2)+'%',word=c.diff>0?s.up:c.diff<0?s.down:'持平',cls=c.diff>0?'up':c.diff<0?'down':'';
+    const word=c.diff>0?s.up:c.diff<0?s.down:'持平',cls=c.diff>0?'up':c.diff<0?'down':'';
     const expr=c.diff<0?`${num(c.start,s)} − ${num(c.end,s)} = `:`${num(c.end,s)} − ${num(c.start,s)} = `;
-    return`${expr}<strong class="${cls}">${num(Math.abs(c.diff),s)} ${s.unit}</strong>（${word} <strong class="${cls}">${pct}</strong>）`;
+    if(s.mode!=='pct')return`${expr}<strong class="${cls}">${fmt(Math.abs(c.diff),s.digits)} ${s.unit}</strong>（${word}）`;
+    const pct=c.pct==null?'—':fmt(Math.abs(c.pct)*100,2)+'%';
+    return`${expr}<strong class="${cls}">${fmt(Math.abs(c.diff),s.digits)} ${s.unit}</strong>（${word} <strong class="${cls}">${pct}</strong>）`;
+  }
+  function paintSlots(){
+    for(const box of sec.querySelectorAll('.rc-slot')){
+      const k=box.dataset.slot,id=slots[k],body=box.querySelector('.rc-slot-body');
+      box.classList.toggle('filled',!!id);box.querySelector('.rc-slot-clear').hidden=!id;
+      body.innerHTML=id?`<b>${CompareSeries[id].title}</b><small>拖入其他卡片可替換</small>`:`<b>拖曳卡片到這裡</b><small>${k==='a'?'第一張':'第二張'}卡片</small>`;
+    }
+    sec.classList.toggle('rc-ready',ready());
+    document.querySelectorAll('#factorRail [data-trend]').forEach(card=>{const k=Object.keys(slots).find(x=>slots[x]===card.dataset.trend);card.dataset.compareSlot=k?k.toUpperCase():'';const g=card.querySelector('.compare-grip');if(g)g.textContent=k?'已放入 '+k.toUpperCase():'拖到下方比較'});
   }
   function paint(){
-    const win=windowVp&&view.length>1?windowVp():null;
-    sec.querySelectorAll('[data-rc-range]').forEach(b=>{const on=b.dataset.rcRange===rangeKey()&&!!win&&SERIES.every(s=>vp[s.key]?.from===win.from&&vp[s.key]?.to===win.to);b.classList.toggle('active',on);b.setAttribute('aria-pressed',String(on))});
-    if(view.length<2||!sel){result.innerHTML='<p class="small">指數與融資資料讀取中，或共同交易日不足兩天。</p>';for(const s of SERIES){plots[s.key].host.innerHTML='';plots[s.key].ends.textContent=''}return}
-    const live=sel,cs=SERIES.map(s=>RC.change(view,live,s.key)),max=Math.max(...cs.map(c=>Math.abs(c.pct||0)),.0001);
-    result.innerHTML=`<p class="rc-period">${cs[0].from} → ${cs[0].to}<span>${cs[0].days} 個交易日</span></p>`+SERIES.map((s,k)=>{const c=cs[k];return`<div class="rc-row"><span class="rc-tag">${s.tag}</span><div><b>${s.title}</b><p>${sentence(s,c)}</p>${(()=>{const p=RC.peakInside(view,live,s.key);return p?`<small class="rc-peak">區間內最高 ${md(p.from)} ${num(p.start,s)}，至終點 ${sentence(s,p)}</small>`:''})()}</div><i class="rc-bar" aria-hidden="true"><i class="${c.diff>=0?'up-bg':'down-bg'}" style="width:${(Math.abs(c.pct||0)/max*100).toFixed(1)}%"></i></i></div>`}).join('')+
-      (()=>{const r=RC.ratio(cs[0],cs[1]);return r==null?'':`<p class="small rc-ratio">融資變動幅度約為指數的 <b>${fmt(Math.abs(r),2)}</b> 倍${r<0?'，兩者方向相反':''}。</p>`})();
+    paintSlots();
+    if(!ready()){result.innerHTML='';hint.textContent='';return}
+    const win=view.length>1?windowVp():null;
+    sec.querySelectorAll('[data-rc-range]').forEach(b=>{const on=b.dataset.rcRange===rangeKey()&&!!win&&SLOTS.every(s=>vp[s.key]?.from===win.from&&vp[s.key]?.to===win.to);b.classList.toggle('active',on);b.setAttribute('aria-pressed',String(on))});
+    for(const s of SERIES)plots[s.key].title.textContent=s.tag+'　'+s.title;
+    if(view.length<2||!sel){result.innerHTML='<p class="small">資料讀取中，或兩張卡片的共同日期不足兩天。</p>';for(const s of SLOTS){plots[s.key].host.innerHTML='';plots[s.key].ends.textContent=''}return}
+    // Bars compare the two moves on one scale, so they appear only when both read in % (a percentage-point or net-flow
+    // change has no common scale with a % move).
+    const bars=SERIES.every(s=>s.mode==='pct'),live=sel,cs=SERIES.map(s=>RC.change(view,live,s.key)),bar=(s,c)=>s.mode==='pct'?Math.abs(c.pct||0):0,max=Math.max(...SERIES.map((s,k)=>bar(s,cs[k])),.0001);
+    result.innerHTML=`<p class="rc-period">${cs[0].from} → ${cs[0].to}<span>${cs[0].days} 個共同日期</span></p>`+SERIES.map((s,k)=>{const c=cs[k];return`<div class="rc-row"><span class="rc-tag">${s.tag}</span><div><b>${s.title}</b><p>${sentence(s,c)}</p>${(()=>{const p=RC.peakInside(view,live,s.key);return p?`<small class="rc-peak">區間內最高 ${md(p.from)} ${num(p.start,s)}，至終點 ${sentence(s,p)}</small>`:''})()}</div>${bars?`<i class="rc-bar" aria-hidden="true"><i class="${c.diff>=0?'up-bg':'down-bg'}" style="width:${(bar(s,c)/max*100).toFixed(1)}%"></i></i>`:'<i aria-hidden="true"></i>'}</div>`}).join('')+
+      (()=>{if(SERIES.some(s=>s.mode!=='pct'))return'';const r=RC.ratio(cs[0],cs[1]);return r==null?'':`<p class="small rc-ratio">B 的變動幅度約為 A 的 <b>${fmt(Math.abs(r),2)}</b> 倍${r<0?'，兩者方向相反':''}。</p>`})();
+    result.classList.toggle('rc-nobar',!bars);
     hint.textContent=picking!=null?`起點已定住：${view[picking].date}。往右移到終點後點一下確認，Esc 取消。`:'';sec.classList.toggle('rc-picking',picking!=null);
-    const key=[view.length,view[0].date,view.at(-1).date].join('|'),rise=key!==lastPlotKey;
+    const key=[slots.a,slots.b,view.length,view[0].date,view.at(-1).date].join('|'),rise=key!==lastPlotKey;
     lastPlotKey=key;
     for(const [k,s] of SERIES.entries()){const p=plots[s.key],w=Math.max(260,Math.round(p.host.clientWidth||charts.clientWidth/2||520)),c=cs[k],v=vp[s.key];
       p.host.innerHTML=svgFor(s,w,rise);p.hit.style.left=PAD.l+'px';p.hit.style.right=PAD.r+'px';
@@ -3439,9 +3613,9 @@ const RangeCompare=(()=>{
     const [ia,ib]=sec.querySelectorAll('[data-rc-end]');for(const input of [ia,ib]){input.max=String(view.length-1)}ia.value=String(sel.a);ib.value=String(sel.b);
     ia.nextElementSibling.textContent=view[sel.a].date;ib.nextElementSibling.textContent=view[sel.b].date;lastWidth=charts.clientWidth;
   }
-  // Pointer x to a trading day inside that chart's own visible window.
+  // Pointer x to a day inside that chart's own visible window.
   const at=(e,hit)=>{const v=vp[hit.dataset.rcPlot],r=hit.getBoundingClientRect(),n=v.to-v.from;return Math.max(v.from,Math.min(v.to,v.from+Math.round((e.clientX-r.left)/Math.max(1,r.width)*n)))};
-  // Crosshair: one vertical line per chart at the same trading day (when that day is inside the chart's view).
+  // Crosshair: one vertical line per chart at the same day (when that day is inside the chart's view).
   function cross(i){for(const sr of SERIES){const p=plots[sr.key],c=p.cross,v=vp[sr.key];if(i==null||view.length<2||!v||i<v.from||i>v.to){c.hidden=true;continue}
     const pw=p.host.clientWidth-PAD.l-PAD.r,x=PAD.l+(i-v.from)*pw/Math.max(1,v.to-v.from),label=c.firstChild;c.hidden=false;c.style.left=x+'px';
     label.textContent=md(view[i].date)+'　'+num(view[i][sr.key],sr);label.classList.toggle('flip',x>p.host.clientWidth*.6)}}
@@ -3449,7 +3623,7 @@ const RangeCompare=(()=>{
   function commit(i){const n=view.length;sel=RC.clampSel(n,picking,i);picking=null;before=null;paint()}
   function preview(i){if(picking==null)return;const b=Math.max(picking+1,Math.min(view.length-1,i));if(b!==sel.b){sel={a:picking,b};schedule()}}
   // Zoom one chart around a day, keeping that day under the pointer.
-  function zoom(key,factor,anchor){const v=vp[key],span=v.to-v.from,next=Math.max(MIN_SPAN,Math.min(view.length-1,Math.round(span*factor)));if(next===span)return;
+  function zoom(key,factor,anchor){const v=vp[key],span=v.to-v.from,next=Math.max(Math.min(MIN_SPAN,view.length-1),Math.min(view.length-1,Math.round(span*factor)));if(next===span)return;
     const at=anchor??Math.round((v.from+v.to)/2),ratio=span?(at-v.from)/span:.5;vp[key]=clampVp(at-ratio*next,at-ratio*next+next);schedule()}
   charts.addEventListener('wheel',e=>{const hit=e.target.closest('[data-rc-plot]');if(!hit||view.length<2)return;e.preventDefault();zoom(hit.dataset.rcPlot,e.deltaY<0?.8:1.25,at(e,hit))},{passive:false});
   // Dragging pans that chart; a press that does not move stays a click (end point) or part of a double-click (start).
@@ -3473,11 +3647,75 @@ const RangeCompare=(()=>{
   // Sliders give keyboard and fine-touch control; the start can never pass the end.
   sec.querySelector('.range-compare-sliders').addEventListener('input',e=>{const input=e.target.closest('[data-rc-end]');if(!input||!sel)return;const v=Number(input.value),n=view.length;
     sel=input.dataset.rcEnd==='a'?RC.clampSel(n,Math.min(v,sel.b-1),sel.b):RC.clampSel(n,sel.a,Math.max(v,sel.a+1));paint()});
-  sec.querySelector('.range-compare-tools').addEventListener('click',e=>{const r=e.target.closest('[data-rc-range]'),p=e.target.closest('[data-rc-preset]');
-    if(r&&view.length>1){settings.compareRange=r.dataset.rcRange;save();setBoth(windowVp());const q=presetIn('peakToLatest');if(q&&!(sel.a>=vp.index.from&&sel.b<=vp.index.to))sel=q;paint()}if(p){const q=presetIn(p.dataset.rcPreset);if(q){sel=q;paint()}}});
-  const prev=computeMktMargin;computeMktMargin=function(...a){const out=prev(...a);clearTimeout(window.__rcRebuild);window.__rcRebuild=setTimeout(rebuild,60);return out};
+  sec.querySelector('.range-compare-tools').addEventListener('click',e=>{const r=e.target.closest('[data-rc-range]'),p=e.target.closest('[data-rc-preset]');if(!ready()||view.length<2)return;
+    if(r){settings.compareRange=r.dataset.rcRange;save();setBoth(windowVp());const q=presetIn('peakToLatest');if(q&&!(sel.a>=vp.a.from&&sel.b<=vp.a.to))sel=q;paint()}if(p){const q=presetIn(p.dataset.rcPreset);if(q){sel=q;paint()}}});
+
+  /* ---- Filling the boxes: drag a card's handle down into A or B, or tap the handle ---- */
+  // Not saved: the boxes start empty on every visit, so the comparison appears only when the reader asks for it.
+  function assign(slot,id){
+    if(!CompareSeries[id])return;
+    const other=slot==='a'?'b':'a';if(slots[other]===id)slots[other]=slots[slot];
+    slots[slot]=id;picking=null;rebuild(true);
+    if(ready())requestAnimationFrame(()=>sec.querySelector('.rc-slots').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'}));
+  }
+  // A tap fills the next empty box; once both are full, it replaces B.
+  function nextSlot(id){return slots.a===id||slots.b===id?null:!slots.a?'a':'b'}
+  sec.querySelector('.rc-slots').addEventListener('click',e=>{const b=e.target.closest('[data-slot-clear]');if(b){slots[b.dataset.slotClear]=null;rebuild(true)}});
+  function grips(){
+    for(const card of document.querySelectorAll('#factorRail [data-trend]')){
+      if(card.querySelector('.compare-grip')||!CompareSeries[card.dataset.trend])continue;
+      const g=document.createElement('button');g.type='button';g.className='compare-grip';g.textContent='拖到下方比較';
+      g.setAttribute('aria-label',(card.querySelector('h4')?.textContent||'')+'：加入下方區間比較（拖曳到 A 或 B 框，或點一下依序放入）');
+      card.append(g);
+    }
+    paintSlots();
+  }
+  let drag=null;
+  function slotAt(x,y){const el=document.elementFromPoint(x,y);return el?.closest?.('.rc-slot')||null}
+  function moveGhost(e){
+    drag.ghost.style.transform=`translate(${e.clientX+12}px,${e.clientY+12}px)`;
+    const over=slotAt(e.clientX,e.clientY);sec.querySelectorAll('.rc-slot').forEach(b=>b.classList.toggle('drop-over',b===over));
+    // Near the window edge the page scrolls, so a card at the top can reach the boxes below.
+    const edge=80,v=innerHeight;drag.vy=e.clientY>v-edge?Math.min(24,(e.clientY-(v-edge))/3):e.clientY<edge?-Math.min(24,(edge-e.clientY)/3):0;drag.last=e;
+  }
+  function tick(){if(!drag)return;if(drag.active&&drag.vy){scrollBy(0,drag.vy);if(drag.last)moveGhost(drag.last)}drag.raf=requestAnimationFrame(tick)}
+  document.addEventListener('pointerdown',e=>{
+    const g=e.target.closest?.('.compare-grip');if(!g||e.button>0)return;
+    e.preventDefault();e.stopPropagation();
+    drag={id:g.closest('[data-trend]').dataset.trend,x:e.clientX,y:e.clientY,active:false,pointer:e.pointerId,vy:0};try{g.setPointerCapture(e.pointerId)}catch{}
+    drag.raf=requestAnimationFrame(tick);
+  },true);
+  document.addEventListener('pointermove',e=>{
+    if(!drag||e.pointerId!==drag.pointer)return;
+    if(!drag.active&&Math.hypot(e.clientX-drag.x,e.clientY-drag.y)>8){
+      drag.active=true;sec.classList.add('rc-dragging');document.body.classList.add('compare-dragging');
+      const ghost=document.createElement('div');ghost.className='compare-ghost';ghost.textContent=CompareSeries[drag.id].title;document.body.append(ghost);drag.ghost=ghost;
+    }
+    if(drag.active){e.preventDefault();moveGhost(e)}
+  },{passive:false});
+  const endDrag=e=>{
+    if(!drag||e.pointerId!==drag.pointer)return;const d=drag;drag=null;cancelAnimationFrame(d.raf);
+    sec.classList.remove('rc-dragging');document.body.classList.remove('compare-dragging');sec.querySelectorAll('.rc-slot').forEach(b=>b.classList.remove('drop-over'));d.ghost?.remove();
+    if(e.type==='pointercancel')return;
+    if(d.active){const box=slotAt(e.clientX,e.clientY);if(box)assign(box.dataset.slot,d.id);return}
+    const slot=nextSlot(d.id);if(slot)assign(slot,d.id);else sec.querySelector('.rc-slots').scrollIntoView({behavior:'smooth',block:'start'});
+  };
+  document.addEventListener('pointerup',endDrag);document.addEventListener('pointercancel',endDrag);
+  // Keyboard: Enter or Space on the handle behaves like a tap.
+  document.addEventListener('keydown',e=>{const g=e.target.closest?.('.compare-grip');if(!g||!['Enter',' '].includes(e.key))return;e.preventDefault();e.stopPropagation();const id=g.closest('[data-trend]').dataset.trend,slot=nextSlot(id);if(slot)assign(slot,id)},true);
+  // The handle never opens the card's detail dialog.
+  document.addEventListener('click',e=>{if(e.target.closest?.('.compare-grip')){e.stopPropagation();e.preventDefault()}},true);
+
+  // Any refreshed series rebuilds the comparison (kept dates stay chosen).
+  const later=()=>{if(!ready())return;clearTimeout(window.__rcRebuild);window.__rcRebuild=setTimeout(()=>rebuild(),80)};
+  {const prev=computeMktMargin;computeMktMargin=function(...a){const out=prev(...a);later();return out}}
+  {const prev=computeBrent;computeBrent=function(...a){const out=prev(...a);later();return out}}
+  {const prev=computeBank;computeBank=function(...a){const out=prev(...a);later();return out}}
+  {const prev=computeFx;computeFx=function(...a){const out=prev(...a);later();return out}}
+  for(const ev of ['vix-updated','sentiment-updated','market-lookback'])document.addEventListener(ev,later);
   window.addEventListener('resize',()=>{if(Math.abs(charts.clientWidth-lastWidth)>30){clearTimeout(window.__rcResize);window.__rcResize=setTimeout(paint,120)}});
-  rebuild();
+  new MutationObserver(grips).observe($('factorRail'),{childList:true});
+  grips();rebuild();
 })();
 
 /* Optional margin factors next to the five base weights: this ETF's margin balance and the market-wide balance.
@@ -3565,12 +3803,14 @@ const IndicatorDirection=(()=>{
     fx:{name:'美元／新台幣',modes:[['twd_strong_buy','匯率低／台幣升分數越高'],['twd_weak_buy','匯率高／台幣貶分數越高']],default:'twd_strong_buy'},
     margin:{name:'大盤融資增減',modes:[['decrease_buy','融資減少分數越高'],['increase_buy','融資增加分數越高']],default:'decrease_buy'},
     bank:{name:'全市場官股',modes:[['buy_follow','官股買超分數越高'],['sell_follow','官股賣超分數越高']],default:'buy_follow'},
-    vix:{name:'恐慌指數 VIX',modes:[['fear_buy','恐慌越高分數越高'],['calm_buy','波動越低分數越高']],default:'fear_buy'}
+    vix:{name:'恐慌指數 VIX',modes:[['fear_buy','恐慌越高分數越高'],['calm_buy','波動越低分數越高']],default:'fear_buy'},
+    pcr:{name:'選擇權 PCR',modes:[['high_buy','PCR 越高分數越高'],['low_buy','PCR 越低分數越高']],default:'high_buy'},
+    retail:{name:'散戶多空比',modes:[['contrarian','散戶越偏空分數越高（反向）'],['follow','散戶越偏多分數越高']],default:'contrarian'}
   };
   const presets={
-    value:{etf:'low_buy',index:'low_buy',volume:'low_buy',oil:'low_buy',fx:'twd_weak_buy',margin:'decrease_buy',bank:'buy_follow',vix:'fear_buy'},
-    trend:{etf:'high_buy',index:'high_buy',volume:'high_buy',oil:'low_buy',fx:'twd_strong_buy',margin:'increase_buy',bank:'sell_follow',vix:'calm_buy'},
-    hedge:{etf:'low_buy',index:'high_buy',volume:'smart_pv',oil:'low_buy',fx:'twd_strong_buy',margin:'decrease_buy',bank:'buy_follow',vix:'fear_buy'}
+    value:{etf:'low_buy',index:'low_buy',volume:'low_buy',oil:'low_buy',fx:'twd_weak_buy',margin:'decrease_buy',bank:'buy_follow',vix:'fear_buy',pcr:'high_buy',retail:'contrarian'},
+    trend:{etf:'high_buy',index:'high_buy',volume:'high_buy',oil:'low_buy',fx:'twd_strong_buy',margin:'increase_buy',bank:'sell_follow',vix:'calm_buy',pcr:'high_buy',retail:'follow'},
+    hedge:{etf:'low_buy',index:'high_buy',volume:'smart_pv',oil:'low_buy',fx:'twd_strong_buy',margin:'decrease_buy',bank:'buy_follow',vix:'fear_buy',pcr:'high_buy',retail:'contrarian'}
   };
   function normalize(m={}){return Object.fromEntries(Object.entries(meta).map(([k,v])=>[k,v.modes.some(x=>x[0]===m?.[k])?m[k]:v.default]))}
   function score(key,base,mode,{rank,pricePosition}={}){
@@ -3580,7 +3820,7 @@ const IndicatorDirection=(()=>{
       return clamp(5*(mode==='low_buy'?1-rank:rank));
     }
     if(!Number.isFinite(base))return null;
-    const flip=mode==='high_buy'||mode==='increase_buy'||mode==='sell_follow'||mode==='calm_buy'||key==='fx'&&mode==='twd_weak_buy';
+    const flip=mode==='high_buy'||mode==='increase_buy'||mode==='sell_follow'||mode==='calm_buy'||mode==='follow'||key==='fx'&&mode==='twd_weak_buy';
     return clamp(flip?5-base:base);
   }
   // Site-defined contrarian scale. Intermediate knots interpolate continuously.
@@ -3613,7 +3853,7 @@ function directionScore(key){
     const p=range?(last.index-range.low)/(range.high-range.low):null;
     return DM.score(key,null,settings.factorModes.volume,{rank:marketPosition.volumeScore/5,pricePosition:p});
   }
-  const base={etf:position?.core,index:marketPosition?.index?.core,oil:brentPosition?.core,fx:fxPosition?(settings.fxDirection==='high'?5-fxPosition.core:fxPosition.core):null,margin:mktMarginPosition?.core,bank:bankPosition?.core,vix:DM.vixScore(vixLatest()?.value)}[key];
+  const base={etf:position?.core,index:marketPosition?.index?.core,oil:brentPosition?.core,fx:fxPosition?(settings.fxDirection==='high'?5-fxPosition.core:fxPosition.core):null,margin:mktMarginPosition?.core,bank:bankPosition?.core,vix:DM.vixScore(vixLatest()?.value),pcr:pcrPosition?.core,retail:retailPosition?.core}[key];
   return DM.score(key,base,settings.factorModes[key]);
 }
 const directionSelects=[];
@@ -3624,7 +3864,7 @@ function makeDirection(key,parent,before=null){
   select.addEventListener('change',e=>{e.stopPropagation();settings.factorModes[key]=select.value;applyDirections()});
   before?parent.insertBefore(select,before):parent.append(select);directionSelects.push(select);return select;
 }
-const scoreIds={index:'indexScore',volume:'volumeScore',oil:'brentScore',fx:'fxScore',margin:'mktMarginScore',bank:'bankScore'};
+const scoreIds={index:'indexScore',volume:'volumeScore',oil:'brentScore',fx:'fxScore',margin:'mktMarginScore',bank:'bankScore',pcr:'pcrScore',retail:'retailScore'};
 makeDirection('etf',$('grade').parentElement,$('grade'));
 for(const[key,id]of Object.entries(scoreIds)){const score=$(id),parent=score.closest('.factor');makeDirection(key,parent,score);const tag=document.createElement('p');tag.className='direction-action';tag.id='action-'+key;score.after(tag)}
 const etfAction=document.createElement('p');etfAction.className='direction-action';etfAction.id='action-etf';$('waterText').after(etfAction);
@@ -4587,12 +4827,12 @@ function tideTail(x,y,color){
   const time=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Taipei',hour:'2-digit',minute:'2-digit',hour12:false}).format(at);
   return [...rows.filter(row=>row.date<date),{date,time,value:quote.price,quote:true}];
  }
- const factorDefs=[['indexScore',()=>marketDisplaySeries('index'),v=>fmt(v,2)+' 點'],['volumeScore',()=>marketDisplaySeries('volume'),v=>fmt(v,2)+' 億股'],['brentScore',()=>marketQuotedSeries(oilDays,live?.oilFuture),v=>fmt(v,2)+' 美元／桶'],['fxScore',()=>marketQuotedSeries(fx,live?.fxQuote),v=>fmt(v,3)+' 新台幣／美元'],['mktMarginScore',()=>marginDays.slice(1).map((x,i)=>({date:x.date,value:x.value-marginDays[i].value})),v=>signNum(v,1)+' 億元'],['bankScore',()=>bankDays,v=>signNum(v,2)+' 億元'],['vixScore',()=>{const l=vixLatest();return l?.intraday?[...vixDays,{date:l.date,value:l.value,time:l.time}]:vixDays},v=>fmt(v,2)+' 點']];
+ const factorDefs=[['indexScore',()=>marketDisplaySeries('index'),v=>fmt(v,2)+' 點'],['volumeScore',()=>marketDisplaySeries('volume'),v=>fmt(v,2)+' 億股'],['brentScore',()=>marketQuotedSeries(oilDays,live?.oilFuture),v=>fmt(v,2)+' 美元／桶'],['fxScore',()=>marketQuotedSeries(fx,live?.fxQuote),v=>fmt(v,3)+' 新台幣／美元'],['mktMarginScore',()=>marginDays.slice(1).map((x,i)=>({date:x.date,value:x.value-marginDays[i].value})),v=>signNum(v,1)+' 億元'],['bankScore',()=>bankDays,v=>signNum(v,2)+' 億元'],['vixScore',()=>{const l=vixLatest();return l?.intraday?[...vixDays,{date:l.date,value:l.value,time:l.time}]:vixDays},v=>fmt(v,2)+' 點'],['pcrScore',()=>pcrDays.map(x=>({date:x.date,value:x.oiRatio})),v=>fmt(v,2)+'%'],['retailScore',()=>retailDays.map(x=>({date:x.date,value:x.ratio})),v=>signNum(v,2)+'%']];
  function paintFactors(){
   let available=0;
   const overview=$('rdFactorBars'),said=[];
   overview.replaceChildren();
-  const short={indexScore:'加權',volumeScore:'成交',brentScore:'原油',fxScore:'匯率',mktMarginScore:'融資',bankScore:'官股',vixScore:'VIX'};
+  const short={indexScore:'加權',volumeScore:'成交',brentScore:'原油',fxScore:'匯率',mktMarginScore:'融資',bankScore:'官股',vixScore:'VIX',pcrScore:'PCR',retailScore:'散戶'};
   for(const [id,get,format] of factorDefs){
     const scoreNode=$(id),card=scoreNode?.closest('.factor');
     if(!card)continue;
@@ -4616,7 +4856,9 @@ function tideTail(x,y,color){
       const displayTime=key==='vix'&&last.time?' '+new Date(last.time).toLocaleTimeString('en-GB',{timeZone:'America/New_York',hour:'2-digit',minute:'2-digit'}):last.time?' '+last.time.slice(0,5):'';
       const valueLabel=flow?MarketReadout.state(last.value,key==='margin'?'margin':'flow','億元',key==='margin'?1:2).label:format(last.value);
       const diff=!flow&&!last.partialVolume&&Number.isFinite(previous)?last.value-previous:null,pct=Number.isFinite(diff)&&previous?diff/Math.abs(previous)*100:null;
-      const dayChange=Number.isFinite(diff)?'<span class="day-change '+(diff>0?'up':diff<0?'down':'flat')+'" title="與前一個交易日 '+format(previous)+' 相比">較前日 '+(diff>0?'+':diff<0?'−':'')+format(Math.abs(diff)).replace(/[^0-9.,]+$/,'').trim()+(Number.isFinite(pct)?'（'+(pct>0?'+':pct<0?'−':'')+fmt(Math.abs(pct),2)+'%）':'')+'</span>':'';
+      // Ratios (PCR, retail long/short) change in percentage points; a relative % of a % would mislead.
+      const points=key==='pcr'||key==='retail';
+      const dayChange=points&&Number.isFinite(diff)?'<span class="day-change '+(diff>0?'up':diff<0?'down':'flat')+'" title="與前一個交易日 '+format(previous)+' 相比">較前日 '+(diff>0?'+':diff<0?'−':'')+fmt(Math.abs(diff),2)+' 個百分點</span>':Number.isFinite(diff)?'<span class="day-change '+(diff>0?'up':diff<0?'down':'flat')+'" title="與前一個交易日 '+format(previous)+' 相比">較前日 '+(diff>0?'+':diff<0?'−':'')+format(Math.abs(diff)).replace(/[^0-9.,]+$/,'').trim()+(Number.isFinite(pct)?'（'+(pct>0?'+':pct<0?'−':'')+fmt(Math.abs(pct),2)+'%）':'')+'</span>':'';
       graph.innerHTML='<div class="factor-headline"><strong class="factor-value'+(dir>0?' up':dir<0?' down':'')+'">'+valueLabel+'</strong>'+dayChange+'<span class="rd-source-date">'+last.date+
         displayTime+(key==='vix'?' 美東':'')+(last.quote?' · Yahoo 延遲報價':'')+(last.partialVolume?' · 盤中累計':'')+'</span>'+
         lookbackGauge(rank,key==='vix')+'</div>';
@@ -5018,7 +5260,7 @@ const QuantChat=(()=>{
     tile.setAttribute('aria-label', tile.querySelector('h4').textContent + '：查看趨勢圖');
   }
   for (const tile of rail.querySelectorAll('[data-trend]')) tile.setAttribute('aria-haspopup','dialog');
-  rail.setAttribute('aria-label','七項市場刻度');
+  rail.setAttribute('aria-label','九項市場刻度');
   let opener = null;
   let direction = null;
   const source = modal.querySelector('.market-dialog-source');
@@ -5029,6 +5271,8 @@ const QuantChat=(()=>{
     fx:['中央銀行收盤匯率','https://www.cbc.gov.tw/tw/lp-645-1.html','趨勢及分數採銀行間收盤，卡片另可顯示 Yahoo 延遲報價。'],
     margin:['臺灣證券交易所信用交易統計','https://www.twse.com.tw/zh/trading/margin/mi-margn.html','以每日融資餘額增減比較。'],
     bank:['玩股網官股參考','https://www.wantgoo.com/stock/public-bank/buy-sell','圖表採 HiStock 八大行庫全市場每日淨額。'],
+    pcr:['臺灣期貨交易所 Put/Call 比','https://www.taifex.com.tw/cht/3/pcRatio','每日盤後由期交所公布（約 15:00 後），未平倉 PCR＝賣權未平倉量 ÷ 買權未平倉量。'],
+    retail:['臺灣期貨交易所 三大法人（期貨契約）','https://www.taifex.com.tw/cht/3/futContractsDate','以小型臺指期貨全市場未平倉扣除三大法人多空單推算散戶部位，期交所每日盤後公布；資料自 2023-11 起（期交所提供近三年）。'],
     vix:['Cboe VIX 歷史資料','https://www.cboe.com/tradable-products/vix/vix-historical-data','以 Cboe 美東交易日收盤計分；盤中單筆試算使用 Yahoo 延遲行情。14 以下波動偏低，25 起恐慌偏高，30 起屬高恐慌區；分數依設定方向換算。']
   };
   modal.querySelector('button').onclick = () => modal.close();
@@ -5450,6 +5694,103 @@ function setTideTone(card, location) {
       if(card&&Date.now()<Number(card.dataset.scrubUntil||0)){e.preventDefault();e.stopImmediatePropagation()}
     },true);
   }
+})();
+
+/* PCR and retail long/short detail views inside the market card dialog: sub-indicators, ranges, a low-to-high gauge
+   with a plain reading, the TAIEX coloured by the ratio, and daily bars against a reader-set red/green line. */
+(()=>{
+  const SC=SentimentCore,rail=$('factorRail');
+  // The two TAIFEX cards sit after VIX, the other sentiment reading.
+  rail.append($('pcrTile'),$('retailTile'));
+  const view=settings.sentimentView&&typeof settings.sentimentView==='object'?settings.sentimentView:{};
+  for(const key of ['pcr','retail']){const v=view[key]||{};view[key]={metric:SC.METRICS[key].some(m=>m.id===v.metric)?v.metric:SC.METRICS[key][0].id,range:SC.RANGES.some(r=>r[0]===v.range)?v.range:'3m'}}
+  settings.sentimentView=view;
+  const NAMES={pcr:{primary:'未平倉 PCR',days:()=>pcrDays,thresholdKey:'pcrThreshold',unit:'%'},retail:{primary:'散戶多空比',days:()=>retailDays,thresholdKey:'retailThreshold',unit:'%'}};
+  const md=d=>Number(d.slice(5,7))+'/'+d.slice(8,10);
+  const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const base=renderFactorTrend;
+  renderFactorTrend=function(...args){const key=factorTrendKey;if(key!=='pcr'&&key!=='retail'){trendPanel.classList.remove('sentiment-trend');return base(...args)}paint(key)};
+  let hoverIndex=null;
+  function paint(key){
+    const v=view[key],m=SC.metric(key,v.metric),all=NAMES[key].days(),rows=SC.range(all,v.range),threshold=Number(settings[NAMES[key].thresholdKey]);
+    trendPanel.replaceChildren();trendPanel.classList.add('sentiment-trend');
+    const head=document.createElement('div');head.className='factor-trend-head sentiment-head';
+    head.innerHTML=`<div class="segment" role="group" aria-label="指標">${SC.METRICS[key].map(x=>`<button type="button" data-smetric="${x.id}" class="${x.id===m.id?'active':''}" aria-pressed="${x.id===m.id}">${x.label}</button>`).join('')}</div>`+
+      `<div class="segment" role="group" aria-label="區間">${SC.RANGES.map(([id,label])=>`<button type="button" data-srange="${id}" class="${id===v.range?'active':''}" aria-pressed="${id===v.range}">${label}</button>`).join('')}</div>`;
+    head.addEventListener('click',e=>{const a=e.target.closest('[data-smetric]'),b=e.target.closest('[data-srange]');if(a)v.metric=a.dataset.smetric;if(b)v.range=b.dataset.srange;if(a||b){hoverIndex=null;save();paint(key)}});
+    trendPanel.append(head);
+    if(rows.length<2){const p=document.createElement('p');p.className='small';p.textContent='期交所資料讀取中，或所選區間資料不足。';trendPanel.append(p);return}
+    const values=rows.map(r=>r[m.id]),z=SC.zone(values),lo=values.indexOf(z.low),hi=values.indexOf(z.high),last=rows.at(-1);
+    const score=$(key+'Score')?.textContent||'—';
+    // Gauge: the range's low on the left, its high on the right, today's value as the marker.
+    const gauge=document.createElement('section');gauge.className='sentiment-gauge';
+    gauge.innerHTML=`<div class="sg-top"><div><small>${esc(m.long)} · ${last.date}</small><strong class="sg-value">${m.format(z.last)}</strong></div>`+
+      `<div class="sg-zone sg-${z.segment}"><small>位於所選區間</small><b>${z.label}</b></div><div class="sg-score"><small>水位（0–5 分）</small><b>${esc(score)}</b></div></div>`+
+      `<div class="sg-rail" role="img" aria-label="${esc(m.long)}：區間低 ${m.format(z.low)}，高 ${m.format(z.high)}，目前 ${m.format(z.last)}，${z.label}"><i class="sg-low"></i><i class="sg-mid"></i><i class="sg-high"></i><b style="left:${(z.pos*100).toFixed(1)}%"></b></div>`+
+      `<div class="sg-ends"><span>低 ${m.format(z.low)}<small>${md(rows[lo].date)}</small></span><span>均值 ${m.format(z.mean)}</span><span>高 ${m.format(z.high)}<small>${md(rows[hi].date)}</small></span></div>`+
+      `<p class="sg-reading">${esc(SC.reading(key,m.id,z))}</p><p class="small sg-caveat">以上是市場常見解讀，只描述目前在所選區間的相對位置，不是預測或投資建議。水位分數依「參考筆數」與計分方向計算，可在上方設定調整。</p>`;
+    trendPanel.append(gauge);
+    // Threshold: ratios use the reader's line; counts use the range average; the institutional net uses zero.
+    const tools=document.createElement('div');tools.className='sentiment-tools';
+    const ratioLine=m.threshold==='user';
+    tools.innerHTML=`<label>紅綠分界<input type="number" step="${key==='pcr'?1:0.5}" value="${threshold}" data-sthreshold aria-label="${NAMES[key].primary}紅綠分界">${NAMES[key].unit}</label>`+
+      `<p class="small">加權指數線：每日${NAMES[key].primary}高於或等於分界畫紅色，低於畫綠色。${ratioLine?'下方長條同一條分界。':m.threshold==='zero'?'下方長條以零為界：正值紅、負值綠。':'下方長條以區間均值為界：高於均值紅、低於綠。'}</p>`;
+    tools.querySelector('input').addEventListener('change',e=>{const n=Number(e.target.value);if(!Number.isFinite(n)||key==='pcr'&&n<=0)return;settings[NAMES[key].thresholdKey]=n;save();paint(key)});
+    trendPanel.append(tools);
+    trendPanel.append(charts(key,rows,m,threshold));
+  }
+  function charts(key,rows,m,threshold){
+    const wrap=document.createElement('section');wrap.className='sentiment-charts';
+    const W=Math.max(280,Math.round(trendPanel.clientWidth||640)),phone=innerWidth<600,HA=phone?220:270,HB=phone?160:200,P={l:10,r:phone?54:70,t:12,b:24},pw=W-P.l-P.r;
+    const idx=new Map(market.filter(x=>!x.intraday).map(x=>[x.date,x.index])),primary=key==='pcr'?'oiRatio':'ratio';
+    const X=i=>P.l+(rows.length>1?i*pw/(rows.length-1):pw/2);
+    // Chart A: TAIEX close, each segment coloured by that day's primary ratio against the line.
+    const ix=rows.map(r=>idx.get(r.date)),iv=ix.filter(Number.isFinite);
+    let a='';
+    if(iv.length>1){
+      let lo=Math.min(...iv),hi=Math.max(...iv);const pad=(hi-lo)*.08||hi*.01;lo-=pad;hi+=pad;const Y=v=>P.t+(hi-v)/(hi-lo)*(HA-P.t-P.b);
+      let segs='';for(let i=1;i<rows.length;i++){if(!Number.isFinite(ix[i])||!Number.isFinite(ix[i-1]))continue;segs+=`<line x1="${X(i-1).toFixed(1)}" y1="${Y(ix[i-1]).toFixed(1)}" x2="${X(i).toFixed(1)}" y2="${Y(ix[i]).toFixed(1)}" stroke="${SC.side(rows[i][primary],threshold)==='rise'?RISE:FALL}" stroke-width="2.2" stroke-linecap="round"/>`}
+      const dots=rows.length<=70?rows.map((r,i)=>Number.isFinite(ix[i])?`<circle cx="${X(i).toFixed(1)}" cy="${Y(ix[i]).toFixed(1)}" r="2.4" fill="${SC.side(r[primary],threshold)==='rise'?RISE:FALL}"/>`:'').join(''):'';
+      const hiI=ix.indexOf(Math.max(...iv)),loI=ix.indexOf(Math.min(...iv));
+      a=`<svg class="sc-plot" data-tide-plot viewBox="0 0 ${W} ${HA}" width="${W}" height="${HA}" role="img" aria-label="加權指數，依${NAMES[key].primary}著色：紅＝高於或等於 ${threshold}${NAMES[key].unit}，綠＝低於">`+
+        ticks(rows,X,HA,P)+`<g data-tide-base="${HA-P.b}">${segs}${dots}</g>`+
+        `<text x="${W-P.r+6}" y="${Y(ix[hiI])+4}" class="rc-axis">${fmt(ix[hiI],0)}</text><text x="${W-P.r+6}" y="${Y(ix[loI])+4}" class="rc-axis">${fmt(ix[loI],0)}</text>`+
+        `<line class="sc-cross" x1="0" x2="0" y1="${P.t}" y2="${HA-P.b}" visibility="hidden"/></svg>`;
+    }else a='<p class="small">加權指數資料讀取中。</p>';
+    // Chart B: the selected metric as daily bars against its line.
+    const vals=rows.map(r=>r[m.id]),line=SC.line(m,vals,threshold),lo=Math.min(0,...vals,line),hi=Math.max(0,...vals,line),Y=v=>P.t+(hi-v)/((hi-lo)||1)*(HB-P.t-P.b),bw=Math.max(1,pw/rows.length*.72);
+    const barsSvg=rows.map((r,i)=>{const v=r[m.id],y0=Y(0),y=Y(v);return`<rect x="${(X(i)-bw/2).toFixed(1)}" y="${Math.min(y,y0).toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(.6,Math.abs(y0-y)).toFixed(1)}" fill="${SC.side(v,line)==='rise'?RISE:FALL}" opacity=".85"/>`}).join('');
+    const lineLabel=m.threshold==='mean'?'均值 '+m.format(line):m.threshold==='zero'?'零軸':'分界 '+m.format(line);
+    const b=`<svg class="sc-plot" viewBox="0 0 ${W} ${HB}" width="${W}" height="${HB}" role="img" aria-label="${m.long}每日長條，${lineLabel}以上紅色、以下綠色">`+ticks(rows,X,HB,P)+barsSvg+
+      `<line x1="${P.l}" x2="${P.l+pw}" y1="${Y(line).toFixed(1)}" y2="${Y(line).toFixed(1)}" class="sc-line"/><text x="${W-P.r+6}" y="${Y(line)+4}" class="rc-axis sc-line-label">${lineLabel}</text>`+
+      `<text x="${W-P.r+6}" y="${Y(Math.max(...vals))+4}" class="rc-axis">${m.format(Math.max(...vals))}</text>`+
+      `<line class="sc-cross" x1="0" x2="0" y1="${P.t}" y2="${HB-P.b}" visibility="hidden"/></svg>`;
+    wrap.innerHTML=`<div class="sc-readout" aria-live="off"></div><figure class="sc-figure"><figcaption><b>加權指數</b><span>線段顏色＝當日${NAMES[key].primary}${'與分界 '+threshold+NAMES[key].unit}比較</span><span class="sc-legend"><i class="up-bg"></i>高於或等於<i class="down-bg"></i>低於</span></figcaption>${a}</figure>`+
+      `<figure class="sc-figure"><figcaption><b>${esc(m.long)}</b><span>每日長條 · ${lineLabel}</span></figcaption>${b}</figure><div class="sc-hit" aria-hidden="true"></div>`;
+    const readout=wrap.querySelector('.sc-readout');
+    const show=i=>{const r=rows[i];if(!r)return;const parts=[`<strong>${r.date}</strong>`,Number.isFinite(ix[i])?`加權指數 ${fmt(ix[i],2)}`:'加權指數 —'];
+      parts.push(`${NAMES[key].primary} <span class="${SC.side(r[primary],threshold)==='rise'?'up':'down'}">${SC.metric(key,primary).format(r[primary])}</span>`);
+      if(m.id!==primary)parts.push(`${m.label} ${m.format(r[m.id])}`);
+      if(key==='pcr')parts.push(`賣權 ${fmt(r.putOi,0)}／買權 ${fmt(r.callOi,0)} 口`);else parts.push(`法人多 ${fmt(r.long,0)}／空 ${fmt(r.short,0)} 口`);
+      readout.innerHTML=parts.join('<span class="sc-sep">·</span>');
+      wrap.querySelectorAll('.sc-cross').forEach(l=>{l.setAttribute('x1',X(i));l.setAttribute('x2',X(i));l.setAttribute('visibility',i===rows.length-1&&hoverIndex==null?'hidden':'visible')})};
+    show(hoverIndex??rows.length-1);
+    // Pointer anywhere over the two plots picks the day under it; leaving returns to the latest day.
+    const pick=e=>{const svg=e.target.closest?.('svg.sc-plot');if(!svg)return null;const box=svg.getBoundingClientRect(),x=(e.clientX-box.left)*W/box.width;return Math.max(0,Math.min(rows.length-1,Math.round((x-P.l)/Math.max(1,pw)*(rows.length-1))))};
+    wrap.addEventListener('pointermove',e=>{const i=pick(e);if(i==null)return;hoverIndex=i;show(i)});
+    wrap.addEventListener('pointerleave',()=>{hoverIndex=null;show(rows.length-1)});
+    wrap.querySelector('.sc-hit').remove();
+    return wrap;
+  }
+  function ticks(rows,X,H,P){
+    const long=rows.length>520,marks=[];rows.forEach((r,i)=>{if(i&&r.date.slice(0,long?4:7)!==rows[i-1].date.slice(0,long?4:7))marks.push(i)});
+    if(rows.length<=12)return rows.map((r,i)=>i%2?'':`<text x="${X(i)}" y="${H-7}" text-anchor="middle" class="rc-tick">${md(r.date)}</text>`).join('');
+    const step=Math.max(1,Math.ceil(marks.length/Math.max(2,Math.floor((X(rows.length-1)-X(0))/70))));
+    return marks.filter((_,k)=>k%step===0).map(i=>{const d=rows[i].date,label=long||d.slice(5,7)==='01'?d.slice(0,4):Number(d.slice(5,7))+'月';return`<line x1="${X(i)}" x2="${X(i)}" y1="${P.t}" y2="${H-P.b}" class="rc-grid"/><text x="${X(i)}" y="${H-7}" text-anchor="middle" class="rc-tick">${label}</text>`}).join('');
+  }
+  // Keep the card's status line honest about the live check.
+  document.addEventListener('sentiment-updated',()=>{for(const key of ['pcr','retail']){const tile=$(key+'Tile'),note=tile?.querySelector('.sentiment-note');if(note&&taifexCheckedAt)note.dataset.checked=new Date(taifexCheckedAt).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Asia/Taipei'})}});
+  window.addEventListener('resize',()=>{if(factorTrendKey==='pcr'||factorTrendKey==='retail'){clearTimeout(window.__sentResize);window.__sentResize=setTimeout(()=>paint(factorTrendKey),150)}});
 })();
 
 })();

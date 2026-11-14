@@ -107,7 +107,7 @@
     tile.setAttribute('aria-label', tile.querySelector('h4').textContent + '：查看趨勢圖');
   }
   for (const tile of rail.querySelectorAll('[data-trend]')) tile.setAttribute('aria-haspopup','dialog');
-  rail.setAttribute('aria-label','七項市場刻度');
+  rail.setAttribute('aria-label','九項市場刻度');
   let opener = null;
   let direction = null;
   const source = modal.querySelector('.market-dialog-source');
@@ -118,6 +118,8 @@
     fx:['中央銀行收盤匯率','https://www.cbc.gov.tw/tw/lp-645-1.html','趨勢及分數採銀行間收盤，卡片另可顯示 Yahoo 延遲報價。'],
     margin:['臺灣證券交易所信用交易統計','https://www.twse.com.tw/zh/trading/margin/mi-margn.html','以每日融資餘額增減比較。'],
     bank:['玩股網官股參考','https://www.wantgoo.com/stock/public-bank/buy-sell','圖表採 HiStock 八大行庫全市場每日淨額。'],
+    pcr:['臺灣期貨交易所 Put/Call 比','https://www.taifex.com.tw/cht/3/pcRatio','每日盤後由期交所公布（約 15:00 後），未平倉 PCR＝賣權未平倉量 ÷ 買權未平倉量。'],
+    retail:['臺灣期貨交易所 三大法人（期貨契約）','https://www.taifex.com.tw/cht/3/futContractsDate','以小型臺指期貨全市場未平倉扣除三大法人多空單推算散戶部位，期交所每日盤後公布；資料自 2023-11 起（期交所提供近三年）。'],
     vix:['Cboe VIX 歷史資料','https://www.cboe.com/tradable-products/vix/vix-historical-data','以 Cboe 美東交易日收盤計分；盤中單筆試算使用 Yahoo 延遲行情。14 以下波動偏低，25 起恐慌偏高，30 起屬高恐慌區；分數依設定方向換算。']
   };
   modal.querySelector('button').onclick = () => modal.close();

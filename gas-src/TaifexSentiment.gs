@@ -57,7 +57,7 @@ function taifexRetailRatio_(row){return row&&row[1]>0?(row[3]-row[2])/row[1]*100
 function taifexPcrRatio_(row,kind){return kind==='volume'?(row[2]>0?row[1]/row[2]*100:null):(row[4]>0?row[3]/row[4]*100:null)}
 
 // Live bundle for the page: the last few weeks, so a day TAIFEX has published (after about 15:00 Taipei) shows up
-// before the evening CI snapshot. One cached copy serves every visitor for ten minutes.
+// before the evening CI snapshot. One copy serves every visitor for four minutes, so each five-minute page check sees a fresh read.
 function taifexPost_(path,payload){
   const r=UrlFetchApp.fetch('https://www.taifex.com.tw/cht/3/'+path,{method:'post',payload:payload,muteHttpExceptions:true,headers:{'User-Agent':'Mozilla/5.0 (compatible; ChaoweiResearch/1.0)'}});
   if(r.getResponseCode()!==200)throw Error('HTTP '+r.getResponseCode());
@@ -85,6 +85,6 @@ function getTaifexSentiment(){
     const inst=parseTaifexInstitutions_(taifexRecent_('futContractsDateDown',{commodityId:'MXF'},now));
     out.retail=taifexRetailRows_(oi,inst);
   }catch(e){out.errors.push('期交所小台與法人：'+e.message)}
-  if(out.pcr.length||out.retail.length)cache.put(key,JSON.stringify(out),600);
+  if(out.pcr.length||out.retail.length)cache.put(key,JSON.stringify(out),240);
   return out;
 }

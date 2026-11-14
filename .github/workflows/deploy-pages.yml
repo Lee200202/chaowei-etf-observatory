@@ -75,6 +75,10 @@ jobs:
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         continue-on-error: true
         run: node scripts/update-oil-spot.mjs
+      - name: Refresh TAIFEX options PCR and mini-TAIEX retail long/short ratio
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        continue-on-error: true
+        run: npm run taifex:update
       - name: Refresh Cboe VIX daily closes
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         continue-on-error: true

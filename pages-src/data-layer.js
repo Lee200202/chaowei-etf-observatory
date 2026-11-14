@@ -88,6 +88,8 @@ function installChaoweiApi(base,serverFallback){
     if(path==='/api/brent')return file('data/brent.json');
     if(path==='/api/vix')return freshFile('data/vix.json');
     if(path==='/api/oil')return freshFile('data/oil-spot.json');
+    if(path==='/api/pcr')return freshFile('data/options-pcr.json');
+    if(path==='/api/retail')return freshFile('data/retail-ratio.json');
     if(path==='/api/bank')return freshFile('data/history/histock-bank.json');
     if(path==='/api/fx')return file('data/fx.json');
     if(path==='/api/history')return history(params.get('code'));

@@ -11,7 +11,8 @@ function installChaoweiLive(appsScriptUrl){
     window.CHAOWEI_VIX=()=>new Promise((resolve,reject)=>google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getVixMarket());
     window.CHAOWEI_BANK=()=>new Promise((resolve,reject)=>google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getBankHistory());
     window.CHAOWEI_HOLDERS=code=>new Promise((resolve,reject)=>google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getHolderHistory(code));
-  }else if(appsScriptUrl){window.CHAOWEI_VIX=()=>extra('vix');window.CHAOWEI_BANK=()=>extra('bank');window.CHAOWEI_HOLDERS=code=>extra('holders',code)}
+    window.CHAOWEI_TAIFEX=()=>new Promise((resolve,reject)=>google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getTaifexSentiment());
+  }else if(appsScriptUrl){window.CHAOWEI_VIX=()=>extra('vix');window.CHAOWEI_BANK=()=>extra('bank');window.CHAOWEI_HOLDERS=code=>extra('holders',code);window.CHAOWEI_TAIFEX=()=>extra('taifex')}
   // Anonymous usage events (one row each) and the popular-search list, via the same Apps Script.
   const jsonp=(api,prefix)=>new Promise((resolve,reject)=>{
     const callback=prefix+Date.now().toString(36)+Math.random().toString(36).slice(2,10),script=document.createElement('script'),url=new URL(appsScriptUrl);

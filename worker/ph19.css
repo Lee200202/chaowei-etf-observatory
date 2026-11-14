@@ -1,0 +1,94 @@
+/* ph19: TAIFEX sentiment cards, their detail views, and the two drop boxes of the range compare. */
+#factorRail .sentiment-note{display:block;margin-top:6px;color:var(--muted);font-size:12px;line-height:1.45}
+#factorRail .sentiment-note[data-checked]::after{content:' · 檢查 ' attr(data-checked)}
+
+/* The drag handle: a quiet pill at the card's foot. touch-action:none lets a finger drag it without scrolling. */
+.compare-grip{display:inline-flex;align-items:center;gap:6px;margin-top:10px;padding:5px 12px;border:1px dashed color-mix(in srgb,var(--ink) 35%,transparent);border-radius:999px;background:transparent;color:var(--ink);font:inherit;font-size:12.5px;font-weight:700;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
+.compare-grip:hover{border-style:solid;background:color-mix(in srgb,var(--teal) 8%,transparent)}
+.compare-grip:focus-visible{outline:3px solid var(--teal);outline-offset:2px}
+.factor[data-compare-slot="A"] .compare-grip,.factor[data-compare-slot="B"] .compare-grip{border-style:solid;background:color-mix(in srgb,var(--teal) 14%,transparent)}
+body.compare-dragging,body.compare-dragging *{cursor:grabbing!important;user-select:none}
+.compare-ghost{position:fixed;left:0;top:0;z-index:9999;padding:8px 14px;border-radius:14px;background:var(--ink);color:var(--paper);font-size:13px;font-weight:700;pointer-events:none;box-shadow:0 10px 30px rgba(0,0,0,.22);white-space:nowrap}
+
+/* Two transparent boxes; the comparison body appears only once both are filled. */
+.rc-slots{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:16px}
+.rc-slot{position:relative;display:flex;align-items:center;gap:12px;min-height:92px;padding:14px 16px;border:2px dashed color-mix(in srgb,var(--ink) 28%,transparent);border-radius:20px;background:transparent;transition:border-color .2s,background-color .2s}
+.rc-slot.filled{border-style:solid;border-color:color-mix(in srgb,var(--teal) 55%,transparent);background:color-mix(in srgb,var(--teal) 5%,transparent)}
+.rc-slot.drop-over,.range-compare.rc-dragging .rc-slot:hover{border-color:var(--teal);background:color-mix(in srgb,var(--teal) 12%,transparent)}
+.range-compare.rc-dragging .rc-slot{border-color:color-mix(in srgb,var(--teal) 60%,transparent)}
+.rc-slot-tag{display:grid;place-items:center;flex:none;width:38px;height:38px;border-radius:12px;border:1.5px solid color-mix(in srgb,var(--ink) 30%,transparent);font-weight:800}
+.rc-slot.filled .rc-slot-tag{background:var(--rd-ink,#203a34);border-color:transparent;color:var(--paper)}
+.rc-slot-body{display:grid;gap:2px;min-width:0}.rc-slot-body b{font-size:15px}.rc-slot-body small{color:var(--muted);font-size:12.5px}
+.rc-slot:not(.filled) .rc-slot-body b{color:var(--muted)}
+.rc-slot-clear{margin-left:auto}
+.range-compare:not(.rc-ready) .rc-body{display:none}
+.range-compare .rc-body{margin-top:14px}
+.rc-zero{stroke:var(--muted);stroke-dasharray:3 3;stroke-width:1}
+@media(max-width:600px){.rc-slots{grid-template-columns:1fr;gap:10px}.rc-slot{min-height:72px}}
+
+/* Detail view: gauge, reading, red/green line, two charts. The readout is a strip above the plots, never over them. */
+.sentiment-trend .sentiment-head{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
+.sentiment-trend .sentiment-head .segment button{white-space:nowrap}
+.sentiment-gauge{margin:14px 0 6px;padding:16px 18px;border:1px solid var(--line);border-radius:20px;background:var(--paper)}
+.sg-top{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 26px}
+.sg-top small{display:block;color:var(--muted);font-size:12.5px}
+.sg-value{font-size:1.9rem;font-variant-numeric:tabular-nums;line-height:1.2}
+.sg-zone b,.sg-score b{font-size:1.15rem;font-variant-numeric:tabular-nums}
+.sg-zone.sg-high b{color:var(--tw-rise,#e5484d)}.sg-zone.sg-low b{color:var(--tw-fall,#12a06b)}
+.sg-score{margin-left:auto;text-align:right}
+.sg-rail{position:relative;display:grid;grid-template-columns:repeat(3,1fr);gap:3px;height:12px;margin:16px 0 8px}
+.sg-rail i{border-radius:6px}.sg-rail .sg-low{background:color-mix(in srgb,var(--tw-fall,#12a06b) 40%,transparent)}.sg-rail .sg-mid{background:var(--line)}.sg-rail .sg-high{background:color-mix(in srgb,var(--tw-rise,#e5484d) 40%,transparent)}
+.sg-rail b{position:absolute;top:-6px;width:4px;height:24px;margin-left:-2px;border-radius:3px;background:var(--ink);box-shadow:0 0 0 2px var(--paper)}
+.sg-ends{display:flex;justify-content:space-between;gap:8px;font-size:13px;font-variant-numeric:tabular-nums}
+.sg-ends span:nth-child(2){color:var(--muted)}.sg-ends span:last-child{text-align:right}
+.sg-ends small{display:block;color:var(--muted);font-size:11.5px}
+.sg-reading{margin:14px 0 4px;font-size:15.5px;line-height:1.75}
+.sg-caveat{margin:0;color:var(--muted)}
+.sentiment-tools{display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px;margin:12px 0}
+.sentiment-tools label{display:inline-flex;align-items:center;gap:8px;font-weight:700;white-space:nowrap}
+.sentiment-tools input{width:5.5em;padding:5px 8px;border:1px solid var(--line);border-radius:10px;background:var(--paper);color:var(--ink);font:inherit;font-variant-numeric:tabular-nums}
+.sentiment-tools p{flex:1 1 260px;margin:0}
+.sentiment-charts{display:grid;gap:12px}
+.sc-readout{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 8px;min-height:2.6em;padding:8px 12px;border:1px solid var(--line);border-radius:14px;background:var(--paper);font-size:13.5px;font-variant-numeric:tabular-nums}
+.sc-readout .sc-sep{color:var(--muted)}.sc-readout .up{color:var(--tw-rise,#e5484d);font-weight:700}.sc-readout .down{color:var(--tw-fall,#12a06b);font-weight:700}
+.sc-figure{margin:0;padding:10px 10px 4px;border:1px solid var(--line);border-radius:18px;min-width:0}
+.sc-figure figcaption{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;font-size:12.5px;color:var(--muted)}
+.sc-figure figcaption b{color:var(--ink);font-size:14px}
+.sc-legend{display:inline-flex;align-items:center;gap:5px}.sc-legend i{display:inline-block;width:14px;height:4px;border-radius:2px}.sc-legend .up-bg{background:var(--tw-rise,#e5484d)}.sc-legend .down-bg{background:var(--tw-fall,#12a06b);margin-left:6px}
+.sc-plot{display:block;width:100%;height:auto;overflow:visible;touch-action:pan-y}
+.sc-line{stroke:var(--ink);stroke-dasharray:5 4;stroke-width:1.4;opacity:.7}
+.sc-line-label{font-weight:700;fill:var(--ink)}
+.sc-cross{stroke:var(--ink);stroke-width:1.2;stroke-dasharray:3 3;opacity:.7}
+@media(max-width:600px){.sentiment-gauge{padding:14px}.sg-value{font-size:1.6rem}.sg-score{margin-left:0;text-align:left}.sg-reading{font-size:15px}}
+/* Nine market factors in the overview: one row of bars, narrower gaps on phones. */
+.rd-factor-bars{grid-template-columns:repeat(9,minmax(0,1fr));min-width:min(400px,100%)}
+@media(max-width:700px){.rd-factor-bars{gap:4px}.rd-factor-bar small{font-size:11px;white-space:nowrap}}
+/* With nine market cards the 10-column rhythm closes on its own (card 8 spans 6, card 9 spans 4), so the ninth card
+   keeps its width instead of the "odd last card fills the row" rule meant for seven. */
+@media(min-width:720px) and (max-width:999px){
+ body.subtraction-site #top #factorRail>.factor:nth-child(9):last-child{grid-column:span var(--tide-span,4)}
+}
+
+/* Overview: the count of scorable factors sits top right beside the heading; the nine 0-5 water levels sit
+   centred on their own row below. */
+body.editorial-site #top .market-overview{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:18px 24px}
+body.editorial-site #top .market-overview>div:first-child{grid-column:1;grid-row:1;min-width:0}
+body.editorial-site #top .market-overview-stats{grid-column:2;grid-row:1;justify-self:end;margin:0;text-align:right;flex-direction:row}
+body.editorial-site #top .market-overview .rd-factor-bars{grid-column:1/-1;grid-row:2;justify-self:center;width:min(760px,100%);min-width:0;margin-top:6px}
+@media(max-width:700px){body.editorial-site #top .market-overview .rd-factor-bars{width:100%}}
+
+/* Nine market cards get their own uneven sequence: no two neighbours share a width, and no card fills a row alone. */
+@media(min-width:1000px){
+ body.subtraction-site #top #factorRail>.factor:nth-child(8){--tide-span:5;--tide-height:300px;--tide-offset:14px}
+ body.subtraction-site #top #factorRail>.factor:nth-child(9){--tide-span:7;--tide-height:280px;--tide-offset:-10px;--tide-chart-height:96px}
+}
+@media(min-width:720px) and (max-width:999px){
+ body.subtraction-site #top #factorRail>.factor:nth-child(3){--tide-span:3;--tide-height:250px;--tide-chart-height:70px}
+ body.subtraction-site #top #factorRail>.factor:nth-child(4){--tide-span:7;--tide-height:292px;--tide-offset:-12px;--tide-chart-height:98px}
+ body.subtraction-site #top #factorRail>.factor:nth-child(5){--tide-span:3;--tide-height:262px;--tide-offset:18px;--tide-chart-height:80px}
+ body.subtraction-site #top #factorRail>.factor:nth-child(6){--tide-span:4;--tide-height:240px;--tide-offset:-6px;--tide-chart-height:68px}
+ body.subtraction-site #top #factorRail>.factor:nth-child(7){--tide-span:3;--tide-height:270px;--tide-offset:10px;--tide-chart-height:84px}
+ body.subtraction-site #top #factorRail>.factor:nth-child(8){--tide-span:7;--tide-height:300px;--tide-pad:22px;--tide-radius:22px 44px 22px 22px;--tide-chart-height:100px}
+ body.subtraction-site #top #factorRail>.factor:nth-child(9){--tide-span:3;--tide-height:256px;--tide-offset:20px;--tide-chart-height:76px}
+}
+.range-compare-result.rc-nobar .rc-row{grid-template-columns:34px minmax(0,1fr)}

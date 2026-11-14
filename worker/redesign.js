@@ -74,12 +74,12 @@
   const time=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Taipei',hour:'2-digit',minute:'2-digit',hour12:false}).format(at);
   return [...rows.filter(row=>row.date<date),{date,time,value:quote.price,quote:true}];
  }
- const factorDefs=[['indexScore',()=>marketDisplaySeries('index'),v=>fmt(v,2)+' 點'],['volumeScore',()=>marketDisplaySeries('volume'),v=>fmt(v,2)+' 億股'],['brentScore',()=>marketQuotedSeries(oilDays,live?.oilFuture),v=>fmt(v,2)+' 美元／桶'],['fxScore',()=>marketQuotedSeries(fx,live?.fxQuote),v=>fmt(v,3)+' 新台幣／美元'],['mktMarginScore',()=>marginDays.slice(1).map((x,i)=>({date:x.date,value:x.value-marginDays[i].value})),v=>signNum(v,1)+' 億元'],['bankScore',()=>bankDays,v=>signNum(v,2)+' 億元'],['vixScore',()=>{const l=vixLatest();return l?.intraday?[...vixDays,{date:l.date,value:l.value,time:l.time}]:vixDays},v=>fmt(v,2)+' 點']];
+ const factorDefs=[['indexScore',()=>marketDisplaySeries('index'),v=>fmt(v,2)+' 點'],['volumeScore',()=>marketDisplaySeries('volume'),v=>fmt(v,2)+' 億股'],['brentScore',()=>marketQuotedSeries(oilDays,live?.oilFuture),v=>fmt(v,2)+' 美元／桶'],['fxScore',()=>marketQuotedSeries(fx,live?.fxQuote),v=>fmt(v,3)+' 新台幣／美元'],['mktMarginScore',()=>marginDays.slice(1).map((x,i)=>({date:x.date,value:x.value-marginDays[i].value})),v=>signNum(v,1)+' 億元'],['bankScore',()=>bankDays,v=>signNum(v,2)+' 億元'],['vixScore',()=>{const l=vixLatest();return l?.intraday?[...vixDays,{date:l.date,value:l.value,time:l.time}]:vixDays},v=>fmt(v,2)+' 點'],['pcrScore',()=>pcrDays.map(x=>({date:x.date,value:x.oiRatio})),v=>fmt(v,2)+'%'],['retailScore',()=>retailDays.map(x=>({date:x.date,value:x.ratio})),v=>signNum(v,2)+'%']];
  function paintFactors(){
   let available=0;
   const overview=$('rdFactorBars'),said=[];
   overview.replaceChildren();
-  const short={indexScore:'加權',volumeScore:'成交',brentScore:'原油',fxScore:'匯率',mktMarginScore:'融資',bankScore:'官股',vixScore:'VIX'};
+  const short={indexScore:'加權',volumeScore:'成交',brentScore:'原油',fxScore:'匯率',mktMarginScore:'融資',bankScore:'官股',vixScore:'VIX',pcrScore:'PCR',retailScore:'散戶'};
   for(const [id,get,format] of factorDefs){
     const scoreNode=$(id),card=scoreNode?.closest('.factor');
     if(!card)continue;
@@ -103,7 +103,9 @@
       const displayTime=key==='vix'&&last.time?' '+new Date(last.time).toLocaleTimeString('en-GB',{timeZone:'America/New_York',hour:'2-digit',minute:'2-digit'}):last.time?' '+last.time.slice(0,5):'';
       const valueLabel=flow?MarketReadout.state(last.value,key==='margin'?'margin':'flow','億元',key==='margin'?1:2).label:format(last.value);
       const diff=!flow&&!last.partialVolume&&Number.isFinite(previous)?last.value-previous:null,pct=Number.isFinite(diff)&&previous?diff/Math.abs(previous)*100:null;
-      const dayChange=Number.isFinite(diff)?'<span class="day-change '+(diff>0?'up':diff<0?'down':'flat')+'" title="與前一個交易日 '+format(previous)+' 相比">較前日 '+(diff>0?'+':diff<0?'−':'')+format(Math.abs(diff)).replace(/[^0-9.,]+$/,'').trim()+(Number.isFinite(pct)?'（'+(pct>0?'+':pct<0?'−':'')+fmt(Math.abs(pct),2)+'%）':'')+'</span>':'';
+      // Ratios (PCR, retail long/short) change in percentage points; a relative % of a % would mislead.
+      const points=key==='pcr'||key==='retail';
+      const dayChange=points&&Number.isFinite(diff)?'<span class="day-change '+(diff>0?'up':diff<0?'down':'flat')+'" title="與前一個交易日 '+format(previous)+' 相比">較前日 '+(diff>0?'+':diff<0?'−':'')+fmt(Math.abs(diff),2)+' 個百分點</span>':Number.isFinite(diff)?'<span class="day-change '+(diff>0?'up':diff<0?'down':'flat')+'" title="與前一個交易日 '+format(previous)+' 相比">較前日 '+(diff>0?'+':diff<0?'−':'')+format(Math.abs(diff)).replace(/[^0-9.,]+$/,'').trim()+(Number.isFinite(pct)?'（'+(pct>0?'+':pct<0?'−':'')+fmt(Math.abs(pct),2)+'%）':'')+'</span>':'';
       graph.innerHTML='<div class="factor-headline"><strong class="factor-value'+(dir>0?' up':dir<0?' down':'')+'">'+valueLabel+'</strong>'+dayChange+'<span class="rd-source-date">'+last.date+
         displayTime+(key==='vix'?' 美東':'')+(last.quote?' · Yahoo 延遲報價':'')+(last.partialVolume?' · 盤中累計':'')+'</span>'+
         lookbackGauge(rank,key==='vix')+'</div>';
