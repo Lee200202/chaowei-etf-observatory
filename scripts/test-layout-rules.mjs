@@ -20,9 +20,15 @@ console.log('PASS layout rules: 12- and 10-column uneven card rhythm with varied
 // neighbouring cards never share a width, so the rail never reads as a regular left-right grid.
 {
   const css19=fs.readFileSync('worker/ph19.css','utf8').replace(/\r\n/g,'\n'),blocks19=q=>{const i=css19.lastIndexOf(q);assert.ok(i>=0,'ph19 missing '+q);let d=0,j=css19.indexOf('{',i);for(let k=j;k<css19.length;k++){if(css19[k]==='{')d++;if(css19[k]==='}'&&--d===0)return css19.slice(j,k+1)}return''};
-  for(const [query,cols,base] of [['@media(min-width:1000px)',12,[7,5,4,8,5,3,4,7,5]],['@media(min-width:720px) and (max-width:999px)',10,[6,4,4,6,5,5,10,6,4]]]){
-    const spans=[...base];for(const m of blocks19(query).matchAll(/#factorRail>\.factor:nth-child\((\d)\)\{--tide-span:(\d+)/g))spans[m[1]-1]=Number(m[2]);
+  // Base spans as the browser resolves them: every ph18 block for this width, in file order (later blocks win).
+  const allBlocks=(text,q)=>{const out=[];let i=-1;while((i=text.indexOf(q,i+1))>=0){let d=0,j=text.indexOf('{',i);for(let k=j;k<text.length;k++){if(text[k]==='{')d++;if(text[k]==='}'&&--d===0){out.push(text.slice(j,k+1));break}}}return out};
+  for(const [query,cols] of [['@media(min-width:1000px)',12],['@media(min-width:720px) and (max-width:999px)',10]]){
+    const cycle=[];for(const b of allBlocks(css,query))for(const m of b.matchAll(/\(#matrixCards,#factorRail\)>:nth-child\(7n\+(\d)\)\{--tide-span:(\d+)/g))cycle[m[1]-1]=Number(m[2]);
+    assert.equal(cycle.filter(Number.isFinite).length,7,query+' base cycle of seven spans');
+    const spans=Array.from({length:9},(_,i)=>cycle[i%7]);for(const m of blocks19(query).matchAll(/#factorRail>\.factor:nth-child\((\d)\)\{--tide-span:(\d+)/g))spans[m[1]-1]=Number(m[2]);
     const rows=[[]];let used=0;for(const s of spans){if(used+s>cols){rows.push([]);used=0}rows.at(-1).push(s);used+=s}
+    // No two rows may be the same sequence either (8/4 then 5/7 then 7/5 is fine; 5/7 twice is not).
+    const seqs=rows.map(r=>r.join('/'));assert.equal(new Set(seqs).size,seqs.length,query+' two rows repeat the same widths: '+seqs.join(' | '));
     for(const row of rows){assert.ok(row.length>=2,query+' a card fills a row alone: '+JSON.stringify(rows));assert.equal(row.reduce((a,b)=>a+b,0),cols,query+' row does not close: '+JSON.stringify(rows));
       row.forEach((s,i)=>assert.ok(!i||s!==row[i-1],query+' neighbours share a width: '+JSON.stringify(rows)))}
   }
@@ -32,5 +38,12 @@ console.log('PASS layout rules: 12- and 10-column uneven card rhythm with varied
   const cmp=fs.readFileSync('worker/market-compare.js','utf8');assert.ok(!/compare-grip|拖到下方比較/.test(cmp+css19),'no drag button or label on the cards: the whole card is dragged');
   assert.match(cmp,/touchstart[\s\S]*setTimeout\([\s\S]*,450\)/,'phones start a card drag with a long press');assert.match(cmp,/data-slot-pick/,'empty boxes offer a list as the non-drag path');
   assert.match(css19,/#factorRail #pcrMeta,#factorRail #retailMeta\{display:none\}/,'PCR and retail cards carry no detail line');assert.ok(!/sentiment-note/.test(fs.readFileSync('worker/market-sentiment.js','utf8')),'no formula on the cards');
+  const has=(text,needle,msg)=>assert.ok(text.includes(needle),msg);
+  has(css19,'a.pill,a.pill:hover,a.pill:focus-visible{text-decoration:none}','button-styled links carry no underline');
+  assert.match(css19,/\.purpose-link\{display:inline-flex[^}]*text-decoration:none/,'home door links are buttons');
+  has(css19,'summary{cursor:pointer}','disclosures show the hand cursor');
+  has(cmp,'setBoth(clampVp(pan.v.from+shift,pan.v.to+shift))','panning A or B moves both');
+  has(cmp,'setBoth(clampVp(at-ratio*next,at-ratio*next+next))','zooming A or B zooms both');
+  has(cmp,"if(b.dataset.rcZoom==='reset'){setBoth(windowVp())",'reset resets both');
   console.log('PASS nine-card rhythm: rows close with two or more cards and neighbours differ at 12 and 10 columns; overview count top right, levels centred.');
 }

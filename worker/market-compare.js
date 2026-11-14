@@ -3,7 +3,7 @@
 // the box's list); once both are filled, the two series are compared on the days both have data.
 // Hover shows a vertical line on both charts. Double-click (double-tap) locks it as the start; moving right previews
 // the end and a click (or tap) fixes it. The start is always the left end; Esc cancels.
-// Each chart zooms (wheel, + / −) and pans (drag) on its own over the whole shared history; the selection is by date.
+// Zooming (wheel, + / −) or panning (drag) either chart moves both, so A and B always show the same dates.
 const CompareSeries={
   index:{title:'加權指數',unit:'點',line:'#0e7490',digits:2,mode:'pct',up:'漲',down:'跌',rows:()=>market.filter(x=>!x.intraday).map(x=>({date:x.date,value:x.index}))},
   volume:{title:'大盤成交股數',unit:'億股',line:'#4f8fa0',digits:1,mode:'pct',up:'增',down:'減',rows:()=>market.filter(x=>!x.intraday).map(x=>({date:x.date,value:x.volume/1e8}))},
@@ -22,7 +22,7 @@ const CompareSeries={
   const slots={a:null,b:null},SLOTS=[{key:'a',tag:'A'},{key:'b',tag:'B'}];
   const spec=k=>({...CompareSeries[slots[k]],key:k,tag:k.toUpperCase()});
   const sec=document.createElement('section');sec.className='range-compare';sec.id='rangeCompare';
-  sec.innerHTML='<div class="range-compare-head"><div><p class="kicker teal">RANGE COMPARE</p><h3>任選兩張卡片，同一段區間</h3><p class="small">按住上方任一張市場卡片往下拖進 A、B 兩個框（手機長按約半秒再拖，或在框內從清單選擇），就會比對同一段區間的漲跌幅度。圖上滑鼠移動會出現直線；在起點連點兩下定住，再往右移到終點點一下確認，Esc 取消。每張圖可各自用滾輪或「＋／－」縮放、按住拖曳左右移動。</p></div></div>'+
+  sec.innerHTML='<div class="range-compare-head"><div><p class="kicker teal">RANGE COMPARE</p><h3>任選兩張卡片，同一段區間</h3><p class="small">按住上方任一張市場卡片往下拖進 A、B 兩個框（手機長按約半秒再拖，或在框內從清單選擇），就會比對同一段區間的漲跌幅度。圖上滑鼠移動會出現直線；在起點連點兩下定住，再往右移到終點點一下確認，Esc 取消。用滾輪或「＋／－」縮放、按住拖曳左右移動，A、B 兩張圖會一起移動。</p></div></div>'+
     '<div class="rc-slots" role="group" aria-label="比較框">'+SLOTS.map(s=>`<div class="rc-slot" data-slot="${s.key}"><span class="rc-slot-tag">${s.tag}</span><div class="rc-slot-body"></div><button type="button" class="pill mini rc-slot-clear" data-slot-clear="${s.key}" hidden>移除</button></div>`).join('')+'</div>'+
     '<div class="rc-body"><div class="range-compare-tools"><div class="segment" role="group" aria-label="兩張圖一起顯示的期間" data-rc-ranges>'+RANGES.map(([id,label])=>`<button type="button" data-rc-range="${id}">${label}</button>`).join('')+'</div>'+
     '<div class="segment" role="group" aria-label="快速選取"><button type="button" data-rc-preset="peakToLatest">A 高點至最新</button><button type="button" data-rc-preset="peakToLow">A 高點至低點</button></div></div>'+
@@ -47,7 +47,7 @@ const CompareSeries={
   const axis=v=>fmt(v,Math.abs(v)>=1000?0:Math.abs(v)>=100?1:2);
   const ready=()=>!!(slots.a&&slots.b);
   const clampVp=(from,to)=>{const n=view.length,span=Math.max(Math.min(MIN_SPAN,n-1),Math.min(n-1,Math.round(to-from)));from=Math.round(from);from=Math.max(0,Math.min(n-1-span,from));return{from,to:from+span}};
-  // The window buttons put both charts on the last N months; each chart can then zoom and pan by itself.
+  // The window buttons put both charts on the last N months; zooming or panning either chart moves both together.
   function windowVp(){const w=RC.windowRows(view,RANGES.find(r=>r[0]===rangeKey())[2]),from=Math.max(0,view.length-w.length);return clampVp(from,view.length-1)}
   function setBoth(v){for(const s of SLOTS)vp[s.key]={...v}}
   // Keep the chosen days and each chart's visible dates when data refreshes.
@@ -153,13 +153,14 @@ const CompareSeries={
   function preview(i){if(picking==null)return;const b=Math.max(picking+1,Math.min(view.length-1,i));if(b!==sel.b){sel={a:picking,b};schedule()}}
   // Zoom one chart around a day, keeping that day under the pointer.
   function zoom(key,factor,anchor){const v=vp[key],span=v.to-v.from,next=Math.max(Math.min(MIN_SPAN,view.length-1),Math.min(view.length-1,Math.round(span*factor)));if(next===span)return;
-    const at=anchor??Math.round((v.from+v.to)/2),ratio=span?(at-v.from)/span:.5;vp[key]=clampVp(at-ratio*next,at-ratio*next+next);schedule()}
+    // The buttons zoom around the selection's end (kept on screen); the wheel zooms around the pointer.
+    const at=anchor??(sel&&sel.b>=v.from&&sel.b<=v.to?sel.b:Math.round((v.from+v.to)/2)),ratio=span?(at-v.from)/span:.5;setBoth(clampVp(at-ratio*next,at-ratio*next+next));schedule()}
   charts.addEventListener('wheel',e=>{const hit=e.target.closest('[data-rc-plot]');if(!hit||view.length<2)return;e.preventDefault();zoom(hit.dataset.rcPlot,e.deltaY<0?.8:1.25,at(e,hit))},{passive:false});
   // Dragging pans that chart; a press that does not move stays a click (end point) or part of a double-click (start).
   charts.addEventListener('pointerdown',e=>{const hit=e.target.closest('[data-rc-plot]');if(!hit||view.length<2||e.button>0)return;const key=hit.dataset.rcPlot;pan={key,x:e.clientX,v:{...vp[key]},moved:false,id:e.pointerId,hit}});
   charts.addEventListener('pointermove',e=>{const hit=e.target.closest('[data-rc-plot]');
     if(pan&&e.pointerId===pan.id){const dx=e.clientX-pan.x;if(!pan.moved&&Math.abs(dx)>5){pan.moved=true;try{pan.hit.setPointerCapture(e.pointerId)}catch{}pan.hit.classList.add('panning')}
-      if(pan.moved){const r=pan.hit.getBoundingClientRect(),span=pan.v.to-pan.v.from,shift=Math.round(-dx/Math.max(1,r.width)*span);vp[pan.key]=clampVp(pan.v.from+shift,pan.v.to+shift);schedule();return}}
+      if(pan.moved){const r=pan.hit.getBoundingClientRect(),span=pan.v.to-pan.v.from,shift=Math.round(-dx/Math.max(1,r.width)*span);setBoth(clampVp(pan.v.from+shift,pan.v.to+shift));schedule();return}}
     if(!hit||view.length<2)return;const i=at(e,hit);cross(i);preview(i)});
   charts.addEventListener('pointerleave',()=>{if(picking==null&&!pan)cross(null)});
   charts.addEventListener('dblclick',e=>{const hit=e.target.closest('[data-rc-plot]');if(!hit)return;e.preventDefault();lockStart(at(e,hit));cross(at(e,hit))});
@@ -171,7 +172,7 @@ const CompareSeries={
     cross(i);if(picking!=null&&i>picking)commit(i)};
   charts.addEventListener('pointerup',release);charts.addEventListener('pointercancel',release);
   charts.addEventListener('click',e=>{const b=e.target.closest('[data-rc-zoom]');if(!b||view.length<2)return;const key=b.dataset.rcChart;
-    if(b.dataset.rcZoom==='reset'){vp[key]=windowVp();schedule()}else zoom(key,b.dataset.rcZoom==='in'?.6:1.6)});
+    if(b.dataset.rcZoom==='reset'){setBoth(windowVp());schedule()}else zoom(key,b.dataset.rcZoom==='in'?.6:1.6)});
   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&picking!=null){picking=null;sel=before||sel;before=null;cross(null);paint()}});
   // Sliders give keyboard and fine-touch control; the start can never pass the end.
   sec.querySelector('.range-compare-sliders').addEventListener('input',e=>{const input=e.target.closest('[data-rc-end]');if(!input||!sel)return;const v=Number(input.value),n=view.length;

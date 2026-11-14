@@ -80,8 +80,8 @@ body.editorial-site #top .market-overview .rd-factor-bars{grid-column:1/-1;grid-
 
 /* Nine market cards get their own uneven sequence: no two neighbours share a width, and no card fills a row alone. */
 @media(min-width:1000px){
- body.subtraction-site #top #factorRail>.factor:nth-child(8){--tide-span:5;--tide-height:300px;--tide-offset:14px}
- body.subtraction-site #top #factorRail>.factor:nth-child(9){--tide-span:7;--tide-height:280px;--tide-offset:-10px;--tide-chart-height:96px}
+ body.subtraction-site #top #factorRail>.factor:nth-child(8){--tide-span:7;--tide-height:300px;--tide-offset:14px}
+ body.subtraction-site #top #factorRail>.factor:nth-child(9){--tide-span:5;--tide-height:280px;--tide-offset:-10px;--tide-chart-height:96px}
 }
 @media(min-width:720px) and (max-width:999px){
  body.subtraction-site #top #factorRail>.factor:nth-child(3){--tide-span:3;--tide-height:250px;--tide-chart-height:70px}
@@ -93,3 +93,12 @@ body.editorial-site #top .market-overview .rd-factor-bars{grid-column:1/-1;grid-
  body.subtraction-site #top #factorRail>.factor:nth-child(9){--tide-span:3;--tide-height:256px;--tide-offset:20px;--tide-chart-height:76px}
 }
 .range-compare-result.rc-nobar .rc-row{grid-template-columns:34px minmax(0,1fr)}
+
+/* Things you press look like buttons: a link styled as a pill never carries a text underline, and the home doors'
+   "打開…" links are pills too. Underlines stay only on reference links inside sentences (sources, further reading). */
+a.pill,a.pill:hover,a.pill:focus-visible{text-decoration:none}
+body.editorial-site #top .purpose-link{display:inline-flex;align-items:center;min-height:36px;margin-top:6px;padding:6px 16px;border:1px solid color-mix(in srgb,var(--ink) 30%,transparent);border-radius:999px;background:var(--paper);color:var(--ink);font-size:13.5px;font-weight:700;text-decoration:none;transition:background-color .2s,border-color .2s}
+body.editorial-site #top .purpose-link:hover{border-color:var(--ink);background:color-mix(in srgb,var(--paper) 80%,var(--ink) 8%)}
+body.editorial-site #top .purpose-link:focus-visible{outline:3px solid var(--teal);outline-offset:2px}
+/* Anything that opens or closes on click shows the hand cursor, like every other control. */
+summary{cursor:pointer}
