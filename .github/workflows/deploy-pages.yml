@@ -94,7 +94,7 @@ jobs:
           git commit -m 'Daily snapshot: TWSE history, catalogue, TAIFEX BRF and CBC'
           # Someone may have pushed while the data steps ran: rebase onto the remote and retry a few times.
           for attempt in 1 2 3; do
-            if git pull --rebase origin main; then git push origin HEAD:main && exit 0; else git rebase --abort || true; fi
+            if git pull --rebase --autostash origin main; then git push origin HEAD:main && exit 0; else git rebase --abort || true; fi
             echo "push attempt $attempt failed; retrying"; sleep 10
           done
           exit 1
