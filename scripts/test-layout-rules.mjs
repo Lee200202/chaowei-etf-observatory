@@ -29,5 +29,8 @@ console.log('PASS layout rules: 12- and 10-column uneven card rhythm with varied
   assert.match(css19,/\.market-overview-stats\{grid-column:2;grid-row:1;justify-self:end/,'scorable-factor count sits top right');
   assert.match(css19,/\.market-overview \.rd-factor-bars\{grid-column:1\/-1;grid-row:2;justify-self:center/,'water levels centred below');
   assert.match(css19,/\.rd-factor-bars\{grid-template-columns:repeat\(9,/,'nine water-level bars on one row');
+  const cmp=fs.readFileSync('worker/market-compare.js','utf8');assert.ok(!/compare-grip|拖到下方比較/.test(cmp+css19),'no drag button or label on the cards: the whole card is dragged');
+  assert.match(cmp,/touchstart[\s\S]*setTimeout\([\s\S]*,450\)/,'phones start a card drag with a long press');assert.match(cmp,/data-slot-pick/,'empty boxes offer a list as the non-drag path');
+  assert.match(css19,/#factorRail #pcrMeta,#factorRail #retailMeta\{display:none\}/,'PCR and retail cards carry no detail line');assert.ok(!/sentiment-note/.test(fs.readFileSync('worker/market-sentiment.js','utf8')),'no formula on the cards');
   console.log('PASS nine-card rhythm: rows close with two or more cards and neighbours differ at 12 and 10 columns; overview count top right, levels centred.');
 }

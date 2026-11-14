@@ -1,4 +1,5 @@
 /* ---------- TAIFEX sentiment cards: options PCR and the mini-TAIEX retail long/short ratio ---------- */
+// The card shows only what the other cards show; the formula, sources and counts live in the card dialog.
 // Daily files from the evening/afternoon CI refresh, topped up every five minutes by the Apps Script live bundle,
 // which reads TAIFEX directly (a day TAIFEX has published shows up before the next CI run).
 var pcrDays=[],retailDays=[],pcrPosition=null,retailPosition=null,taifexCheckedAt=null;
@@ -6,9 +7,9 @@ settings.pcrThreshold=Number.isFinite(Number(settings.pcrThreshold))&&Number(set
 settings.retailThreshold=Number.isFinite(Number(settings.retailThreshold))?Number(settings.retailThreshold):0;
 {
   const pcrTile=document.createElement('div');pcrTile.className='factor sentiment-factor';pcrTile.id='pcrTile';
-  pcrTile.innerHTML='<span class="factor-icon"></span><h4>選擇權 PCR · 未平倉</h4><strong id="pcrScore">—</strong><p id="pcrMeta">讀取期交所臺指選擇權資料中</p><small class="sentiment-note">賣權未平倉 ÷ 買權未平倉 · 期交所每日盤後</small>';
+  pcrTile.innerHTML='<span class="factor-icon"></span><h4>選擇權 PCR · 未平倉</h4><strong id="pcrScore">—</strong><p id="pcrMeta">讀取期交所臺指選擇權資料中</p>';
   const retailTile=document.createElement('div');retailTile.className='factor sentiment-factor';retailTile.id='retailTile';
-  retailTile.innerHTML='<span class="factor-icon"></span><h4>散戶多空比 · 小台</h4><strong id="retailScore">—</strong><p id="retailMeta">讀取期交所小台與三大法人資料中</p><small class="sentiment-note">（法人空單 − 法人多單）÷ 小台未平倉 · 期交所每日盤後</small>';
+  retailTile.innerHTML='<span class="factor-icon"></span><h4>散戶多空比 · 小台</h4><strong id="retailScore">—</strong><p id="retailMeta">讀取期交所小台與三大法人資料中</p>';
   $('refreshClock').closest('.factor').before(pcrTile,retailTile);
 }
 function sentimentAge(last){return bars.length&&last?(Date.parse(bars.at(-1).date)-Date.parse(last.date))/86400000:0}

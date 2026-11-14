@@ -3369,6 +3369,7 @@ const SentimentCore=(()=>{
 })();
 
 /* ---------- TAIFEX sentiment cards: options PCR and the mini-TAIEX retail long/short ratio ---------- */
+// The card shows only what the other cards show; the formula, sources and counts live in the card dialog.
 // Daily files from the evening/afternoon CI refresh, topped up every five minutes by the Apps Script live bundle,
 // which reads TAIFEX directly (a day TAIFEX has published shows up before the next CI run).
 var pcrDays=[],retailDays=[],pcrPosition=null,retailPosition=null,taifexCheckedAt=null;
@@ -3376,9 +3377,9 @@ settings.pcrThreshold=Number.isFinite(Number(settings.pcrThreshold))&&Number(set
 settings.retailThreshold=Number.isFinite(Number(settings.retailThreshold))?Number(settings.retailThreshold):0;
 {
   const pcrTile=document.createElement('div');pcrTile.className='factor sentiment-factor';pcrTile.id='pcrTile';
-  pcrTile.innerHTML='<span class="factor-icon"></span><h4>選擇權 PCR · 未平倉</h4><strong id="pcrScore">—</strong><p id="pcrMeta">讀取期交所臺指選擇權資料中</p><small class="sentiment-note">賣權未平倉 ÷ 買權未平倉 · 期交所每日盤後</small>';
+  pcrTile.innerHTML='<span class="factor-icon"></span><h4>選擇權 PCR · 未平倉</h4><strong id="pcrScore">—</strong><p id="pcrMeta">讀取期交所臺指選擇權資料中</p>';
   const retailTile=document.createElement('div');retailTile.className='factor sentiment-factor';retailTile.id='retailTile';
-  retailTile.innerHTML='<span class="factor-icon"></span><h4>散戶多空比 · 小台</h4><strong id="retailScore">—</strong><p id="retailMeta">讀取期交所小台與三大法人資料中</p><small class="sentiment-note">（法人空單 − 法人多單）÷ 小台未平倉 · 期交所每日盤後</small>';
+  retailTile.innerHTML='<span class="factor-icon"></span><h4>散戶多空比 · 小台</h4><strong id="retailScore">—</strong><p id="retailMeta">讀取期交所小台與三大法人資料中</p>';
   $('refreshClock').closest('.factor').before(pcrTile,retailTile);
 }
 function sentimentAge(last){return bars.length&&last?(Date.parse(bars.at(-1).date)-Date.parse(last.date))/86400000:0}
@@ -3471,8 +3472,8 @@ const RangeCompare=(()=>{
 })();
 
 /* ---------- 任兩張市場卡片：同一段區間對照（市場刻度卡片最下方） ---------- */
-// Two transparent boxes start empty. Drag any market card's "拖到下方比較" handle into box A or B (or tap the handle to
-// fill the next empty box); once both are filled, the two series are compared on the days both have data.
+// Two transparent boxes start empty. Drag any whole market card into box A or B (phone: hold, then drag; or pick from
+// the box's list); once both are filled, the two series are compared on the days both have data.
 // Hover shows a vertical line on both charts. Double-click (double-tap) locks it as the start; moving right previews
 // the end and a click (or tap) fixes it. The start is always the left end; Esc cancels.
 // Each chart zooms (wheel, + / −) and pans (drag) on its own over the whole shared history; the selection is by date.
@@ -3494,7 +3495,7 @@ const CompareSeries={
   const slots={a:null,b:null},SLOTS=[{key:'a',tag:'A'},{key:'b',tag:'B'}];
   const spec=k=>({...CompareSeries[slots[k]],key:k,tag:k.toUpperCase()});
   const sec=document.createElement('section');sec.className='range-compare';sec.id='rangeCompare';
-  sec.innerHTML='<div class="range-compare-head"><div><p class="kicker teal">RANGE COMPARE</p><h3>任選兩張卡片，同一段區間</h3><p class="small">把上方任兩張市場卡片的「拖到下方比較」拖進 A、B 兩個框（或點一下該按鈕，依序放入），就會比對同一段區間的漲跌幅度。圖上滑鼠移動會出現直線；在起點連點兩下定住，再往右移到終點點一下確認，Esc 取消。每張圖可各自用滾輪或「＋／－」縮放、按住拖曳左右移動。</p></div></div>'+
+  sec.innerHTML='<div class="range-compare-head"><div><p class="kicker teal">RANGE COMPARE</p><h3>任選兩張卡片，同一段區間</h3><p class="small">按住上方任一張市場卡片往下拖進 A、B 兩個框（手機長按約半秒再拖，或在框內從清單選擇），就會比對同一段區間的漲跌幅度。圖上滑鼠移動會出現直線；在起點連點兩下定住，再往右移到終點點一下確認，Esc 取消。每張圖可各自用滾輪或「＋／－」縮放、按住拖曳左右移動。</p></div></div>'+
     '<div class="rc-slots" role="group" aria-label="比較框">'+SLOTS.map(s=>`<div class="rc-slot" data-slot="${s.key}"><span class="rc-slot-tag">${s.tag}</span><div class="rc-slot-body"></div><button type="button" class="pill mini rc-slot-clear" data-slot-clear="${s.key}" hidden>移除</button></div>`).join('')+'</div>'+
     '<div class="rc-body"><div class="range-compare-tools"><div class="segment" role="group" aria-label="兩張圖一起顯示的期間" data-rc-ranges>'+RANGES.map(([id,label])=>`<button type="button" data-rc-range="${id}">${label}</button>`).join('')+'</div>'+
     '<div class="segment" role="group" aria-label="快速選取"><button type="button" data-rc-preset="peakToLatest">A 高點至最新</button><button type="button" data-rc-preset="peakToLow">A 高點至低點</button></div></div>'+
@@ -3585,10 +3586,11 @@ const CompareSeries={
     for(const box of sec.querySelectorAll('.rc-slot')){
       const k=box.dataset.slot,id=slots[k],body=box.querySelector('.rc-slot-body');
       box.classList.toggle('filled',!!id);box.querySelector('.rc-slot-clear').hidden=!id;
-      body.innerHTML=id?`<b>${CompareSeries[id].title}</b><small>拖入其他卡片可替換</small>`:`<b>拖曳卡片到這裡</b><small>${k==='a'?'第一張':'第二張'}卡片</small>`;
+      const pick=`<select data-slot-pick="${k}" aria-label="${k.toUpperCase()} 框：從清單選擇卡片"><option value="">或從清單選擇</option>${Object.entries(CompareSeries).map(([key,s])=>`<option value="${key}">${s.title}</option>`).join('')}</select>`;
+      body.innerHTML=id?`<b>${CompareSeries[id].title}</b><small>拖入其他卡片可替換</small>`:`<b>把卡片拖到這裡</b><small>按住上方卡片往下拖（手機長按半秒再拖）</small>${pick}`;
     }
     sec.classList.toggle('rc-ready',ready());
-    document.querySelectorAll('#factorRail [data-trend]').forEach(card=>{const k=Object.keys(slots).find(x=>slots[x]===card.dataset.trend);card.dataset.compareSlot=k?k.toUpperCase():'';const g=card.querySelector('.compare-grip');if(g)g.textContent=k?'已放入 '+k.toUpperCase():'拖到下方比較'});
+    document.querySelectorAll('#factorRail [data-trend]').forEach(card=>{const k=Object.keys(slots).find(x=>slots[x]===card.dataset.trend);card.dataset.compareSlot=k?k.toUpperCase():''});
   }
   function paint(){
     paintSlots();
@@ -3650,61 +3652,72 @@ const CompareSeries={
   sec.querySelector('.range-compare-tools').addEventListener('click',e=>{const r=e.target.closest('[data-rc-range]'),p=e.target.closest('[data-rc-preset]');if(!ready()||view.length<2)return;
     if(r){settings.compareRange=r.dataset.rcRange;save();setBoth(windowVp());const q=presetIn('peakToLatest');if(q&&!(sel.a>=vp.a.from&&sel.b<=vp.a.to))sel=q;paint()}if(p){const q=presetIn(p.dataset.rcPreset);if(q){sel=q;paint()}}});
 
-  /* ---- Filling the boxes: drag a card's handle down into A or B, or tap the handle ---- */
+  /* ---- Filling the boxes: drag a whole card down into A or B (phone: hold about half a second, then drag) ---- */
   // Not saved: the boxes start empty on every visit, so the comparison appears only when the reader asks for it.
+  // An empty box also has a list, for keyboards and for anyone who prefers not to drag.
   function assign(slot,id){
     if(!CompareSeries[id])return;
     const other=slot==='a'?'b':'a';if(slots[other]===id)slots[other]=slots[slot];
     slots[slot]=id;picking=null;rebuild(true);
     if(ready())requestAnimationFrame(()=>sec.querySelector('.rc-slots').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'}));
   }
-  // A tap fills the next empty box; once both are full, it replaces B.
-  function nextSlot(id){return slots.a===id||slots.b===id?null:!slots.a?'a':'b'}
   sec.querySelector('.rc-slots').addEventListener('click',e=>{const b=e.target.closest('[data-slot-clear]');if(b){slots[b.dataset.slotClear]=null;rebuild(true)}});
-  function grips(){
-    for(const card of document.querySelectorAll('#factorRail [data-trend]')){
-      if(card.querySelector('.compare-grip')||!CompareSeries[card.dataset.trend])continue;
-      const g=document.createElement('button');g.type='button';g.className='compare-grip';g.textContent='拖到下方比較';
-      g.setAttribute('aria-label',(card.querySelector('h4')?.textContent||'')+'：加入下方區間比較（拖曳到 A 或 B 框，或點一下依序放入）');
-      card.append(g);
-    }
-    paintSlots();
+  sec.querySelector('.rc-slots').addEventListener('change',e=>{const s=e.target.closest('[data-slot-pick]');if(s&&s.value)assign(s.dataset.slotPick,s.value)});
+  // A drag starts on the card body; the mini chart keeps scrubbing and controls keep their own job.
+  function startable(target){
+    const card=target?.closest?.('#factorRail [data-trend]');
+    if(!card||!CompareSeries[card.dataset.trend]||target.closest('svg,select,button,a,input,label,summary,details'))return null;
+    return card;
   }
-  let drag=null;
+  let drag=null,suppressClick=0;
   function slotAt(x,y){const el=document.elementFromPoint(x,y);return el?.closest?.('.rc-slot')||null}
-  function moveGhost(e){
-    drag.ghost.style.transform=`translate(${e.clientX+12}px,${e.clientY+12}px)`;
-    const over=slotAt(e.clientX,e.clientY);sec.querySelectorAll('.rc-slot').forEach(b=>b.classList.toggle('drop-over',b===over));
+  function begin(){
+    drag.active=true;sec.classList.add('rc-dragging');document.body.classList.add('compare-dragging');drag.card.classList.add('compare-lifted');
+    const ghost=document.createElement('div');ghost.className='compare-ghost';ghost.textContent=CompareSeries[drag.id].title+' → 拖到 A 或 B';document.body.append(ghost);drag.ghost=ghost;
+  }
+  function moveGhost(p){
+    drag.ghost.style.transform=`translate(${p.clientX+12}px,${p.clientY+12}px)`;
+    const over=slotAt(p.clientX,p.clientY);sec.querySelectorAll('.rc-slot').forEach(b=>b.classList.toggle('drop-over',b===over));
     // Near the window edge the page scrolls, so a card at the top can reach the boxes below.
-    const edge=80,v=innerHeight;drag.vy=e.clientY>v-edge?Math.min(24,(e.clientY-(v-edge))/3):e.clientY<edge?-Math.min(24,(edge-e.clientY)/3):0;drag.last=e;
+    const edge=80,v=innerHeight;drag.vy=p.clientY>v-edge?Math.min(24,(p.clientY-(v-edge))/3):p.clientY<edge?-Math.min(24,(edge-p.clientY)/3):0;drag.last={clientX:p.clientX,clientY:p.clientY};
   }
   function tick(){if(!drag)return;if(drag.active&&drag.vy){scrollBy(0,drag.vy);if(drag.last)moveGhost(drag.last)}drag.raf=requestAnimationFrame(tick)}
+  function finish(p,cancel){
+    const d=drag;drag=null;if(!d)return;cancelAnimationFrame(d.raf);clearTimeout(d.timer);
+    if(!d.active)return;
+    suppressClick=Date.now()+500;
+    sec.classList.remove('rc-dragging');document.body.classList.remove('compare-dragging');d.card.classList.remove('compare-lifted');
+    sec.querySelectorAll('.rc-slot').forEach(b=>b.classList.remove('drop-over'));d.ghost?.remove();
+    if(!cancel&&p){const box=slotAt(p.clientX,p.clientY);if(box)assign(box.dataset.slot,d.id)}
+  }
+  // Mouse and pen: press on the card and move it more than 8 px. A press without moving stays a click (opens the card).
   document.addEventListener('pointerdown',e=>{
-    const g=e.target.closest?.('.compare-grip');if(!g||e.button>0)return;
-    e.preventDefault();e.stopPropagation();
-    drag={id:g.closest('[data-trend]').dataset.trend,x:e.clientX,y:e.clientY,active:false,pointer:e.pointerId,vy:0};try{g.setPointerCapture(e.pointerId)}catch{}
-    drag.raf=requestAnimationFrame(tick);
-  },true);
+    if(e.pointerType==='touch'||e.button>0||drag)return;const card=startable(e.target);if(!card)return;
+    drag={id:card.dataset.trend,card,x:e.clientX,y:e.clientY,active:false,pointer:e.pointerId,vy:0};drag.raf=requestAnimationFrame(tick);
+  });
   document.addEventListener('pointermove',e=>{
-    if(!drag||e.pointerId!==drag.pointer)return;
-    if(!drag.active&&Math.hypot(e.clientX-drag.x,e.clientY-drag.y)>8){
-      drag.active=true;sec.classList.add('rc-dragging');document.body.classList.add('compare-dragging');
-      const ghost=document.createElement('div');ghost.className='compare-ghost';ghost.textContent=CompareSeries[drag.id].title;document.body.append(ghost);drag.ghost=ghost;
-    }
+    if(!drag||drag.touch||e.pointerId!==drag.pointer)return;
+    if(!drag.active&&Math.hypot(e.clientX-drag.x,e.clientY-drag.y)>8){begin();getSelection()?.removeAllRanges()}
     if(drag.active){e.preventDefault();moveGhost(e)}
+  });
+  document.addEventListener('pointerup',e=>{if(drag&&!drag.touch&&e.pointerId===drag.pointer)finish(e,false)});
+  document.addEventListener('pointercancel',e=>{if(drag&&!drag.touch&&e.pointerId===drag.pointer)finish(null,true)});
+  // Touch: hold still for about half a second, then drag; a quick swipe still scrolls the page as usual.
+  document.addEventListener('touchstart',e=>{
+    if(e.touches.length!==1||drag)return;const card=startable(e.target);if(!card)return;const t=e.touches[0];
+    drag={id:card.dataset.trend,card,x:t.clientX,y:t.clientY,active:false,touch:true,vy:0};drag.raf=requestAnimationFrame(tick);
+    drag.timer=setTimeout(()=>{if(drag&&drag.touch&&!drag.active){begin();navigator.vibrate?.(12);moveGhost({clientX:drag.x,clientY:drag.y})}},450);
+  },{passive:true});
+  document.addEventListener('touchmove',e=>{
+    if(!drag?.touch)return;const t=e.touches[0];
+    if(!drag.active){if(Math.hypot(t.clientX-drag.x,t.clientY-drag.y)>10)finish(null,true);return}
+    e.preventDefault();moveGhost(t);
   },{passive:false});
-  const endDrag=e=>{
-    if(!drag||e.pointerId!==drag.pointer)return;const d=drag;drag=null;cancelAnimationFrame(d.raf);
-    sec.classList.remove('rc-dragging');document.body.classList.remove('compare-dragging');sec.querySelectorAll('.rc-slot').forEach(b=>b.classList.remove('drop-over'));d.ghost?.remove();
-    if(e.type==='pointercancel')return;
-    if(d.active){const box=slotAt(e.clientX,e.clientY);if(box)assign(box.dataset.slot,d.id);return}
-    const slot=nextSlot(d.id);if(slot)assign(slot,d.id);else sec.querySelector('.rc-slots').scrollIntoView({behavior:'smooth',block:'start'});
-  };
-  document.addEventListener('pointerup',endDrag);document.addEventListener('pointercancel',endDrag);
-  // Keyboard: Enter or Space on the handle behaves like a tap.
-  document.addEventListener('keydown',e=>{const g=e.target.closest?.('.compare-grip');if(!g||!['Enter',' '].includes(e.key))return;e.preventDefault();e.stopPropagation();const id=g.closest('[data-trend]').dataset.trend,slot=nextSlot(id);if(slot)assign(slot,id)},true);
-  // The handle never opens the card's detail dialog.
-  document.addEventListener('click',e=>{if(e.target.closest?.('.compare-grip')){e.stopPropagation();e.preventDefault()}},true);
+  document.addEventListener('touchend',e=>{if(!drag?.touch)return;const was=drag.active;finish(e.changedTouches[0],false);if(was)e.preventDefault()},{passive:false});
+  document.addEventListener('touchcancel',()=>{if(drag?.touch)finish(null,true)});
+  // After a drag, the release must not open the card's dialog; a long press must not open the context menu.
+  document.addEventListener('click',e=>{if(Date.now()<suppressClick&&e.target.closest?.('#factorRail')){e.stopPropagation();e.preventDefault()}},true);
+  document.addEventListener('contextmenu',e=>{if(drag?.touch&&e.target.closest?.('#factorRail'))e.preventDefault()});
 
   // Any refreshed series rebuilds the comparison (kept dates stay chosen).
   const later=()=>{if(!ready())return;clearTimeout(window.__rcRebuild);window.__rcRebuild=setTimeout(()=>rebuild(),80)};
@@ -3714,8 +3727,8 @@ const CompareSeries={
   {const prev=computeFx;computeFx=function(...a){const out=prev(...a);later();return out}}
   for(const ev of ['vix-updated','sentiment-updated','market-lookback'])document.addEventListener(ev,later);
   window.addEventListener('resize',()=>{if(Math.abs(charts.clientWidth-lastWidth)>30){clearTimeout(window.__rcResize);window.__rcResize=setTimeout(paint,120)}});
-  new MutationObserver(grips).observe($('factorRail'),{childList:true});
-  grips();rebuild();
+  new MutationObserver(paintSlots).observe($('factorRail'),{childList:true});
+  rebuild();
 })();
 
 /* Optional margin factors next to the five base weights: this ETF's margin balance and the market-wide balance.
@@ -5788,8 +5801,6 @@ function setTideTone(card, location) {
     const step=Math.max(1,Math.ceil(marks.length/Math.max(2,Math.floor((X(rows.length-1)-X(0))/70))));
     return marks.filter((_,k)=>k%step===0).map(i=>{const d=rows[i].date,label=long||d.slice(5,7)==='01'?d.slice(0,4):Number(d.slice(5,7))+'月';return`<line x1="${X(i)}" x2="${X(i)}" y1="${P.t}" y2="${H-P.b}" class="rc-grid"/><text x="${X(i)}" y="${H-7}" text-anchor="middle" class="rc-tick">${label}</text>`}).join('');
   }
-  // Keep the card's status line honest about the live check.
-  document.addEventListener('sentiment-updated',()=>{for(const key of ['pcr','retail']){const tile=$(key+'Tile'),note=tile?.querySelector('.sentiment-note');if(note&&taifexCheckedAt)note.dataset.checked=new Date(taifexCheckedAt).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Asia/Taipei'})}});
   window.addEventListener('resize',()=>{if(factorTrendKey==='pcr'||factorTrendKey==='retail'){clearTimeout(window.__sentResize);window.__sentResize=setTimeout(()=>paint(factorTrendKey),150)}});
 })();
 

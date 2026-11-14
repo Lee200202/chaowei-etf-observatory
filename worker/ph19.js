@@ -90,7 +90,5 @@
     const step=Math.max(1,Math.ceil(marks.length/Math.max(2,Math.floor((X(rows.length-1)-X(0))/70))));
     return marks.filter((_,k)=>k%step===0).map(i=>{const d=rows[i].date,label=long||d.slice(5,7)==='01'?d.slice(0,4):Number(d.slice(5,7))+'月';return`<line x1="${X(i)}" x2="${X(i)}" y1="${P.t}" y2="${H-P.b}" class="rc-grid"/><text x="${X(i)}" y="${H-7}" text-anchor="middle" class="rc-tick">${label}</text>`}).join('');
   }
-  // Keep the card's status line honest about the live check.
-  document.addEventListener('sentiment-updated',()=>{for(const key of ['pcr','retail']){const tile=$(key+'Tile'),note=tile?.querySelector('.sentiment-note');if(note&&taifexCheckedAt)note.dataset.checked=new Date(taifexCheckedAt).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Asia/Taipei'})}});
   window.addEventListener('resize',()=>{if(factorTrendKey==='pcr'||factorTrendKey==='retail'){clearTimeout(window.__sentResize);window.__sentResize=setTimeout(()=>paint(factorTrendKey),150)}});
 })();
