@@ -1,6 +1,6 @@
 {
   "source": "https://www.twse.com.tw/zh/ETFortune/ajaxProductsResult",
-  "updated": "2026-11-25",
+  "updated": "2026-11-26",
   "etfs": [
     {
       "code": "00400A",
@@ -128,6 +128,14 @@
       "type": "active",
       "note": "主動管理",
       "listingDate": "2026-11-11",
+      "market": "TWSE"
+    },
+    {
+      "code": "00419A",
+      "name": "主動施羅德AI台股",
+      "type": "active",
+      "note": "主動管理",
+      "listingDate": "2026-11-26",
       "market": "TWSE"
     },
     {
