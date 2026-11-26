@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {infrastructureFailure} from './action-health.mjs';
+import {businessAge,lastDate} from './market-health-core.mjs';
+const lost=[{message:'The hosted runner lost communication with the server.'}];
+assert.equal(infrastructureFailure(lost,[{steps:[{name:'Run actions/setup-node@v4',conclusion:null}]}]),true);
+assert.equal(infrastructureFailure(lost,[{steps:[{name:'npm run build:pages',conclusion:'failure'}]}]),false);
+assert.equal(infrastructureFailure([{message:'SyntaxError: Unexpected token'}],[]),false);
+assert.equal(infrastructureFailure([],[]),false);
+assert.equal(businessAge('2026-11-25',new Date('2026-11-26T01:00:00Z')),1);
+assert.equal(businessAge('2026-11-20',new Date('2026-11-23T01:00:00Z')),1,'weekend is not two missed daily updates');
+assert.equal(businessAge('2026-11-27',new Date('2026-11-26T01:00:00Z')),Infinity,'future data is invalid');
+assert.equal(businessAge('2026-13-25'),Infinity);
+assert.equal(lastDate({rows:[['2026-11-25',1],['2026-11-24',2]]}),'2026-11-25');
+assert.equal(lastDate({days:[{date:'2026-11-25',value:1}]}),'2026-11-25');
+console.log('Action failure classification and source dates: 10 cases passed');

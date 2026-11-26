@@ -1,0 +1,28 @@
+name: Verify published market freshness
+on:
+  schedule:
+    # Independent of the refresh runner: verify actual public responses at 10:15 and 22:15 Taipei.
+    - cron: '15 2,14 * * 1-5'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        timeout-minutes: 3
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        timeout-minutes: 3
+        with:
+          node-version: '24'
+      - run: node scripts/verify-market-freshness.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: published-market-freshness-${{ github.run_id }}
+          path: action-health/
+          retention-days: 30

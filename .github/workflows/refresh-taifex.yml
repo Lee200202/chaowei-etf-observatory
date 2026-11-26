@@ -20,6 +20,7 @@ concurrency:
 jobs:
   refresh:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     outputs:
       changed: ${{ steps.save.outputs.changed }}
     steps:
@@ -29,6 +30,7 @@ jobs:
           ref: main
           fetch-depth: 0
       - uses: actions/setup-node@v4
+        timeout-minutes: 5
         with:
           node-version: '24'
       - name: Fetch TAIFEX put/call ratio and mini-TAIEX open interest
@@ -61,6 +63,7 @@ jobs:
     needs: refresh
     if: needs.refresh.outputs.changed == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     environment:
       name: github-pages
       url: ${{ steps.retry.outputs.page_url || steps.deployment.outputs.page_url }}

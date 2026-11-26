@@ -27,6 +27,7 @@ jobs:
   # in the same job right after the upload can miss it ("No artifacts named github-pages were found").
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       # Always the newest main: a run that waited in the concurrency queue must not publish an older checkout.
       - uses: actions/checkout@v4
@@ -34,60 +35,91 @@ jobs:
           ref: main
           fetch-depth: 0
       - uses: actions/setup-node@v4
+        timeout-minutes: 5
         with:
           node-version: '24'
       - name: Refresh ETF catalogue
+        id: refresh_1
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         continue-on-error: true
         run: npm run catalog:update
       - name: Append TWSE daily history (ETF K lines and market turnover)
+        id: refresh_2
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         run: npm run history:update
       - name: Append intraday turnover profile (same-time volume comparison)
+        id: refresh_3
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         continue-on-error: true
         run: npm run intraday:update
       - name: Refresh ETF cash dividends
+        id: refresh_4
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         continue-on-error: true
         run: npm run dividends:update
       - name: Refresh ETF institutional trading and foreign ownership
+        id: refresh_5
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         continue-on-error: true
         run: npm run chips:update
       - name: Append market-wide margin balance
+        id: refresh_6
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         continue-on-error: true
         run: npm run margin:update -- --older 250
       - name: Append TDCC weekly ETF ownership distribution
+        id: refresh_7
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         continue-on-error: true
         run: npm run holders:update
       - name: Refresh official daily snapshots
+        id: refresh_8
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         continue-on-error: true
         run: npm run snapshots:update
       - name: Append Brent futures near-month settlement (FinMind / TAIFEX BRF)
+        id: refresh_9
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         continue-on-error: true
         run: npm run brent:update
       - name: Update Brent daily closes (Yahoo Finance BZ=F)
+        id: refresh_10
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         continue-on-error: true
         run: node scripts/update-oil-spot.mjs
       - name: Refresh TAIFEX options PCR and mini-TAIEX retail long/short ratio
+        id: refresh_11
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         continue-on-error: true
         run: npm run taifex:update
+      - name: Back up public cloud bank history
+        id: bank_backup
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        continue-on-error: true
+        run: node scripts/sync-bank-public.mjs
       - name: Refresh Cboe VIX daily closes
+        id: refresh_12
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         continue-on-error: true
         run: node scripts/update-vix.mjs
+      - name: Check pipeline syntax and failure classification
+        run: node scripts/check-pipeline.mjs
       - run: npm run history:validate
       - run: npm run build:pages
       - run: npm run build:gas
       - run: npm run test:upgrade
       - run: npm run test:gas
+      - name: Record data refresh failures
+        if: always()
+        env:
+          STEPS_JSON: ${{ toJSON(steps) }}
+        run: node scripts/record-refresh-outcomes.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: refresh-outcomes-${{ github.run_id }}
+          path: action-health/
+          retention-days: 30
       - name: Save refreshed snapshots
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         run: |
@@ -110,6 +142,7 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     environment:
       name: github-pages
       url: ${{ steps.retry.outputs.page_url || steps.deployment.outputs.page_url }}
