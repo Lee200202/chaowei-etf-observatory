@@ -4,14 +4,37 @@ import {GAS_PUBLIC,publicJson,lastDate,businessAge} from './market-health-core.m
 const base='https://lee200202.github.io/chaowei-etf-observatory/';
 const files=['history/0050','history/market','history/margin','fx','oil-spot','vix','options-pcr','retail-ratio','history/histock-bank'];
 const report={checkedAt:new Date().toISOString(),series:[],errors:[]};
-const payload={};
+const payload={},published={};
 await Promise.all(files.map(async file=>{
   try {const data=await publicJson(base+'data/'+file+'.json?health='+Date.now());
-    const date=lastDate(data),age=businessAge(date);
+    const date=lastDate(data),age=businessAge(date);published[file]=date;
     report.series.push({name:file,kind:'published-daily',date,businessDaysOld:age});
     if(age>5)report.errors.push(file+' 超過五個平日未更新：'+date);
   }catch(e){report.errors.push(file+': '+e.message)}
 }));
+// Compare to the source's actual latest published date, not just an age threshold.
+await Promise.all([
+  (async()=>{
+    try{
+      const ym=new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Taipei'}).slice(0,7).replace('-','');
+      const d=await publicJson('https://www.twse.com.tw/rwd/zh/afterTrading/FMTQIK?date='+ym+'01&response=json');
+      if(d.stat!=='OK'||!d.data?.length)throw Error('TWSE 無可用月份資料');
+      const dates=d.data.map(r=>{const [y,m,day]=r[0].split('/');return (+y+1911)+'-'+m.padStart(2,'0')+'-'+day.padStart(2,'0')}).sort();
+      const latest=dates.at(-1);report.series.push({name:'TWSE 官方最新日',kind:'upstream-reference',date:latest});
+      for(const key of ['history/market','history/0050'])if(published[key]<latest)report.errors.push(key+' 落後 TWSE 已公布資料：'+published[key]+' < '+latest);
+    }catch(e){report.errors.push('TWSE 來源日期核對：'+e.message)}
+  })(),
+  (async()=>{
+    try{
+      const d=await publicJson('https://cpx.cbc.gov.tw/api/OpenData/FTDOpenData_Day');
+      const raw=d.map(r=>String(r['日期']||'')).filter(d=>/^\d{8}$/.test(d)).sort().at(-1);
+      if(!raw)throw Error('CBC 無日期');
+      const latest=raw.slice(0,4)+'-'+raw.slice(4,6)+'-'+raw.slice(6);
+      report.series.push({name:'CBC 官方最新日',kind:'upstream-reference',date:latest});
+      if(published.fx<latest)report.errors.push('fx 落後央行已公布資料：'+published.fx+' < '+latest);
+    }catch(e){report.errors.push('CBC 來源日期核對：'+e.message)}
+  })()
+]);
 await Promise.all(['live','vix','taifex','bank','quote&code=0050'].map(async api=>{
   try{const d=await publicJson(GAS_PUBLIC+'?api='+api);payload[api]=d;
     if(d.error||d.errors?.length)report.errors.push(api+': '+(d.error||d.errors.join('; ')));

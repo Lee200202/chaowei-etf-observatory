@@ -95,7 +95,7 @@ function readSnapshot(path){
 // 市場刻度的最新資料：盤中加權指數與累計成交量（證交所基本市況報導）、期交所 BRF 布蘭特期貨近月結算價、央行匯率。
 // 整包快取 4 分鐘，所有訪客共用一次對外請求；前端每 5 分鐘讀一次。
 function getLiveMarket(){
-  const cache=CacheService.getScriptCache(),hit=cache.get('live-v8');
+  const cache=CacheService.getScriptCache(),hit=cache.get('live-v9');
   if(hit)return JSON.parse(hit);
   const out={generated:new Date().toISOString(),intraday:null,brent:null,fx:null,store:false,errors:[]};
   const now=new Date(Date.now()+8*3600000),mins=now.getUTCHours()*60+now.getUTCMinutes(),day=now.getUTCDay();
@@ -112,7 +112,7 @@ function getLiveMarket(){
   try{out.oilFuture=oilFuture_()}catch(err){out.errors.push('Yahoo 原油期貨：'+err.message)}
   try{out.fxQuote=yahooMarketQuote_('TWD=X','TWD','TWD/USD')}catch(err){out.errors.push('Yahoo 美元／新台幣：'+err.message)}
   try{const vix=getVixMarket();out.vixQuote=vix.quote;out.vixDays=vix.days;out.vixCheckedAt=vix.checkedAt;out.errors.push(...vix.errors)}catch(err){out.errors.push('Yahoo VIX：'+err.message)}
-  cache.put('live-v8',JSON.stringify(out),240);
+  cache.put('live-v9',JSON.stringify(out),240);
   return out;
 }
 function liveNum_(v){const n=Number(String(v==null?'':v).replace(/,/g,''));return isFinite(n)?n:null}

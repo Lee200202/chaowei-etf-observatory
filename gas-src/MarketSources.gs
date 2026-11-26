@@ -22,19 +22,25 @@ function oilFuture_(){
   return yahooMarketQuote_('BZ=F','USD','USD/barrel');
 }
 function yahooMarketQuote_(symbol,currency,unit){
-  const cache=CacheService.getScriptCache(),key='yahoo-market-v2-'+symbol,hit=cache.get(key);
+  const cache=CacheService.getScriptCache(),key='yahoo-market-v3-'+symbol,hit=cache.get(key);
   if(hit)return JSON.parse(hit);
-  const url='https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(symbol)+'?interval=5m&range=1d';
-  const response=UrlFetchApp.fetch(url,{muteHttpExceptions:true});
-  if(response.getResponseCode()!==200)throw Error('HTTP '+response.getResponseCode());
-  const meta=JSON.parse(response.getContentText('UTF-8')).chart?.result?.[0]?.meta;
-  if(!meta||meta.symbol!==symbol||meta.currency!==currency||!(meta.regularMarketPrice>0)||!(meta.regularMarketTime>0)){
-    throw Error('報價格式異常');
+  const failures=[];
+  for(const host of ['query1.finance.yahoo.com','query2.finance.yahoo.com']){
+    try{
+      const url='https://'+host+'/v8/finance/chart/'+encodeURIComponent(symbol)+'?interval=5m&range=1d';
+      const response=UrlFetchApp.fetch(url,{muteHttpExceptions:true});
+      if(response.getResponseCode()!==200)throw Error('HTTP '+response.getResponseCode());
+      const meta=JSON.parse(response.getContentText('UTF-8')).chart?.result?.[0]?.meta;
+      // Yahoo occasionally returns the canonical USD/TWD alias for the TWD=X request.
+      const same=meta&&(meta.symbol===symbol||symbol==='TWD=X'&&meta.symbol==='USDTWD=X');
+      if(!same||meta.currency!==currency||!(meta.regularMarketPrice>0)||!(meta.regularMarketTime>0))throw Error('報價格式異常');
+      const result={symbol,price:meta.regularMarketPrice,time:new Date(meta.regularMarketTime*1000).toISOString(),unit,
+        source:'Yahoo Finance '+symbol,delayed:true,previousClose:meta.previousClose||meta.chartPreviousClose||null};
+      cache.put(key,JSON.stringify(result),240);
+      return result;
+    }catch(err){failures.push(host+': '+err.message)}
   }
-  const result={symbol,price:meta.regularMarketPrice,time:new Date(meta.regularMarketTime*1000).toISOString(),unit,
-    source:'Yahoo Finance '+symbol,delayed:true,previousClose:meta.previousClose||meta.chartPreviousClose||null};
-  cache.put(key,JSON.stringify(result),240);
-  return result;
+  throw Error(failures.join('；'));
 }
 // Yahoo offers delayed five-minute bars. Use an opening bar only if it belongs to
 // the quote's session and is inside its first 15 minutes (including the first published VIX value).

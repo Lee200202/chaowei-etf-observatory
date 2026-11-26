@@ -22,6 +22,19 @@ assert.equal(fx.price,32.962);
 assert.equal(fx.unit,'TWD/USD');
 assert.equal(fx.time,'2026-11-06T02:30:43.000Z');
 assert.equal(fx.delayed,true);
+cache.delete('yahoo-market-v3-TWD=X');
+let fxAttempts=0;
+box.UrlFetchApp.fetch=url=>{
+  fxAttempts++;
+  if(fxAttempts===1)return{getResponseCode:()=>200,getContentText:()=>JSON.stringify({chart:{result:null}})};
+  assert.match(url,/query2\.finance\.yahoo\.com/);
+  return{getResponseCode:()=>200,getContentText:()=>JSON.stringify({chart:{result:[{meta:{symbol:'USDTWD=X',currency:'TWD',regularMarketPrice:33.086,regularMarketTime:1795656655}}]}})};
+};
+assert.equal(box.yahooMarketQuote_('TWD=X','TWD','TWD/USD').price,33.086,'a malformed first response falls back to the same validated currency pair');
+assert.equal(fxAttempts,2);
+cache.delete('yahoo-market-v3-TWD=X');
+box.UrlFetchApp.fetch=()=>({getResponseCode:()=>200,getContentText:()=>JSON.stringify({chart:{result:[{meta:{symbol:'USDTWD=X',currency:'USD',regularMarketPrice:33.086,regularMarketTime:1795656655}}]}})});
+assert.throws(()=>box.yahooMarketQuote_('TWD=X','TWD','TWD/USD'),/格式異常/,'the alias cannot bypass currency validation');
 // Yahoo's session metadata begins 15 min before the first published 03:15 ET VIX bar.
 const vixStart=at('2026-11-05',8),vixEnd=at('2026-11-05',21,15);
 const vixRow={meta:{symbol:'^VIX',currency:'USD',regularMarketPrice:28.18,regularMarketTime:vixEnd+1,
