@@ -4,6 +4,9 @@ export function infrastructureFailure(annotations, jobs) {
   return /hosted runner lost communication|runner.*(?:offline|disconnected)|runner shutdown/i.test(messages)
     && !jobs.some(j => j.steps?.some(s => s.conclusion === 'failure' && !/Set up job|checkout|setup-node/i.test(s.name)));
 }
+export function shouldRetryInfrastructure(run, infra) {
+  return infra && run.run_attempt === 1 && run.head_branch === 'main' && run.conclusion === 'failure';
+}
 
 export async function collectActionHealth({ github, context, core }) {
   const fs = await import('node:fs/promises');
@@ -30,7 +33,7 @@ export async function collectActionHealth({ github, context, core }) {
       await fs.writeFile('action-health/run-logs.zip', Buffer.from(logs.data));
     } catch (err) { result.logsUnavailable = String(err.message); }
   }
-  if (infra && run.run_attempt === 1 && run.head_branch === 'main' && run.conclusion === 'failure') {
+  if (shouldRetryInfrastructure(run, infra)) {
     await github.rest.actions.reRunWorkflow({...repo, run_id:run.id});
     result.retryRequested = true;
   }

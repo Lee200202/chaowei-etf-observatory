@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {infrastructureFailure} from './action-health.mjs';
+import {infrastructureFailure,shouldRetryInfrastructure} from './action-health.mjs';
 import {businessAge,lastDate} from './market-health-core.mjs';
 const lost=[{message:'The hosted runner lost communication with the server.'}];
 assert.equal(infrastructureFailure(lost,[{steps:[{name:'Run actions/setup-node@v4',conclusion:null}]}]),true);
@@ -12,4 +12,9 @@ assert.equal(businessAge('2026-11-27',new Date('2026-11-26T01:00:00Z')),Infinity
 assert.equal(businessAge('2026-13-25'),Infinity);
 assert.equal(lastDate({rows:[['2026-11-25',1],['2026-11-24',2]]}),'2026-11-25');
 assert.equal(lastDate({days:[{date:'2026-11-25',value:1}]}),'2026-11-25');
-console.log('Action failure classification and source dates: 10 cases passed');
+const failure={run_attempt:1,head_branch:'main',conclusion:'failure'};
+assert.equal(shouldRetryInfrastructure(failure,true),true);
+assert.equal(shouldRetryInfrastructure({...failure,run_attempt:2},true),false,'retry cannot loop');
+assert.equal(shouldRetryInfrastructure(failure,false),false,'source/build failures are not retried');
+assert.equal(shouldRetryInfrastructure({...failure,head_branch:'untrusted'},true),false);
+console.log('Action failure classification, bounded recovery and source dates: 14 cases passed');
