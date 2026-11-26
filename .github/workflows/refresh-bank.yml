@@ -1,0 +1,76 @@
+name: Refresh bank static backup
+on:
+  schedule:
+    # 00:25 Taipei Tue-Sat, after the owner's 23:15 cloud collection.
+    - cron: '25 16 * * 1-5'
+    # 06:10 Taipei daily: copy recovery only, never a second HiStock crawl.
+    - cron: '10 22 * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+concurrency:
+  group: bank-history-backup
+  cancel-in-progress: false
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      changed: ${{ steps.save.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        timeout-minutes: 5
+        with:
+          node-version: '24'
+      - name: Copy and validate cloud bank history
+        run: node scripts/sync-bank-public.mjs
+      - id: save
+        name: Commit only bank backup files
+        run: |
+          git add pages-data/history/histock-bank.json docs/data/history/histock-bank.json
+          if git diff --cached --quiet; then echo 'changed=false' >> "$GITHUB_OUTPUT"; exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Daily backup of public cloud bank history'
+          for attempt in 1 2 3; do
+            if git pull --rebase --autostash origin main; then
+              if git push origin HEAD:main; then echo 'changed=true' >> "$GITHUB_OUTPUT"; exit 0; fi
+            else git rebase --abort || true; fi
+            sleep 10
+          done
+          exit 1
+  publish:
+    needs: backup
+    if: needs.backup.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Fetch latest main only AFTER taking the shared publishing lock. This avoids
+    # overwriting a newer full-site release with an older data-only artifact.
+    concurrency:
+      group: github-pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.retry.outputs.page_url || steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+      - id: deployment
+        uses: actions/deploy-pages@v4
+        continue-on-error: true
+      - if: steps.deployment.outcome == 'failure'
+        run: sleep 30
+      - id: retry
+        if: steps.deployment.outcome == 'failure'
+        uses: actions/deploy-pages@v4

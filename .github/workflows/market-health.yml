@@ -1,5 +1,8 @@
 name: Verify published market freshness
 on:
+  workflow_run:
+    workflows: ['Deploy ETF observatory', 'Refresh bank static backup']
+    types: [completed]
   schedule:
     # Independent of the refresh runner: verify actual public responses at 10:15 and 22:15 Taipei.
     - cron: '15 2,14 * * 1-5'
@@ -8,6 +11,7 @@ permissions:
   contents: read
 jobs:
   verify:
+    if: github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

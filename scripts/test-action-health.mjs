@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {infrastructureFailure,shouldRetryInfrastructure} from './action-health.mjs';
-import {businessAge,lastDate} from './market-health-core.mjs';
+import {businessAge,lastDate,publicationState} from './market-health-core.mjs';
 const lost=[{message:'The hosted runner lost communication with the server.'}];
 assert.equal(infrastructureFailure(lost,[{steps:[{name:'Run actions/setup-node@v4',conclusion:null}]}]),true);
 assert.equal(infrastructureFailure(lost,[{steps:[{name:'npm run build:pages',conclusion:'failure'}]}]),false);
@@ -17,4 +17,9 @@ assert.equal(shouldRetryInfrastructure(failure,true),true);
 assert.equal(shouldRetryInfrastructure({...failure,run_attempt:2},true),false,'retry cannot loop');
 assert.equal(shouldRetryInfrastructure(failure,false),false,'source/build failures are not retried');
 assert.equal(shouldRetryInfrastructure({...failure,head_branch:'untrusted'},true),false);
-console.log('Action failure classification, bounded recovery and source dates: 14 cases passed');
+assert.equal(publicationState('2026-11-25','2026-11-26',new Date('2026-11-26T10:52:00Z')),'awaiting-evening-publish');
+assert.equal(publicationState('2026-11-25','2026-11-26',new Date('2026-11-26T14:01:00Z')),'stale','late publisher still alerts');
+assert.equal(publicationState('2026-11-24','2026-11-26',new Date('2026-11-26T10:52:00Z')),'stale','older gaps never get grace');
+assert.equal(publicationState('2026-11-26','2026-11-26'),'current');
+assert.equal(publicationState(null,'2026-11-26'),'missing');
+console.log('Action failure classification, bounded recovery and publication timing: 19 cases passed');

@@ -18,3 +18,12 @@ export async function publicJson(url) {
   if(!response.ok)throw Error('HTTP '+response.status+' '+new URL(url).pathname);
   return response.json();
 }
+// Daily publication is asynchronous. Only today's new official close can wait for
+// the evening publisher; an older gap must still alert immediately.
+export function publicationState(published, upstream, now=new Date()) {
+  if(!published||!upstream)return 'missing';
+  if(published>=upstream)return 'current';
+  const today=now.toLocaleDateString('en-CA',{timeZone:'Asia/Taipei'});
+  const hm=now.toLocaleTimeString('en-GB',{timeZone:'Asia/Taipei',hour12:false}).slice(0,5);
+  return upstream===today&&businessAge(published,now)<=1&&hm<'22:00'?'awaiting-evening-publish':'stale';
+}

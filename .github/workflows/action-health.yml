@@ -1,7 +1,7 @@
 name: Action failure diagnostics
 on:
   workflow_run:
-    workflows: ['Deploy ETF observatory', 'Refresh TAIFEX PCR and retail ratio', 'Refresh and verify VIX', 'Verify published market freshness']
+    workflows: ['Deploy ETF observatory', 'Refresh TAIFEX PCR and retail ratio', 'Refresh and verify VIX', 'Verify published market freshness', 'Refresh bank static backup']
     types: [completed]
 permissions:
   contents: read

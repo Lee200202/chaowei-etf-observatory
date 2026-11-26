@@ -1,10 +1,17 @@
 // Public endpoints only: no secrets, no account data. Keep source dates separate from check times.
 import {mkdir,writeFile} from 'node:fs/promises';
-import {GAS_PUBLIC,publicJson,lastDate,businessAge} from './market-health-core.mjs';
+import {GAS_PUBLIC,publicJson,lastDate,businessAge,publicationState} from './market-health-core.mjs';
 const base='https://lee200202.github.io/chaowei-etf-observatory/';
 const files=['history/0050','history/market','history/margin','fx','oil-spot','vix','options-pcr','retail-ratio','history/histock-bank'];
-const report={checkedAt:new Date().toISOString(),series:[],errors:[]};
+const report={checkedAt:new Date().toISOString(),series:[],errors:[],pending:[]};
 const payload={},published={};
+function comparePublished(key,upstream,label){
+  const state=publicationState(published[key],upstream);
+  if(state==='current')return;
+  const message=key+' 落後 '+label+' 已公布資料：'+published[key]+' < '+upstream;
+  if(state==='awaiting-evening-publish')report.pending.push(message+'；等待晚間發布，22:00後仍落後才判定逾時');
+  else report.errors.push(message);
+}
 await Promise.all(files.map(async file=>{
   try {const data=await publicJson(base+'data/'+file+'.json?health='+Date.now());
     const date=lastDate(data),age=businessAge(date);published[file]=date;
@@ -21,7 +28,7 @@ await Promise.all([
       if(d.stat!=='OK'||!d.data?.length)throw Error('TWSE 無可用月份資料');
       const dates=d.data.map(r=>{const [y,m,day]=r[0].split('/');return (+y+1911)+'-'+m.padStart(2,'0')+'-'+day.padStart(2,'0')}).sort();
       const latest=dates.at(-1);report.series.push({name:'TWSE 官方最新日',kind:'upstream-reference',date:latest});
-      for(const key of ['history/market','history/0050'])if(published[key]<latest)report.errors.push(key+' 落後 TWSE 已公布資料：'+published[key]+' < '+latest);
+      for(const key of ['history/market','history/0050'])comparePublished(key,latest,'TWSE');
     }catch(e){report.errors.push('TWSE 來源日期核對：'+e.message)}
   })(),
   (async()=>{
@@ -31,7 +38,7 @@ await Promise.all([
       if(!raw)throw Error('CBC 無日期');
       const latest=raw.slice(0,4)+'-'+raw.slice(4,6)+'-'+raw.slice(6);
       report.series.push({name:'CBC 官方最新日',kind:'upstream-reference',date:latest});
-      if(published.fx<latest)report.errors.push('fx 落後央行已公布資料：'+published.fx+' < '+latest);
+      comparePublished('fx',latest,'央行');
     }catch(e){report.errors.push('CBC 來源日期核對：'+e.message)}
   })()
 ]);
@@ -46,6 +53,10 @@ await Promise.all(['live','vix','taifex','bank','quote&code=0050'].map(async api
     if(api==='quote&code=0050'&&!d.available)report.errors.push('0050 報價不可用');
   }catch(e){report.errors.push(api+': '+e.message)}
 }));
+// Bank backup follows the existing cloud job. Do not wait a week to discover
+// that the cloud has a newer date but the static backup never copied it.
+if(payload.bank?.latest&&published['history/histock-bank']<payload.bank.latest)
+  report.errors.push('官股靜態備份落後雲端：'+published['history/histock-bank']+' < '+payload.bank.latest);
 // On an active Taiwan session, yesterday's date or an old heartbeat is a failure, not a successful refresh.
 const now=new Date(),today=now.toLocaleDateString('en-CA',{timeZone:'Asia/Taipei'});
 const hm=now.toLocaleTimeString('en-GB',{timeZone:'Asia/Taipei',hour12:false}).slice(0,5);
@@ -59,4 +70,5 @@ report.series.sort((a,b)=>a.name.localeCompare(b.name));
 await mkdir('action-health',{recursive:true});
 await writeFile('action-health/freshness.json',JSON.stringify(report,null,2));
 console.table(report.series);
+if(report.pending.length)console.log(report.pending.join('\n'));
 if(report.errors.length){console.error(report.errors.join('\n'));process.exitCode=1}
