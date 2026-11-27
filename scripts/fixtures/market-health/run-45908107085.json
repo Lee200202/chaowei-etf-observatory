@@ -1,0 +1,26 @@
+{
+  "runId": "45908107085",
+  "description": "Reconstructed from archived artifact timestamp, source dates and missing-field states. Original raw provider payload was not saved.",
+  "now": "2026-11-26T22:58:52.661Z",
+  "upstream": "2026-11-26",
+  "published": {
+    "fx": "2026-11-26",
+    "history/0050": "2026-11-26",
+    "history/histock-bank": "2026-11-26",
+    "history/margin": "2026-11-26",
+    "history/market": "2026-11-26",
+    "oil-spot": "2026-11-25",
+    "options-pcr": "2026-11-26",
+    "retail-ratio": "2026-11-26",
+    "vix": "2026-11-25"
+  },
+  "intraday": null,
+  "quote": {
+    "available": true,
+    "date": "2026-11-26",
+    "time": "2026-11-26T05:30:00.000Z"
+  },
+  "originalErrors": [
+    "大盤盤中 無可用近期資料：undefined"
+  ]
+}

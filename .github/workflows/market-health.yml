@@ -23,6 +23,8 @@ jobs:
         timeout-minutes: 3
         with:
           node-version: '24'
+      - name: Replay session-boundary regression cases
+        run: node scripts/test-market-session-health.mjs
       - run: node scripts/verify-market-freshness.mjs
       - uses: actions/upload-artifact@v4
         if: always()
