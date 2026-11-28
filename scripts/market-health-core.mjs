@@ -13,10 +13,18 @@ export function businessAge(date, now=new Date()) {
   for(let d=new Date(+start+86400000);d<=end;d.setUTCDate(d.getUTCDate()+1))if(d.getUTCDay()%6!==0)age++;
   return age;
 }
-export async function publicJson(url) {
-  const response=await fetch(url,{signal:AbortSignal.timeout(60000)});
-  if(!response.ok)throw Error('HTTP '+response.status+' '+new URL(url).pathname);
-  return response.json();
+// Network errors and 5xx/429 are retried once after a pause; a second failure is reported.
+export async function publicJson(url, {retryDelay=15000}={}) {
+  for(let attempt=0;;attempt++){
+    let response;
+    try{response=await fetch(url,{signal:AbortSignal.timeout(60000)})}
+    catch(e){if(attempt)throw e;await new Promise(r=>setTimeout(r,retryDelay));continue}
+    if(!response.ok){
+      if(!attempt&&(response.status>=500||response.status===429)){await new Promise(r=>setTimeout(r,retryDelay));continue}
+      throw Error('HTTP '+response.status+' '+new URL(url).pathname);
+    }
+    return response.json();
+  }
 }
 // Daily publication is asynchronous. Only today's new official close can wait for
 // the evening publisher; an older gap must still alert immediately.

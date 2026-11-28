@@ -59,7 +59,15 @@ function taifexPcrRatio_(row,kind){return kind==='volume'?(row[2]>0?row[1]/row[2
 // Live bundle for the page: the last few weeks, so a day TAIFEX has published (after about 15:00 Taipei) shows up
 // before the evening CI snapshot. One copy serves every visitor for four minutes, so each five-minute page check sees a fresh read.
 function taifexPost_(path,payload){
-  const r=UrlFetchApp.fetch('https://www.taifex.com.tw/cht/3/'+path,{method:'post',payload:payload,muteHttpExceptions:true,headers:{'User-Agent':'Mozilla/5.0 (compatible; ChaoweiResearch/1.0)'}});
+  const opts={method:'post',payload:payload,muteHttpExceptions:true,headers:{'User-Agent':'Mozilla/5.0 (compatible; ChaoweiResearch/1.0)'}};
+  let r;
+  // TAIFEX sits behind a CDN that returns brief 5xx/429 (e.g. HTTP 520 on 2026-11-28 03:34); retry those once.
+  for(let attempt=0;attempt<2;attempt++){
+    try{r=UrlFetchApp.fetch('https://www.taifex.com.tw/cht/3/'+path,opts)}catch(e){if(attempt)throw e;Utilities.sleep(2000);continue}
+    const code=r.getResponseCode();
+    if(code===200||!(code>=500||code===429)||attempt)break;
+    Utilities.sleep(2000);
+  }
   if(r.getResponseCode()!==200)throw Error('HTTP '+r.getResponseCode());
   const text=r.getBlob().getDataAsString('Big5');
   if(/<html|<!DOCTYPE/i.test(text.slice(0,300)))throw Error('查詢不受理');
@@ -85,6 +93,22 @@ function getTaifexSentiment(){
     const inst=parseTaifexInstitutions_(taifexRecent_('futContractsDateDown',{commodityId:'MXF'},now));
     out.retail=taifexRetailRows_(oi,inst);
   }catch(e){out.errors.push('期交所小台與法人：'+e.message)}
-  if(out.pcr.length||out.retail.length)cache.put(key,JSON.stringify(out),240);
+  // Keep the last good rows of each part. When TAIFEX is briefly down, serve them marked stale
+  // (warnings, not errors) so the page and health check keep real dated data; dates still age normally.
+  const props=PropertiesService.getScriptProperties(),goodKey='TAIFEX_LAST_GOOD';
+  let good={};try{good=JSON.parse(props.getProperty(goodKey)||'{}')}catch(e){good={}}
+  out.warnings=[];
+  for(const part of ['pcr','retail']){
+    if(out[part].length){good[part]=out[part];continue}
+    const label=part==='pcr'?'期交所 PCR：':'期交所小台與法人：',i=out.errors.findIndex(m=>m.indexOf(label)===0);
+    if(i>=0&&good[part]&&good[part].length){
+      out[part]=good[part];out.warnings.push(out.errors[i]+'；暫用上次成功資料（至 '+good[part][good[part].length-1][0]+'）');out.errors.splice(i,1);
+    }
+  }
+  if(!out.warnings.length)delete out.warnings;
+  const fresh=out.errors.length===0&&!out.warnings;
+  try{if(fresh)props.setProperty(goodKey,JSON.stringify({pcr:out.pcr,retail:out.retail,savedAt:out.checkedAt}))}catch(e){}
+  // A degraded answer is cached briefly so the next visitor retries TAIFEX soon.
+  if(out.pcr.length||out.retail.length)cache.put(key,JSON.stringify(out),fresh?240:60);
   return out;
 }

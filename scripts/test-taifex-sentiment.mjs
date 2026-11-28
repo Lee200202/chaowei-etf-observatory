@@ -51,7 +51,30 @@ const j=RC.joinSeries([{date:'2026-01-02',value:1},{date:'2026-01-03',value:2},{
 assert.deepEqual(j,[{date:'2026-01-02',a:1,b:8},{date:'2026-01-03',a:2,b:9}]);assert.deepEqual(RC.preset([{a:1},{a:5},{a:2}],'peakToLow','a'),{a:1,b:2});
 for(const f of ['worker/market-sentiment.js','worker/ph19.js','worker/market-compare.js'])new vm.Script(fs.readFileSync(f,'utf8'));
 // Live bundle: Apps Script steps a refused end date back and caches for four minutes (each five-minute page check is fresh).
-const gs=fs.readFileSync('gas-src/TaifexSentiment.gs','utf8');assert.match(gs,/cache\.put\(key,JSON\.stringify\(out\),240\)/);assert.match(gs,/查詢不受理/);
+const gs=fs.readFileSync('gas-src/TaifexSentiment.gs','utf8');assert.match(gs,/cache\.put\(key,JSON\.stringify\(out\),fresh\?240:60\)/);assert.match(gs,/查詢不受理/);
+// A brief TAIFEX CDN error (HTTP 520 on 2026-11-28 03:34 failed the health check) is retried once,
+// and if TAIFEX stays down the bundle serves the last good rows as a warning instead of an error.
+{
+  const store={},cached={},sleeps=[];let codes=[];
+  const g={Utilities:{sleep:ms=>sleeps.push(ms),formatDate:d=>d.toISOString().slice(0,10).replace(/-/g,'/')},
+    CacheService:{getScriptCache:()=>({get:k=>cached[k]||null,put:(k,v,s)=>{cached[k]=v;cached.ttl=s}})},
+    PropertiesService:{getScriptProperties:()=>({getProperty:k=>store[k]||null,setProperty:(k,v)=>{store[k]=v}})},
+    UrlFetchApp:{fetch:()=>{const c=codes.length?codes.shift():520;return{getResponseCode:()=>c,getBlob:()=>({getDataAsString:()=>'csv'})}}}};
+  vm.createContext(g);vm.runInContext(gs,g);
+  codes=[520,200];assert.equal(g.taifexPost_('pcRatioDown',{}),'csv','one retry after HTTP 520');assert.equal(sleeps.length,1);
+  codes=[404];assert.throws(()=>g.taifexPost_('pcRatioDown',{}),/HTTP 404/,'non-transient status is not retried');
+  g.parseTaifexPcr_=()=>[['2026-11-27',1,2,3,4]];g.parseTaifexMtxOi_=()=>({'2026-11-27':10});g.parseTaifexInstitutions_=()=>({'2026-11-27':[1,2]});
+  codes=Array(20).fill(200);const ok=g.getTaifexSentiment();
+  assert.equal(ok.errors.length,0);assert.equal(ok.warnings,undefined);assert.equal(cached.ttl,240);assert.ok(store.TAIFEX_LAST_GOOD);
+  delete cached['taifex-sentiment-v1'];codes=[];
+  const down=g.getTaifexSentiment();
+  assert.equal(down.errors.length,0,'last good rows replace the TAIFEX error');assert.equal(down.pcr.at(-1)[0],'2026-11-27');
+  assert.equal(down.warnings.length,2);assert.match(down.warnings[0],/HTTP 520；暫用上次成功資料（至 2026-11-27）/);assert.equal(cached.ttl,60,'degraded copy cached briefly');
+  assert.equal(JSON.parse(store.TAIFEX_LAST_GOOD).pcr.at(-1)[0],'2026-11-27','a degraded answer does not overwrite the last good copy');
+  delete cached['taifex-sentiment-v1'];delete store.TAIFEX_LAST_GOOD;
+  const none=g.getTaifexSentiment();assert.equal(none.errors.length,2,'without a last good copy the error stays');
+  console.log('PASS TAIFEX live bundle: one retry on 5xx, last good rows served as warnings during an outage.');
+}
 assert.match(fs.readFileSync('.github/workflows/refresh-taifex.yml','utf8'),/cron: '40 7 \* \* 1-5'/,'weekday afternoon refresh');
 console.log(`PASS TAIFEX sentiment: PCR 11/13 ${box.taifexPcrRatio_(pcr[1],'oi').toFixed(2)}%, retail ratio ${box.taifexRetailRatio_(retail[0]).toFixed(2)}% from real CSV lines; zones, readings, red/green line, history files and two-series join.`);
 // Weighted score: PCR and retail are slots 11 and 12 (after 籌碼共振), so a saved ten-slot plan keeps its meaning;

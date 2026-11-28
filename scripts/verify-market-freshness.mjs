@@ -64,8 +64,17 @@ if(calendar)for(const key of taiwanDaily){
   if(age>5)report.errors.push(key+' 超過五個交易日未更新：'+published[key]);
 }
 await Promise.all(['live','vix','taifex','bank','quote&code=0050'].map(async api=>{
-  try{const d=await publicJson(GAS_PUBLIC+'?api='+api);payload[api]=d;
+  try{
+    // One delayed retry: a single upstream blip (TAIFEX HTTP 520, Apps Script timeout) is not an outage.
+    let d;
+    for(let attempt=0;attempt<2;attempt++){
+      try{d=await publicJson(GAS_PUBLIC+'?api='+api+'&health='+Date.now());}catch(e){if(attempt)throw e;d=null}
+      if(d&&!d.error&&!d.errors?.length)break;
+      if(!attempt){report.pending.push(api+' 首次查詢失敗，30 秒後重試：'+(d?(d.error||d.errors.join('; ')):'無回應'));await new Promise(r=>setTimeout(r,30000));}
+    }
+    payload[api]=d;
     if(d.error||d.errors?.length)report.errors.push(api+': '+(d.error||d.errors.join('; ')));
+    if(d.warnings?.length)report.pending.push(...d.warnings.map(w=>api+'（暫用備援）: '+w));
     const entries=api==='live'?[['原油延遲',d.oilFuture?.time?.slice(0,10),d.oilFuture?.time],['匯率延遲',d.fxQuote?.time?.slice(0,10),d.fxQuote?.time]]:
       api==='taifex'?[['PCR',d.pcr?.at(-1)?.[0]],['散戶多空比',d.retail?.at(-1)?.[0]]]:
       api==='vix'?[['VIX 延遲',d.quote?.date||lastDate(d),d.quote?.time]]:
